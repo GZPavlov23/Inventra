@@ -16,7 +16,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1",
-    "httpx>=0.28",
+    # HTTP client used by FastAPI's TestClient in the tests.
+    "httpx2>=2.16",
     "ruff>=0.17",
 ]
 

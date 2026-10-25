@@ -1,0 +1,8 @@
+{
+  // Use the backend's virtual environment (apps/api/.venv) for Python files.
+  // macOS/Linux path. On Windows, select it once via "Python: Select Interpreter" →
+  // "Enter interpreter path" → apps\api\.venv\Scripts\python.exe (that choice wins over this).
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/bin/python",
+  // Lets the editor resolve imports like `from app.core.config import ...`.
+  "python.analysis.extraPaths": ["${workspaceFolder}/apps/api"]
+}

@@ -1,0 +1,17 @@
+# Optional: local PostgreSQL in Docker (for teammates without a native install).
+# Usage: docker compose up -d
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: inventra
+      POSTGRES_PASSWORD: inventra_dev
+      POSTGRES_DB: inventra
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./apps/api/scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+
+volumes:
+  pgdata:

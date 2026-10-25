@@ -35,6 +35,8 @@ class Product(TimestampMixin, Base):
             ProductUnit,
             name="product_unit",
             native_enum=False,
+            # Adds a CHECK constraint so the database itself rejects unknown units.
+            create_constraint=True,
             length=8,
             values_callable=lambda enum: [member.value for member in enum],
         ),

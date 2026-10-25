@@ -1,0 +1,14 @@
+# The team uses both macOS and Windows: store every text file with LF line endings,
+# so a commit never shows whole files as "changed" just because of the operating system.
+* text=auto eol=lf
+
+# Windows-only scripts need CRLF to run correctly.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files are never converted.
+*.png binary
+*.jpg binary
+*.ico binary
+*.joblib binary

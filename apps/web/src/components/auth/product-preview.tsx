@@ -22,6 +22,13 @@ const PREVIEW_PRODUCTS = [
 
 const SIDEBAR_ICONS = [LayoutDashboard, Package, Boxes, Truck, ShoppingCart, Sparkles]
 
+// Background circles: size in rem, seconds per full turn of their orbiting dot, and direction.
+const ORBITS = [
+  { size: 68, seconds: 70, direction: 1 },
+  { size: 52, seconds: 50, direction: -1 },
+  { size: 36, seconds: 32, direction: 1 },
+]
+
 export function ProductPreview() {
   const root = useRef<HTMLElement>(null)
 
@@ -34,6 +41,19 @@ export function ProductPreview() {
           { ...done, duration: 0.8, ease: 'power3.out', delay: 0.1 })
         gsap.fromTo('[data-preview-row]', { opacity: 0, y: 6 },
           { ...done, duration: 0.4, ease: 'power2.out', stagger: 0.05, delay: 0.45 })
+
+        // Very slow, endless motion: each circle turns (so its dot orbits) and gently "breathes".
+        gsap.utils.toArray<HTMLElement>('[data-orbit]').forEach((circle, index) => {
+          const { seconds, direction } = ORBITS[index]
+          gsap.to(circle, { rotation: 360 * direction, duration: seconds, ease: 'none', repeat: -1 })
+          gsap.to(circle, {
+            scale: 1.03,
+            duration: 5 + index,
+            ease: 'sine.inOut',
+            yoyo: true,
+            repeat: -1,
+          })
+        })
       })
       return () => media.revert()
     },
@@ -47,14 +67,21 @@ export function ProductPreview() {
       aria-label="Illustration of the Inventra platform with demo products"
       className="relative hidden items-center overflow-hidden border-l bg-muted/40 lg:flex"
     >
-      {/* Faint concentric circles behind the frame. */}
-      <div aria-hidden className="pointer-events-none absolute top-1/2 left-[55%] -translate-x-1/2 -translate-y-1/2">
-        {[68, 52, 36].map((size) => (
+      {/* Faint concentric circles behind the frame, each with a small orbiting dot.
+          Two layers per circle: the outer one is centred with translate classes and never
+          animated; the inner one is rotated by GSAP. (GSAP's rotation overwrites the CSS
+          translate property, so animating the centred element itself would move it.) */}
+      <div aria-hidden className="pointer-events-none absolute top-1/2 left-[55%]">
+        {ORBITS.map(({ size }) => (
           <div
             key={size}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/15"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             style={{ width: `${size}rem`, height: `${size}rem` }}
-          />
+          >
+            <div data-orbit className="relative size-full rounded-full border border-primary/15">
+              <span className="absolute top-0 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/40" />
+            </div>
+          </div>
         ))}
       </div>
 

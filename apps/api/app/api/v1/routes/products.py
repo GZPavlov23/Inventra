@@ -1,6 +1,8 @@
 """HTTP endpoints for products. Routes only parse input, call the service and shape output."""
 
-from fastapi import APIRouter, Query, status
+from typing import Literal
+
+from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentStore, ProductServiceDep
 from app.schemas.common import ErrorResponse
@@ -11,18 +13,21 @@ router = APIRouter(prefix="/products", tags=["products"])
 NOT_FOUND = {404: {"model": ErrorResponse}}
 CONFLICT = {409: {"model": ErrorResponse}}
 
+# Which products a list request returns, mapped to the repository's `active` filter.
+STATUS_FILTER = {"active": True, "archived": False, "all": None}
+
 
 @router.get("", response_model=ProductPage)
 def list_products(
     store: CurrentStore,
     service: ProductServiceDep,
     search: str | None = Query(None, max_length=100, description="Name, brand or barcode prefix"),
-    active: bool | None = Query(True, description="Omit the value (active=) to include archived"),
+    status: Literal["active", "archived", "all"] = Query("active"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> ProductPage:
     items, total = service.list_products(
-        store.id, search=search, active=active, limit=limit, offset=offset
+        store.id, search=search, active=STATUS_FILTER[status], limit=limit, offset=offset
     )
     return ProductPage(
         items=[ProductRead.model_validate(item) for item in items],
@@ -32,9 +37,7 @@ def list_products(
     )
 
 
-@router.post(
-    "", response_model=ProductRead, status_code=status.HTTP_201_CREATED, responses=CONFLICT
-)
+@router.post("", response_model=ProductRead, status_code=201, responses=CONFLICT)
 def create_product(data: ProductCreate, store: CurrentStore, service: ProductServiceDep):
     return service.create_product(store.id, data)
 

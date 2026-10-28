@@ -8,6 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.models.product import Product
 
+# Unicode (ICU) sort order: alphabetical for Latin and Cyrillic alike. The operating system's
+# default collation sorts Bulgarian names wrongly on macOS, so we never rely on it.
+ALPHABETICAL = "und-x-icu"
+
 
 class ProductRepository:
     def __init__(self, session: Session) -> None:
@@ -46,7 +50,7 @@ class ProductRepository:
         stmt = (
             select(Product)
             .where(*conditions)
-            .order_by(Product.name, Product.id)
+            .order_by(Product.name.collate(ALPHABETICAL), Product.id)
             .limit(limit)
             .offset(offset)
         )

@@ -121,8 +121,18 @@ def test_archived_products_are_hidden_by_default(client: TestClient) -> None:
     client.patch(f"{URL}/{product['id']}", json={"active": False})
 
     assert client.get(URL).json()["total"] == 0
-    archived = client.get(URL, params={"active": "false"}).json()
+    archived = client.get(URL, params={"status": "archived"}).json()
     assert [item["id"] for item in archived["items"]] == [product["id"]]
+
+
+def test_status_all_lists_active_and_archived(client: TestClient) -> None:
+    active = create(client, name="Active one", barcode="2000000000022")
+    archived = create(client, name="Archived one", barcode="2000000000039")
+    client.patch(f"{URL}/{archived['id']}", json={"active": False})
+
+    listed = client.get(URL, params={"status": "all"}).json()
+    assert {item["id"] for item in listed["items"]} == {active["id"], archived["id"]}
+    assert client.get(URL, params={"status": "deleted"}).status_code == 422
 
 
 def test_other_store_data_is_never_visible(client: TestClient, db: Session) -> None:
@@ -145,3 +155,12 @@ def test_other_store_data_is_never_visible(client: TestClient, db: Session) -> N
     assert client.patch(f"{URL}/{foreign.id}", json={"name": "Hacked"}).status_code == 404
     # The same barcode is free to use in our own store.
     create(client, barcode="2000000000046")
+
+
+def test_list_is_alphabetical_for_cyrillic_names(client: TestClient) -> None:
+    names = ["Сирене", "Бял хляб", "Яйца", "Айрян", "Кисело мляко", "Банани", "Apple juice"]
+    for name in names:
+        create(client, name=name, barcode=None)
+    listed = [item["name"] for item in client.get(URL).json()["items"]]
+    expected = ["Apple juice", "Айрян", "Банани", "Бял хляб", "Кисело мляко", "Сирене", "Яйца"]
+    assert listed == expected

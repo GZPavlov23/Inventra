@@ -13,10 +13,10 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated tests (pytest) | ✅ 53 tests |
+| Automated tests (pytest) | ✅ 62 tests |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
-| Accounts API: registration, email verification, login/logout, sessions | ✅ working. Locally, verification emails are printed in the backend terminal |
-| Login, Register and email confirmation pages; every platform page requires login | ✅ working |
+| Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
+| Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
 | Employee accounts and role permissions | ⏳ planned |
 | Web pages with real data (Products first) | ⏳ planned |
 | Batches, deliveries, sales | ⏳ planned |
@@ -212,6 +212,7 @@ After running the seed script you can log in with:
 - Only SHA-256 hashes of session and email tokens are stored in the database.
 - New accounts must **confirm their email** before they can log in. Verification links are single-use and expire after 24 hours.
 - After 5 wrong passwords in a row the account is locked for 15 minutes.
+- Forgotten passwords are reset through a single-use emailed link valid for 1 hour. A reset ends every session of the account and notifies the owner by email.
 - Register, login and "resend link" give the same answer whether or not an email is registered, so accounts can't be discovered.
 - Every data query is scoped to the logged-in user's store.
 

@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth'
 import { AuthCard } from '@/components/auth/auth-card'
 import { PasswordInput } from '@/components/auth/password-input'
+import { PasswordStrengthMeter } from '@/components/auth/password-strength-meter'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -105,6 +106,7 @@ export function ResetPasswordPage() {
             <PasswordInput id="password" autoComplete="new-password" required minLength={8}
               maxLength={128} aria-describedby="password-hint"
               value={password} onChange={(event) => setPassword(event.target.value)} />
+            <PasswordStrengthMeter password={password} />
             <p id="password-hint" className="text-xs text-muted-foreground">At least 8 characters.</p>
           </div>
           <div data-animate className="flex flex-col gap-2">

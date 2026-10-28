@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { AuthCard } from '@/components/auth/auth-card'
 import { CheckEmailCard } from '@/components/auth/check-email-card'
 import { PasswordInput } from '@/components/auth/password-input'
+import { PasswordStrengthMeter } from '@/components/auth/password-strength-meter'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -85,6 +86,7 @@ export function RegisterPage() {
             <PasswordInput id="password" autoComplete="new-password" required
               minLength={8} maxLength={128} aria-describedby="password-hint"
               value={form.password} onChange={update('password')} />
+            <PasswordStrengthMeter password={form.password} email={form.email} />
             <p id="password-hint" className="text-xs text-muted-foreground">
               At least 8 characters. A longer passphrase is safer than a short complex password.
             </p>

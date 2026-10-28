@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router'
 
 import { GuestOnly, RequireAuth } from '@/auth/route-guards'
@@ -11,6 +12,12 @@ import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { VerifyEmailPage } from '@/pages/auth/verify-email-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { PlannedPage } from '@/pages/planned-page'
+import { ProductsPage } from '@/pages/products/products-page'
+
+// Modules that are already built. Every other menu item shows a "Planned" placeholder.
+const BUILT_PAGES: Record<string, ReactNode> = {
+  '/products': <ProductsPage />,
+}
 
 export const router = createBrowserRouter([
   {
@@ -32,13 +39,15 @@ export const router = createBrowserRouter([
   },
   {
     // The platform itself: everything here requires a logged-in user.
-    // Every module starts as a PlannedPage; a route switches to its real page once that is built.
     element: <RequireAuth />,
     children: [
       {
         element: <AppLayout />,
         children: [
-          ...ALL_NAV_ITEMS.map((item) => ({ path: item.path, element: <PlannedPage item={item} /> })),
+          ...ALL_NAV_ITEMS.map((item) => ({
+            path: item.path,
+            element: BUILT_PAGES[item.path] ?? <PlannedPage item={item} />,
+          })),
           { path: '*', element: <NotFoundPage /> },
         ],
       },

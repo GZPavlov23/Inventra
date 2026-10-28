@@ -145,10 +145,6 @@ export function ProductPreview() {
           </table>
         </div>
       </div>
-
-      <p className="absolute bottom-6 left-16 text-xs text-muted-foreground">
-        Illustration with demo data
-      </p>
     </aside>
   )
 }

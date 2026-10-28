@@ -1,6 +1,8 @@
 import { Link, NavLink, useLocation } from 'react-router'
 
 import logoMark from '@/assets/logo-mark.png'
+import { useCurrentUser } from '@/auth/use-auth'
+import { UserMenu } from '@/components/layout/user-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +21,8 @@ import { APP_NAME } from '@/config/app'
 import { isActivePath, NAV_GROUPS, type NavItem, SETTINGS_ITEM } from '@/config/navigation'
 
 export function AppSidebar() {
+  const user = useCurrentUser()
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -28,7 +32,10 @@ export function AppSidebar() {
               <Link to="/">
                 {/* Empty alt: the visible name next to it already labels the link. */}
                 <img src={logoMark} alt="" className="size-8 shrink-0" />
-                <span className="text-base font-semibold">{APP_NAME}</span>
+                <div className="grid flex-1 text-left leading-tight">
+                  <span className="text-base font-semibold">{APP_NAME}</span>
+                  <span className="truncate text-xs text-muted-foreground">{user.store.name}</span>
+                </div>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -53,6 +60,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <NavMenuItem item={SETTINGS_ITEM} />
+          <UserMenu />
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

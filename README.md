@@ -13,12 +13,13 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated tests (pytest) | ✅ 62 tests |
+| Automated tests (pytest) | ✅ 64 tests |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
 | Employee accounts and role permissions | ⏳ planned |
-| Web pages with real data (Products first) | ⏳ planned |
+| Products page: table with search, Active/Archived/All filter, pagination | ✅ working (real data from the API) |
+| Adding and editing products in the web platform | ⏳ planned (next step) |
 | Batches, deliveries, sales | ⏳ planned |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
@@ -80,7 +81,7 @@ inventra/
 
 **Backend:** Python 3.12+, FastAPI, SQLAlchemy 2, Alembic, Pydantic, PostgreSQL 17, pytest, Ruff
 
-**Web:** React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui (Radix), React Router, Lucide icons, GSAP (subtle page transitions, disabled for reduced-motion users), Recharts (charts, added together with real data), oxlint
+**Web:** React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui (Radix), React Router, TanStack Query (server data and caching), Lucide icons, GSAP (subtle page transitions, disabled for reduced-motion users), Recharts (charts, added together with real data), oxlint
 
 ## Running locally
 

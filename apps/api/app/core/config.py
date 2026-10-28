@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     session_cookie_name: str = "inventra_session"
     session_lifetime_days: int = 7
     email_verification_lifetime_hours: int = 24
+    # Short on purpose: a reset link is as powerful as the password itself.
+    password_reset_lifetime_minutes: int = 60
     # After this many wrong passwords in a row, the account is locked for lockout_minutes.
     max_failed_logins: int = 5
     lockout_minutes: int = 15

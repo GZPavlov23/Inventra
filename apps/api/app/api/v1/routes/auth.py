@@ -6,10 +6,12 @@ from app.api.deps import AuthServiceDep, CurrentUser, get_session_token
 from app.core.config import get_settings
 from app.schemas.auth import (
     CurrentUserRead,
+    ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
     RegisterRequest,
     ResendVerificationRequest,
+    ResetPasswordRequest,
     VerifyEmailRequest,
 )
 from app.schemas.common import ErrorResponse
@@ -38,6 +40,23 @@ def verify_email(data: VerifyEmailRequest, auth: AuthServiceDep) -> MessageRespo
 def resend_verification(data: ResendVerificationRequest, auth: AuthServiceDep) -> MessageResponse:
     auth.resend_verification(data.email)
     return MessageResponse(detail=CHECK_INBOX)
+
+
+@router.post("/auth/forgot-password", response_model=MessageResponse, status_code=202)
+def forgot_password(data: ForgotPasswordRequest, auth: AuthServiceDep) -> MessageResponse:
+    # Same answer whether or not the account exists.
+    auth.request_password_reset(data.email)
+    return MessageResponse(detail="If an account uses this email, we have sent a reset link to it")
+
+
+@router.post(
+    "/auth/reset-password",
+    response_model=MessageResponse,
+    responses={400: {"model": ErrorResponse}},
+)
+def reset_password(data: ResetPasswordRequest, auth: AuthServiceDep) -> MessageResponse:
+    auth.reset_password(data)
+    return MessageResponse(detail="Your password was changed. Log in with the new password")
 
 
 @router.post(

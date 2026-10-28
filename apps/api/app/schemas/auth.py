@@ -33,6 +33,15 @@ class ResendVerificationRequest(BaseModel):
     email: Email
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: Email
+
+
+class ResetPasswordRequest(BaseModel):
+    token: Annotated[str, Field(min_length=1, max_length=128)]
+    new_password: NewPassword
+
+
 class MessageResponse(BaseModel):
     detail: str
 

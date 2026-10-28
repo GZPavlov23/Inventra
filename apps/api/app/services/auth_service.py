@@ -7,6 +7,8 @@ Security decisions (each one answers a question the jury may ask):
 - Register, login and "resend link" never reveal whether an email is registered
   (no user enumeration): the same answer is given, and the same slow hashing work is done.
 - Repeated wrong passwords lock the account for a while (brute-force protection).
+- A password reset ends every session of the account, so a thief using the old password
+  is logged out everywhere.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -28,7 +30,7 @@ from app.models.store import Store
 from app.models.user import User, UserRole
 from app.models.user_session import UserSession
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.auth import LoginRequest, RegisterRequest, ResetPasswordRequest
 
 INVALID_CREDENTIALS = "Invalid email or password"
 
@@ -102,25 +104,75 @@ class AuthService:
             self.session.commit()
 
     def _send_verification_email(self, user: User) -> None:
-        now = _now()
-        self.users.invalidate_tokens(user.id, AuthTokenPurpose.EMAIL_VERIFICATION, now)
-        token = generate_token()
-        lifetime = timedelta(hours=self.settings.email_verification_lifetime_hours)
-        self.users.add(
-            AuthToken(
-                user_id=user.id,
-                purpose=AuthTokenPurpose.EMAIL_VERIFICATION,
-                token_hash=hash_token(token),
-                expires_at=now + lifetime,
-            )
-        )
+        hours = self.settings.email_verification_lifetime_hours
+        token = self._issue_token(user, AuthTokenPurpose.EMAIL_VERIFICATION, timedelta(hours=hours))
         link = f"{self.settings.web_app_url}/verify-email?token={token}"
         self.email_sender.send(
             user.email,
             "Confirm your Inventra account",
             f"Hello {user.full_name},\n\nOpen this link to confirm your email address:\n{link}\n\n"
-            f"The link is valid for {self.settings.email_verification_lifetime_hours} hours.",
+            f"The link is valid for {hours} hours.",
         )
+
+    # Forgotten password
+
+    def request_password_reset(self, email: str) -> None:
+        """Emails a reset link if the account exists. The caller gets the same answer either way."""
+        user = self.users.get_by_email(email)
+        if user is None or not user.is_active:
+            return
+        minutes = self.settings.password_reset_lifetime_minutes
+        token = self._issue_token(user, AuthTokenPurpose.PASSWORD_RESET, timedelta(minutes=minutes))
+        link = f"{self.settings.web_app_url}/reset-password?token={token}"
+        self.email_sender.send(
+            user.email,
+            "Reset your Inventra password",
+            f"Hello {user.full_name},\n\nOpen this link to choose a new password:\n{link}\n\n"
+            f"The link is valid for {minutes} minutes and works once. If you didn't ask for this, "
+            "ignore this email: your password stays the same.",
+        )
+        self.session.commit()
+
+    def reset_password(self, data: ResetPasswordRequest) -> None:
+        now = _now()
+        auth_token = self.users.get_valid_token(
+            hash_token(data.token), AuthTokenPurpose.PASSWORD_RESET, now
+        )
+        if auth_token is None:
+            raise InvalidTokenError("This password reset link is invalid or has expired")
+
+        user = self.session.get(User, auth_token.user_id)
+        user.password_hash = hash_password(data.new_password)
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        # The link arrived by email, so it also proves the user owns the address.
+        if user.email_verified_at is None:
+            user.email_verified_at = now
+        auth_token.used_at = now
+        self.users.invalidate_tokens(user.id, AuthTokenPurpose.PASSWORD_RESET, now)
+        self.users.delete_all_sessions(user.id)
+        self.email_sender.send(
+            user.email,
+            "Your Inventra password was changed",
+            f"Hello {user.full_name},\n\nThe password of your account was just changed and you "
+            "were logged out on all devices. If this wasn't you, reset your password right away.",
+        )
+        self.session.commit()
+
+    def _issue_token(self, user: User, purpose: AuthTokenPurpose, lifetime: timedelta) -> str:
+        """Creates a one-time token (only the newest of each kind works) and returns it."""
+        now = _now()
+        self.users.invalidate_tokens(user.id, purpose, now)
+        token = generate_token()
+        self.users.add(
+            AuthToken(
+                user_id=user.id,
+                purpose=purpose,
+                token_hash=hash_token(token),
+                expires_at=now + lifetime,
+            )
+        )
+        return token
 
     # Login, sessions and logout
 

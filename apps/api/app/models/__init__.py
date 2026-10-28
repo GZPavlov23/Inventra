@@ -1,5 +1,17 @@
 # Import every model here so Alembic autogenerate and tests see the full schema.
+from app.models.auth_token import AuthToken, AuthTokenPurpose
 from app.models.product import Product, ProductUnit
 from app.models.store import Store
+from app.models.user import User, UserRole
+from app.models.user_session import UserSession
 
-__all__ = ["Product", "ProductUnit", "Store"]
+__all__ = [
+    "AuthToken",
+    "AuthTokenPurpose",
+    "Product",
+    "ProductUnit",
+    "Store",
+    "User",
+    "UserRole",
+    "UserSession",
+]

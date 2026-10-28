@@ -11,6 +11,8 @@ dependencies = [
     "psycopg[binary]>=3.3",
     "pydantic>=2.14,<3.0",
     "pydantic-settings>=2.16",
+    # Password hashing with Argon2 (the library recommended by the FastAPI docs).
+    "pwdlib[argon2]>=0.3.1",
 ]
 
 [project.optional-dependencies]

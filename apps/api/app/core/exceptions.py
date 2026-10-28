@@ -22,3 +22,28 @@ class NotFoundError(DomainError):
 class ConflictError(DomainError):
     status_code = 409
     code = "conflict"
+
+
+class NotAuthenticatedError(DomainError):
+    status_code = 401
+    code = "not_authenticated"
+
+
+class InvalidCredentialsError(DomainError):
+    status_code = 401
+    code = "invalid_credentials"
+
+
+class EmailNotVerifiedError(DomainError):
+    status_code = 403
+    code = "email_not_verified"
+
+
+class AccountLockedError(DomainError):
+    status_code = 429
+    code = "account_locked"
+
+
+class InvalidTokenError(DomainError):
+    status_code = 400
+    code = "invalid_token"

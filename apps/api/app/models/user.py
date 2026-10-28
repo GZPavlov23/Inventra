@@ -2,9 +2,10 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
+from app.models.store import Store
 
 
 class UserRole(StrEnum):
@@ -23,6 +24,7 @@ class User(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    store: Mapped[Store] = relationship()
 
     email: Mapped[str] = mapped_column(String(254), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))

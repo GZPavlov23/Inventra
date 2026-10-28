@@ -6,6 +6,8 @@ transaction that is rolled back afterwards, so each test starts with an empty da
 """
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -15,13 +17,36 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Connection, create_engine
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_store
 from app.core.config import get_settings
+from app.core.email import get_email_sender
+from app.core.security import hash_password
 from app.db.session import get_db
 from app.main import app
 from app.models.store import Store
+from app.models.user import User, UserRole
 
 API_ROOT = Path(__file__).resolve().parents[1]
+OWNER_EMAIL = "owner@test-store.example"
+OWNER_PASSWORD = "owner-password-123"
+# Argon2 is slow on purpose, so the test owner's hash is computed once, not in every test.
+OWNER_PASSWORD_HASH = hash_password(OWNER_PASSWORD)
+
+
+@dataclass
+class SentEmail:
+    to: str
+    subject: str
+    body: str
+
+
+@dataclass
+class FakeEmailSender:
+    """Collects emails instead of sending them, so tests can read the links inside."""
+
+    sent: list[SentEmail] = field(default_factory=list)
+
+    def send(self, to: str, subject: str, body: str) -> None:
+        self.sent.append(SentEmail(to, subject, body))
 
 
 @pytest.fixture(scope="session")
@@ -62,10 +87,40 @@ def store(db: Session) -> Store:
 
 
 @pytest.fixture
-def client(db: Session, store: Store) -> Iterator[TestClient]:
-    """An HTTP client for the app that uses the test session and acts as `store`."""
+def owner(db: Session, store: Store) -> User:
+    user = User(
+        store_id=store.id,
+        email=OWNER_EMAIL,
+        password_hash=OWNER_PASSWORD_HASH,
+        full_name="Test Owner",
+        role=UserRole.OWNER,
+        email_verified_at=datetime.now(UTC),
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+@pytest.fixture
+def outbox() -> FakeEmailSender:
+    return FakeEmailSender()
+
+
+@pytest.fixture
+def anon_client(db: Session, outbox: FakeEmailSender) -> Iterator[TestClient]:
+    """An HTTP client for the app that uses the test session and is NOT logged in."""
     app.dependency_overrides[get_db] = lambda: db
-    app.dependency_overrides[get_current_store] = lambda: store
+    app.dependency_overrides[get_email_sender] = lambda: outbox
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client(anon_client: TestClient, owner: User) -> TestClient:
+    """A client logged in as `owner` through the real login endpoint."""
+    response = anon_client.post(
+        "/api/v1/auth/login", json={"email": OWNER_EMAIL, "password": OWNER_PASSWORD}
+    )
+    assert response.status_code == 200, response.text
+    return anon_client

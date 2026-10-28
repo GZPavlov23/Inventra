@@ -23,9 +23,21 @@ class Settings(BaseSettings):
     )
 
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+    # Base address of the web app, used to build links in emails (e.g. email verification).
+    web_app_url: str = "http://localhost:5173"
 
-    # TEMPORARY: replaced by the authenticated user's store in Milestone 2.
-    dev_store_id: int = 1
+    # Authentication
+    session_cookie_name: str = "inventra_session"
+    session_lifetime_days: int = 7
+    email_verification_lifetime_hours: int = 24
+    # After this many wrong passwords in a row, the account is locked for lockout_minutes.
+    max_failed_logins: int = 5
+    lockout_minutes: int = 15
+
+    @property
+    def cookie_secure(self) -> bool:
+        # Secure cookies are only sent over HTTPS. Local development runs on plain HTTP.
+        return self.environment != "development"
 
     @field_validator("cors_origins", mode="before")
     @classmethod

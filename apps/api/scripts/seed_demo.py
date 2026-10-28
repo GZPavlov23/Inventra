@@ -6,24 +6,33 @@ Run from apps/api after `alembic upgrade head`:
 
 Safe to run many times: existing records are skipped, never duplicated.
 
+It also creates a verified DEMO owner account (credentials below) for testing and for the jury.
+
 All data here is fictional DEMO data. Barcodes use the GS1 prefix 200, which is reserved for
 in-store use and never assigned to real retail products, so they can't clash with a real scan.
 """
 
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.product import Product, ProductUnit
 from app.models.store import Store
+from app.models.user import User, UserRole
 from app.repositories.product_repository import ProductRepository
 from app.schemas.product import ProductCreate
 from app.services.product_service import ProductService
 
 DEMO_STORE_NAME = "Демо магазин (демо данни)"
+
+# Public test account. ".example" is a domain reserved for examples (RFC 2606), so it can never
+# belong to a real person.
+DEMO_OWNER_EMAIL = "owner@inventra.example"
+DEMO_OWNER_PASSWORD = "Inventra-demo-2026"
 
 PCS, KG = ProductUnit.PIECE, ProductUnit.KILOGRAM
 
@@ -53,6 +62,24 @@ def get_or_create_store(session: Session) -> Store:
     else:
         print(f"Store #{store.id} already exists: {store.name}")
     return store
+
+
+def get_or_create_owner(session: Session, store: Store) -> None:
+    if session.scalars(select(User).where(User.email == DEMO_OWNER_EMAIL)).first() is not None:
+        print(f"Demo owner already exists: {DEMO_OWNER_EMAIL}")
+        return
+    session.add(
+        User(
+            store_id=store.id,
+            email=DEMO_OWNER_EMAIL,
+            password_hash=hash_password(DEMO_OWNER_PASSWORD),
+            full_name="Demo Owner",
+            role=UserRole.OWNER,
+            email_verified_at=datetime.now(UTC),  # verified, so the account works right away
+        )
+    )
+    session.commit()
+    print(f"Created demo owner: {DEMO_OWNER_EMAIL}")
 
 
 def seed_products(session: Session, store_id: int) -> None:
@@ -91,11 +118,10 @@ def seed_products(session: Session, store_id: int) -> None:
 def main() -> None:
     with SessionLocal() as session:
         store = get_or_create_store(session)
+        get_or_create_owner(session, store)
         seed_products(session, store.id)
 
-    dev_store_id = get_settings().dev_store_id
-    if store.id != dev_store_id:
-        print(f"WARNING: .env has DEV_STORE_ID={dev_store_id}, set it to {store.id}")
+    print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")
 
 
 if __name__ == "__main__":

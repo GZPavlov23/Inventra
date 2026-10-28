@@ -13,9 +13,11 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated tests (pytest) | ✅ 25 tests |
+| Automated tests (pytest) | ✅ 53 tests |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
-| Login, roles and API authorization | ⏳ planned. For now every request uses a single demo store |
+| Accounts API: registration, email verification, login/logout, sessions | ✅ working. Locally, verification emails are printed in the backend terminal |
+| Login, Register and email confirmation pages; every platform page requires login | ✅ working |
+| Employee accounts and role permissions | ⏳ planned |
 | Web pages with real data (Products first) | ⏳ planned |
 | Batches, deliveries, sales | ⏳ planned |
 | Demand forecasting (ML) | ⏳ planned |
@@ -165,7 +167,9 @@ npm install        # once, and again whenever package.json changes
 npm run dev
 ```
 
-Open **http://localhost:5173**.
+Open **http://localhost:5173**. You land on the login page; in development a "Fill demo account" button fills in the test account.
+
+The dev server forwards every `/api/...` request to the backend at `http://localhost:8000`, so for the browser the web app and the API share one address and the session cookie works without cross-site setup. To use a backend on another address, start the dev server with `API_PROXY_TARGET`, e.g. `API_PROXY_TARGET=http://localhost:8001 npm run dev`.
 
 | Command | What it does |
 |---|---|
@@ -190,6 +194,26 @@ Check code style:
 ```bash
 ruff check .
 ```
+
+## Test account
+
+After running the seed script you can log in with:
+
+| Role | Email | Password |
+|---|---|---|
+| Owner | `owner@inventra.example` | `Inventra-demo-2026` |
+
+`.example` is a domain reserved for examples, so this address can never belong to a real person.
+
+## Security
+
+- Passwords are stored only as **Argon2id** hashes.
+- Sessions are stored on the server; the browser keeps only a random token in an **httpOnly, SameSite=Lax** cookie (not readable by JavaScript). Logging out deletes the session on the server.
+- Only SHA-256 hashes of session and email tokens are stored in the database.
+- New accounts must **confirm their email** before they can log in. Verification links are single-use and expire after 24 hours.
+- After 5 wrong passwords in a row the account is locked for 15 minutes.
+- Register, login and "resend link" give the same answer whether or not an email is registered, so accounts can't be discovered.
+- Every data query is scoped to the logged-in user's store.
 
 ## Demo data
 

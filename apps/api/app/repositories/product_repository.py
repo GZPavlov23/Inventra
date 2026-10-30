@@ -25,7 +25,7 @@ class ProductRepository:
         stmt = select(Product).where(Product.store_id == store_id, Product.barcode == barcode)
         return self.session.scalars(stmt).first()
 
-    def list(
+    def search(
         self,
         store_id: int,
         *,
@@ -55,6 +55,28 @@ class ProductRepository:
             .offset(offset)
         )
         return list(self.session.scalars(stmt)), total or 0
+
+    def list_categories(self, store_id: int) -> list[str]:
+        stmt = (
+            select(Product.category)
+            .where(Product.store_id == store_id, Product.category.is_not(None))
+            .group_by(Product.category)
+            .order_by(Product.category.collate(ALPHABETICAL))
+        )
+        return list(self.session.scalars(stmt))
+
+    def find_category(self, store_id: int, category: str) -> str | None:
+        """The spelling already used in this store, ignoring upper and lower case."""
+        stmt = (
+            select(Product.category)
+            .where(
+                Product.store_id == store_id,
+                func.lower(Product.category) == func.lower(category),
+            )
+            .order_by(Product.id)
+            .limit(1)
+        )
+        return self.session.scalar(stmt)
 
     def add(self, product: Product) -> Product:
         self.session.add(product)

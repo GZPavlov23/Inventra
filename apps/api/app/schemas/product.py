@@ -16,6 +16,7 @@ from app.models.product import ProductUnit
 
 ProductName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 OptionalText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None
+OptionalCategory = Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None
 Price = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=2)]
 
 
@@ -34,17 +35,23 @@ def empty_to_none(value: str | None) -> str | None:
     return value or None
 
 
+def clean_category(value: str | None) -> str | None:
+    # "Milk   products" and "Milk products" must not become two categories.
+    return " ".join(value.split()) or None if value else None
+
+
 class ProductCreate(BaseModel):
     name: ProductName
     brand: OptionalText = None
     barcode: str | None = None
-    category: OptionalText = None
+    category: OptionalCategory = None
     unit: ProductUnit = ProductUnit.PIECE
     purchase_price: Price
     sale_price: Price
 
     _check_barcode = field_validator("barcode")(normalize_barcode)
-    _clean_text = field_validator("brand", "category")(empty_to_none)
+    _clean_brand = field_validator("brand")(empty_to_none)
+    _clean_category = field_validator("category")(clean_category)
 
 
 class ProductUpdate(BaseModel):
@@ -53,14 +60,15 @@ class ProductUpdate(BaseModel):
     name: ProductName | None = None
     brand: OptionalText = None
     barcode: str | None = None
-    category: OptionalText = None
+    category: OptionalCategory = None
     unit: ProductUnit | None = None
     purchase_price: Price | None = None
     sale_price: Price | None = None
     active: bool | None = None
 
     _check_barcode = field_validator("barcode")(normalize_barcode)
-    _clean_text = field_validator("brand", "category")(empty_to_none)
+    _clean_brand = field_validator("brand")(empty_to_none)
+    _clean_category = field_validator("category")(clean_category)
 
     @model_validator(mode="after")
     def required_fields_not_null(self) -> Self:

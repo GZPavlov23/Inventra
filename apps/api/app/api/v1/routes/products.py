@@ -37,6 +37,13 @@ def list_products(
     )
 
 
+# Declared before /{product_id}, otherwise "categories" would be read as a product id.
+@router.get("/categories", response_model=list[str])
+def list_categories(store: CurrentStore, service: ProductServiceDep) -> list[str]:
+    """The categories already used in this store, in alphabetical order."""
+    return service.list_categories(store.id)
+
+
 @router.post("", response_model=ProductRead, status_code=201, responses=CONFLICT)
 def create_product(data: ProductCreate, store: CurrentStore, service: ProductServiceDep):
     return service.create_product(store.id, data)

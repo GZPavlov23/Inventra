@@ -21,9 +21,12 @@ class ProductService:
     def list_products(
         self, store_id: int, *, search: str | None, active: bool | None, limit: int, offset: int
     ) -> tuple[list[Product], int]:
-        return self.products.list(
+        return self.products.search(
             store_id, search=search, active=active, limit=limit, offset=offset
         )
+
+    def list_categories(self, store_id: int) -> list[str]:
+        return self.products.list_categories(store_id)
 
     def get_product(self, store_id: int, product_id: int) -> Product:
         product = self.products.get(store_id, product_id)
@@ -40,7 +43,9 @@ class ProductService:
     def create_product(self, store_id: int, data: ProductCreate) -> Product:
         if data.barcode:
             self._ensure_barcode_free(store_id, data.barcode)
-        product = Product(store_id=store_id, **data.model_dump())
+        values = data.model_dump()
+        values["category"] = self._existing_spelling(store_id, values["category"])
+        product = Product(store_id=store_id, **values)
         self.products.add(product)
         self._commit()
         return product
@@ -51,10 +56,19 @@ class ProductService:
         new_barcode = changes.get("barcode")
         if new_barcode and new_barcode != product.barcode:
             self._ensure_barcode_free(store_id, new_barcode)
+        if "category" in changes:
+            changes["category"] = self._existing_spelling(store_id, changes["category"])
         for field, value in changes.items():
             setattr(product, field, value)
         self._commit()
         return product
+
+    def _existing_spelling(self, store_id: int, category: str | None) -> str | None:
+        # The first spelling in a store wins, so "dairy" and "Dairy" stay one category
+        # no matter which client (web, mobile, CSV import) sends the data.
+        if category is None:
+            return None
+        return self.products.find_category(store_id, category) or category
 
     def _ensure_barcode_free(self, store_id: int, barcode: str) -> None:
         existing = self.products.get_by_barcode(store_id, barcode)

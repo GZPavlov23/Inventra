@@ -167,3 +167,51 @@ def test_list_is_alphabetical_for_cyrillic_names(client: TestClient) -> None:
     listed = [item["name"] for item in client.get(URL).json()["items"]]
     expected = ["Apple juice", "Айрян", "Банани", "Бял хляб", "Кисело мляко", "Сирене", "Яйца"]
     assert listed == expected
+
+
+def test_categories_lists_each_one_once_in_alphabetical_order(client: TestClient) -> None:
+    for name, category in [("A", "Хляб"), ("B", "Млечни"), ("C", "Млечни"), ("D", None)]:
+        create(client, name=name, barcode=None, category=category)
+    assert client.get(f"{URL}/categories").json() == ["Млечни", "Хляб"]
+
+
+def test_category_keeps_the_first_spelling_in_the_store(client: TestClient) -> None:
+    create(client, name="First", barcode=None, category="Млечни")
+    second = create(client, name="Second", barcode=None, category="  млечни ")
+    assert second["category"] == "Млечни"
+    assert client.get(f"{URL}/categories").json() == ["Млечни"]
+
+
+def test_patch_also_keeps_the_first_spelling(client: TestClient) -> None:
+    create(client, name="First", barcode=None, category="Млечни")
+    other = create(client, name="Second", barcode=None, category="Хляб")
+    response = client.patch(f"{URL}/{other['id']}", json={"category": "МЛЕЧНИ"})
+    assert response.json()["category"] == "Млечни"
+
+
+def test_category_extra_spaces_are_removed(client: TestClient) -> None:
+    product = create(client, name="First", barcode=None, category="Плодове   и  зеленчуци")
+    assert product["category"] == "Плодове и зеленчуци"
+
+
+def test_blank_category_is_stored_as_none(client: TestClient) -> None:
+    assert create(client, name="First", barcode=None, category="   ")["category"] is None
+
+
+def test_too_long_category_is_a_clear_error_not_a_crash(client: TestClient) -> None:
+    response = client.post(URL, json={**MILK, "category": "к" * 81})
+    assert response.status_code == 422
+    assert response.json()["errors"][0]["loc"] == ["body", "category"]
+
+
+def test_categories_of_other_stores_stay_separate(client: TestClient, db: Session) -> None:
+    other_store = Store(name="Someone else's store")
+    db.add(other_store)
+    db.flush()
+    db.add(Product(store_id=other_store.id, name="Foreign", category="Secret", purchase_price=1,
+                   sale_price=2))
+    db.flush()
+
+    assert client.get(f"{URL}/categories").json() == []
+    # Another store's spelling is not reused either.
+    assert create(client, barcode=None, category="secret")["category"] == "secret"

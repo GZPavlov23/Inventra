@@ -30,6 +30,9 @@ def create_app() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(_: Request, error: RequestValidationError) -> JSONResponse:
         errors = jsonable_encoder(error.errors(), exclude={"input", "ctx", "url"})
+        for item in errors:
+            # Pydantic prefixes our own validator messages; users should only see the message.
+            item["msg"] = item["msg"].removeprefix("Value error, ")
         first = errors[0]["msg"] if errors else "Invalid request"
         return JSONResponse(
             {"code": "validation_error", "detail": first, "errors": errors}, status_code=422

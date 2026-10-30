@@ -61,7 +61,10 @@ def test_unknown_product_returns_404(client: TestClient) -> None:
 def test_invalid_barcode_is_rejected(client: TestClient) -> None:
     response = client.post(URL, json={**MILK, "barcode": "2000000000016"})
     assert response.status_code == 422
-    assert response.json()["code"] == "validation_error"
+    body = response.json()
+    assert body["code"] == "validation_error"
+    assert body["detail"].startswith("Barcode must be")  # readable, without Pydantic's prefix
+    assert body["errors"][0]["loc"] == ["body", "barcode"]  # lets forms mark the right field
 
 
 def test_duplicate_barcode_returns_409(client: TestClient) -> None:

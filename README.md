@@ -14,15 +14,16 @@ The project is under active development. This section lists only what actually w
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
 | Automated backend tests (pytest) | ✅ 131 tests |
-| Automated browser tests (Playwright) | ✅ 14 scenarios: login, registration, password reset, products |
-| Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
+| Automated browser tests (Playwright) | ✅ 23 scenarios: login, registration, password reset, products, inventory |
+| Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
 | Employee accounts and role permissions | ⏳ planned |
 | Products page: table with search, Active/Archived/All filter, sorting, pagination | ✅ working (real data from the API) |
 | Adding products in the web platform, with a category picker | ✅ working |
 | Editing, archiving and restoring products in the web platform | ✅ working |
-| Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working, no screens yet |
+| Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working |
+| Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste; stock column on Products | ✅ working. Corrections and stock history have no screen yet |
 | Sales | ⏳ planned |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |

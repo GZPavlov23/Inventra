@@ -46,6 +46,28 @@ export type WasteInput = {
   reason: WasteReason
 }
 
+export type AdjustmentInput = {
+  quantity_delta: string
+  reason: string
+  expected_quantity: string
+}
+
+export type Movement = {
+  id: number
+  type: 'receipt' | 'adjustment' | 'waste'
+  quantity_delta: string
+  reason: string | null
+  occurred_at: string
+  actor: { full_name: string }
+}
+
+export type MovementPage = {
+  items: Movement[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export const inventoryApi = {
   list: ({ search, status, limit, offset }: BatchListParams) => {
     const query = new URLSearchParams({ status, limit: String(limit), offset: String(offset) })
@@ -55,4 +77,8 @@ export const inventoryApi = {
   receive: (data: ReceiptInput) => api<Batch>('/batches', { method: 'POST', body: data }),
   writeOff: (batchId: number, data: WasteInput) =>
     api<Batch>(`/batches/${batchId}/waste`, { method: 'POST', body: data }),
+  adjust: (batchId: number, data: AdjustmentInput) =>
+    api<Batch>(`/batches/${batchId}/adjustments`, { method: 'POST', body: data }),
+  movements: (batchId: number, limit: number, offset: number) =>
+    api<MovementPage>(`/batches/${batchId}/movements?limit=${limit}&offset=${offset}`),
 }

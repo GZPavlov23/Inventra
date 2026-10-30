@@ -12,6 +12,15 @@ export function formatQuantity(quantity: string | number, unit: ProductUnit): st
   return `${number} ${unit}`
 }
 
+// A change in stock always shows its direction: "+12 pcs" or "-4 pcs".
+export function formatChange(quantity: string | number, unit: ProductUnit): string {
+  return `${Number(quantity) > 0 ? '+' : ''}${formatQuantity(quantity, unit)}`
+}
+
+export function formatDateTime(moment: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(moment))
+}
+
 // "2026-11-01" is a calendar day. new Date() would read it as midnight in UTC, which is
 // still the previous day in some time zones, so it is built from its parts instead.
 function parseDay(day: string): Date {

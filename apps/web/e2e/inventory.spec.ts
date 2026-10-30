@@ -31,6 +31,18 @@ async function receiveThroughApi(page: Page, productId: number, quantity: string
   return (await response.json()) as { id: number }
 }
 
+async function openBatchAction(page: Page, name: string, action: string) {
+  await page.getByRole('button', { name: `Actions for ${name}` }).click()
+  await page.getByRole('menuitem', { name: action }).click()
+}
+
+// Finds the one batch of a product that was created through the API moments ago.
+async function showOnly(page: Page, name: string) {
+  await page.reload()
+  await page.getByLabel('Search batches').fill(name)
+  await expect(page.locator('tbody tr')).toHaveCount(1)
+}
+
 async function pickProduct(page: Page, name: string) {
   await picker(page).click()
   await page.getByPlaceholder('Search by name or barcode').fill(name)
@@ -130,11 +142,9 @@ test('a scanner that presses Enter too early cannot pick the wrong product', asy
 test('writing off lowers the stock and an emptied batch leaves the list', async ({ page }) => {
   const product = await createProduct(page, 'Е2Е Брак')
   await receiveThroughApi(page, product.id, '10')
-  await page.reload()
+  await showOnly(page, 'Е2Е Брак')
 
-  await page.getByLabel('Search batches').fill('Е2Е Брак')
-  await expect(page.locator('tbody tr')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Write off Е2Е Брак' }).click()
+  await openBatchAction(page, 'Е2Е Брак', 'Write off')
   await expect(dialog(page).getByLabel('Quantity (pcs)')).toHaveValue('10')
 
   await dialog(page).getByLabel('Quantity (pcs)').fill('4')
@@ -144,23 +154,26 @@ test('writing off lowers the stock and an emptied batch leaves the list', async 
   await expect(page.getByText('4 pcs of Е2Е Брак written off')).toBeVisible()
   await expect(row(page, 'Е2Е Брак')).toContainText('6 pcs')
 
-  await page.getByRole('button', { name: 'Write off Е2Е Брак' }).click()
+  await openBatchAction(page, 'Е2Е Брак', 'Write off')
   await dialog(page).getByRole('button', { name: 'Write off' }).click()
   await expect(page.getByText('No batches found')).toBeVisible()
 
   await page.getByRole('tab', { name: 'All' }).click()
   await expect(row(page, 'Е2Е Брак')).toContainText('0 pcs')
-  await expect(page.getByRole('button', { name: 'Write off Е2Е Брак' })).toHaveCount(0)
+
+  // An empty batch can't be written off, but it can be corrected and its history stays.
+  await page.getByRole('button', { name: 'Actions for Е2Е Брак' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Write off' })).toHaveCount(0)
+  await expect(page.getByRole('menuitem', { name: 'Correct the count' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'History' })).toBeVisible()
 })
 
 test('a colleague writing off the same batch first gets a clear answer', async ({ page }) => {
   const product = await createProduct(page, 'Е2Е Колега')
   const batch = await receiveThroughApi(page, product.id, '5')
-  await page.reload()
+  await showOnly(page, 'Е2Е Колега')
 
-  await page.getByLabel('Search batches').fill('Е2Е Колега')
-  await expect(page.locator('tbody tr')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Write off Е2Е Колега' }).click()
+  await openBatchAction(page, 'Е2Е Колега', 'Write off')
   await expect(dialog(page).getByLabel('Quantity (pcs)')).toHaveValue('5')
 
   const colleague = await page.request.post(`${API}/batches/${batch.id}/waste`, {
@@ -172,6 +185,110 @@ test('a colleague writing off the same batch first gets a clear answer', async (
   await expect(dialog(page).getByText('Only 1 left in this batch')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(row(page, 'Е2Е Колега')).toContainText('1 pcs')
+})
+
+test('a correction takes what was counted and shows the difference', async ({ page }) => {
+  const product = await createProduct(page, 'Е2Е Броене', 'kg')
+  await receiveThroughApi(page, product.id, '9.75')
+  await showOnly(page, 'Е2Е Броене')
+
+  await openBatchAction(page, 'Е2Е Броене', 'Correct the count')
+  await expect(dialog(page).getByText('the system shows 9.75 kg')).toBeVisible()
+  const save = dialog(page).getByRole('button', { name: 'Save correction' })
+  await expect(save).toBeDisabled()
+
+  await dialog(page).getByLabel('Counted quantity (kg)').fill('9.75')
+  await expect(dialog(page).getByText('nothing to correct')).toBeVisible()
+  await expect(save).toBeDisabled()
+
+  await dialog(page).getByLabel('Counted quantity (kg)').fill('9.3')
+  await expect(dialog(page).getByText('Difference: -0.45 kg')).toBeVisible()
+  await dialog(page).getByLabel('Reason').fill('Stocktaking')
+  await save.click()
+
+  await expect(page.getByText('Е2Е Броене: stock corrected to 9.3 kg')).toBeVisible()
+  await expect(row(page, 'Е2Е Броене')).toContainText('9.3 kg')
+})
+
+test('a correction counted before a colleague\'s change is refused, then works', async ({ page }) => {
+  const product = await createProduct(page, 'Е2Е Промяна')
+  const batch = await receiveThroughApi(page, product.id, '10')
+  await showOnly(page, 'Е2Е Промяна')
+
+  await openBatchAction(page, 'Е2Е Промяна', 'Correct the count')
+  await dialog(page).getByLabel('Counted quantity (pcs)').fill('8')
+  await dialog(page).getByLabel('Reason').fill('Stocktaking')
+  await expect(dialog(page).getByText('Difference: -2 pcs')).toBeVisible()
+
+  const colleague = await page.request.post(`${API}/batches/${batch.id}/waste`, {
+    data: { quantity: '1', reason: 'damaged' },
+  })
+  expect(colleague.ok()).toBe(true)
+
+  await dialog(page).getByRole('button', { name: 'Save correction' }).click()
+  await expect(dialog(page).getByText('This batch changed meanwhile, it now has 9')).toBeVisible()
+  // The form catches up by itself: the same count now means a different difference.
+  await expect(dialog(page).getByText('Difference: -1 pcs')).toBeVisible()
+
+  await dialog(page).getByRole('button', { name: 'Save correction' }).click()
+  await expect(dialog(page)).toBeHidden()
+  await expect(row(page, 'Е2Е Промяна')).toContainText('8 pcs')
+})
+
+test('the history shows every change, who made it and why', async ({ page }) => {
+  const product = await createProduct(page, 'Е2Е История')
+  const batch = await receiveThroughApi(page, product.id, '20')
+  await page.request.post(`${API}/batches/${batch.id}/waste`, { data: { quantity: '3', reason: 'damaged' } })
+  await page.request.post(`${API}/batches/${batch.id}/adjustments`, {
+    data: { quantity_delta: '2', reason: 'Found behind the shelf' },
+  })
+  await showOnly(page, 'Е2Е История')
+
+  await openBatchAction(page, 'Е2Е История', 'History')
+  const lines = dialog(page).getByRole('listitem')
+  await expect(lines).toHaveCount(3)
+  await expect(lines.nth(0)).toContainText('Correction')
+  await expect(lines.nth(0)).toContainText('Found behind the shelf')
+  await expect(lines.nth(0)).toContainText('+2 pcs')
+  await expect(lines.nth(1)).toContainText('Written off')
+  await expect(lines.nth(1)).toContainText('Damaged')
+  await expect(lines.nth(1)).toContainText('-3 pcs')
+  await expect(lines.nth(2)).toContainText('Received')
+  await expect(lines.nth(2)).toContainText('+20 pcs')
+  await expect(lines.nth(2)).toContainText('Demo Owner')
+  await expect(dialog(page).getByRole('button', { name: 'Show older' })).toHaveCount(0)
+})
+
+test('a long history loads in parts, newest first', async ({ page }) => {
+  const product = await createProduct(page, 'Е2Е Дълга')
+  const batch = await receiveThroughApi(page, product.id, '100')
+  for (let count = 1; count <= 51; count++) {
+    await page.request.post(`${API}/batches/${batch.id}/adjustments`, {
+      data: { quantity_delta: '-1', reason: `Count ${count}` },
+    })
+  }
+  await showOnly(page, 'Е2Е Дълга')
+
+  await openBatchAction(page, 'Е2Е Дълга', 'History')
+  const lines = dialog(page).getByRole('listitem')
+  await expect(lines).toHaveCount(50)
+  await expect(lines.first()).toContainText('Count 51')
+
+  await dialog(page).getByRole('button', { name: 'Show older' }).click()
+  await expect(lines).toHaveCount(52)
+  await expect(lines.last()).toContainText('Received')
+  await expect(dialog(page).getByRole('button', { name: 'Show older' })).toHaveCount(0)
+})
+
+test('the page stays usable after the batch menu opened a dialog', async ({ page }) => {
+  await page.getByRole('button', { name: /^Actions for/ }).first().click()
+  await page.getByRole('menuitem', { name: 'History' }).click()
+  await expect(dialog(page)).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog(page)).toBeHidden()
+
+  await page.getByLabel('Search batches').fill('Банани')
+  await expect(page.locator('tbody tr')).toHaveCount(1)
 })
 
 test('the unit of a product with batches cannot be changed', async ({ page }) => {

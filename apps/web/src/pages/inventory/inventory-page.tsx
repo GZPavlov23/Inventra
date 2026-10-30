@@ -18,7 +18,9 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-params'
 import { type Batch, type BatchStatus, inventoryApi } from '@/lib/inventory-api'
-import { BatchesTable, BatchesTableSkeleton } from '@/pages/inventory/batches-table'
+import { type BatchAction, BatchesTable, BatchesTableSkeleton } from '@/pages/inventory/batches-table'
+import { CorrectionDialog } from '@/pages/inventory/correction-dialog'
+import { HistoryDialog } from '@/pages/inventory/history-dialog'
 import { ReceiveDialog } from '@/pages/inventory/receive-dialog'
 import { WasteDialog } from '@/pages/inventory/waste-dialog'
 
@@ -47,13 +49,15 @@ export function InventoryPage() {
   })
   useReturnToLastPage(batches.data, updateParams)
 
-  // Kept separately from `wasting`, so the dialog doesn't change during its closing animation.
-  const [wasting, setWasting] = useState<Batch | undefined>()
-  const [wasteOpen, setWasteOpen] = useState(false)
-  const openWaste = (batch: Batch) => {
-    setWasting(batch)
-    setWasteOpen(true)
+  // Kept separately from `dialogOpen`, so a dialog keeps its content during the closing animation.
+  const [selected, setSelected] = useState<{ action: BatchAction; batch: Batch } | undefined>()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const openDialog = (action: BatchAction, batch: Batch) => {
+    setSelected({ action, batch })
+    setDialogOpen(true)
   }
+  // The row's latest numbers, in case a colleague changed the batch while the dialog is open.
+  const batch = batches.data?.items.find((item) => item.id === selected?.batch.id) ?? selected?.batch
 
   const clearFilters = () => {
     setSearchInput('')
@@ -144,7 +148,7 @@ export function InventoryPage() {
             className={`rounded-lg border transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={batches.isFetching}
           >
-            <BatchesTable batches={batches.data.items} currency={store.currency} onWriteOff={openWaste} />
+            <BatchesTable batches={batches.data.items} currency={store.currency} onAction={openDialog} />
           </div>
           <Pagination
             page={page}
@@ -154,7 +158,9 @@ export function InventoryPage() {
         </>
       )}
 
-      <WasteDialog batch={wasting} open={wasteOpen} onOpenChange={setWasteOpen} />
+      <WasteDialog batch={batch} open={dialogOpen && selected?.action === 'write-off'} onOpenChange={setDialogOpen} />
+      <CorrectionDialog batch={batch} open={dialogOpen && selected?.action === 'correct'} onOpenChange={setDialogOpen} />
+      <HistoryDialog batch={batch} open={dialogOpen && selected?.action === 'history'} onOpenChange={setDialogOpen} />
     </div>
   )
 }

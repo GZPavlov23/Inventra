@@ -1,5 +1,13 @@
+import { ClipboardCheck, Ellipsis, History, Trash2 } from 'lucide-react'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -13,6 +21,8 @@ import {
 import { daysUntil, formatDay, formatMoney, formatQuantity } from '@/lib/format'
 import type { Batch } from '@/lib/inventory-api'
 
+export type BatchAction = 'write-off' | 'correct' | 'history'
+
 function TableHeadings() {
   return (
     <TableHeader>
@@ -22,7 +32,7 @@ function TableHeadings() {
         <TableHead>Expires</TableHead>
         <TableHead className="text-right">Remaining</TableHead>
         <TableHead className="text-right">Purchase price</TableHead>
-        <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
+        <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -57,10 +67,10 @@ function ExpiryCell({ batch }: { batch: Batch }) {
 type BatchesTableProps = {
   batches: Batch[]
   currency: string
-  onWriteOff: (batch: Batch) => void
+  onAction: (action: BatchAction, batch: Batch) => void
 }
 
-export function BatchesTable({ batches, currency, onWriteOff }: BatchesTableProps) {
+export function BatchesTable({ batches, currency, onAction }: BatchesTableProps) {
   return (
     <Table>
       <TableCaption className="sr-only">Batches of your store, the earliest expiry date first</TableCaption>
@@ -91,12 +101,30 @@ export function BatchesTable({ batches, currency, onWriteOff }: BatchesTableProp
                 {formatMoney(batch.purchase_price, currency)}
               </TableCell>
               <TableCell className="py-0 text-right">
-                {!used && (
-                  <Button variant="outline" size="sm" aria-label={`Write off ${product.name}`}
-                    onClick={() => onWriteOff(batch)}>
-                    Write off
-                  </Button>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${product.name}`}>
+                      <Ellipsis />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {!used && (
+                      <DropdownMenuItem onSelect={() => onAction('write-off', batch)}>
+                        <Trash2 />
+                        Write off
+                      </DropdownMenuItem>
+                    )}
+                    {/* Also for empty batches: goods can turn up after everything was written off. */}
+                    <DropdownMenuItem onSelect={() => onAction('correct', batch)}>
+                      <ClipboardCheck />
+                      Correct the count
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onAction('history', batch)}>
+                      <History />
+                      History
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           )
@@ -120,7 +148,7 @@ export function BatchesTableSkeleton({ rows = 6 }: { rows?: number }) {
             <TableCell><Skeleton className="h-4 w-36" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
-            <TableCell><Skeleton className="ml-auto h-8 w-20" /></TableCell>
+            <TableCell />
           </TableRow>
         ))}
       </TableBody>

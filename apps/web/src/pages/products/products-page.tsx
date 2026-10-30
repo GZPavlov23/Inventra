@@ -19,7 +19,13 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { toApiError } from '@/lib/api'
-import { type Product, productsApi, type ProductStatus } from '@/lib/products-api'
+import {
+  type Product,
+  productsApi,
+  type ProductSort,
+  type ProductStatus,
+  type SortOrder,
+} from '@/lib/products-api'
 import { ProductFormDialog } from '@/pages/products/product-form-dialog'
 import { ProductsTable, ProductsTableSkeleton } from '@/pages/products/products-table'
 
@@ -30,18 +36,26 @@ const STATUSES: { value: ProductStatus; label: string }[] = [
   { value: 'all', label: 'All' },
 ]
 
+const SORT_COLUMNS: ProductSort[] = ['name', 'category', 'purchase_price', 'sale_price', 'margin']
+
+function readSort(value: string | null): ProductSort {
+  return SORT_COLUMNS.includes(value as ProductSort) ? (value as ProductSort) : 'name'
+}
+
 function readStatus(value: string | null): ProductStatus {
   return STATUSES.some((status) => status.value === value) ? (value as ProductStatus) : 'active'
 }
 
 export function ProductsPage() {
   const { store } = useCurrentUser()
-  // Search, filter and page live in the URL (/products?q=milk&status=all&page=2), so they
+  // Search, filter and page live in the URL (/products?q=milk&sort=margin&page=2), so they
   // survive a reload, work with the Back button and can be shared as a link.
   const [searchParams, setSearchParams] = useSearchParams()
   const search = searchParams.get('q') ?? ''
   const status = readStatus(searchParams.get('status'))
   const page = Math.max(1, Number(searchParams.get('page')) || 1)
+  const sort = readSort(searchParams.get('sort'))
+  const order: SortOrder = searchParams.get('order') === 'desc' ? 'desc' : 'asc'
 
   // Sets or removes several URL parameters at once (null removes one).
   const updateParams = useCallback(
@@ -68,9 +82,16 @@ export function ProductsPage() {
   }, [debouncedSearch, search, updateParams])
 
   const products = useQuery({
-    queryKey: ['products', { search, status, page }],
+    queryKey: ['products', { search, status, sort, order, page }],
     queryFn: () =>
-      productsApi.list({ search, status, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+      productsApi.list({
+        search,
+        status,
+        sort,
+        order,
+        limit: PAGE_SIZE,
+        offset: (page - 1) * PAGE_SIZE,
+      }),
     // While the next page loads, keep showing the current one instead of a blank table.
     placeholderData: keepPreviousData,
   })
@@ -109,6 +130,18 @@ export function ProductsPage() {
   const openEdit = (product: Product) => {
     setEditing(product)
     setEditOpen(true)
+  }
+
+  // The first click on a column sorts it ascending, the next one flips the direction. The
+  // default order (name, A to Z) stays out of the URL.
+  const handleSort = (column: ProductSort) => {
+    const nextOrder = column === sort && order === 'asc' ? 'desc' : 'asc'
+    const isDefault = column === 'name' && nextOrder === 'asc'
+    updateParams({
+      sort: isDefault ? null : column,
+      order: nextOrder === 'desc' ? 'desc' : null,
+      page: null,
+    })
   }
 
   const clearFilters = () => {
@@ -203,6 +236,7 @@ export function ProductsPage() {
               currency={store.currency}
               onEdit={openEdit}
               onSetActive={(product, active) => setActive.mutate({ product, active })}
+              sorting={{ sort, order, onSort: handleSort }}
             />
           </div>
           <Pagination

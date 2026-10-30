@@ -5,6 +5,8 @@ import { api } from '@/lib/api'
 
 export type ProductUnit = 'pcs' | 'kg' | 'l'
 export type ProductStatus = 'active' | 'archived' | 'all'
+export type ProductSort = 'name' | 'category' | 'purchase_price' | 'sale_price' | 'margin'
+export type SortOrder = 'asc' | 'desc'
 
 export type Product = {
   id: number
@@ -30,6 +32,8 @@ export type ProductPage = {
 export type ProductListParams = {
   search: string
   status: ProductStatus
+  sort: ProductSort
+  order: SortOrder
   limit: number
   offset: number
 }
@@ -45,8 +49,14 @@ export type ProductInput = {
 }
 
 export const productsApi = {
-  list: ({ search, status, limit, offset }: ProductListParams) => {
-    const query = new URLSearchParams({ status, limit: String(limit), offset: String(offset) })
+  list: ({ search, status, sort, order, limit, offset }: ProductListParams) => {
+    const query = new URLSearchParams({
+      status,
+      sort,
+      order,
+      limit: String(limit),
+      offset: String(offset),
+    })
     if (search) query.set('search', search)
     return api<ProductPage>(`/products?${query}`)
   },

@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, Ellipsis, Pencil } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ChevronsUpDown, Ellipsis, Pencil } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,21 +19,58 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatMoney, marginPercent } from '@/lib/format'
-import type { Product } from '@/lib/products-api'
+import type { Product, ProductSort, SortOrder } from '@/lib/products-api'
 
 const UNIT_LABELS = { pcs: 'pcs', kg: 'kg', l: 'l' } as const
 
-function TableHeadings() {
+export type SortState = {
+  sort: ProductSort
+  order: SortOrder
+  onSort: (column: ProductSort) => void
+}
+
+function SortableHead({ column, label, numeric, sorting }: {
+  column: ProductSort
+  label: string
+  numeric?: boolean
+  sorting?: SortState
+}) {
+  const align = numeric ? 'text-right' : ''
+  if (!sorting) return <TableHead className={align}>{label}</TableHead>
+
+  const active = sorting.sort === column
+  const Icon = !active ? ChevronsUpDown : sorting.order === 'asc' ? ArrowUp : ArrowDown
+  return (
+    // aria-sort tells screen readers how the table is currently sorted.
+    <TableHead
+      className={align}
+      aria-sort={active ? (sorting.order === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => sorting.onSort(column)}
+        className={`inline-flex cursor-pointer items-center gap-1 outline-offset-2 hover:text-foreground ${
+          numeric ? 'flex-row-reverse' : ''
+        }`}
+      >
+        {label}
+        <Icon className={`size-3.5 ${active ? '' : 'text-muted-foreground/60'}`} />
+      </button>
+    </TableHead>
+  )
+}
+
+function TableHeadings({ sorting }: { sorting?: SortState }) {
   return (
     <TableHeader>
       <TableRow>
-        <TableHead>Name</TableHead>
-        <TableHead>Category</TableHead>
+        <SortableHead column="name" label="Name" sorting={sorting} />
+        <SortableHead column="category" label="Category" sorting={sorting} />
         <TableHead>Barcode</TableHead>
         <TableHead>Unit</TableHead>
-        <TableHead className="text-right">Purchase price</TableHead>
-        <TableHead className="text-right">Sale price</TableHead>
-        <TableHead className="text-right">Margin</TableHead>
+        <SortableHead column="purchase_price" label="Purchase price" numeric sorting={sorting} />
+        <SortableHead column="sale_price" label="Sale price" numeric sorting={sorting} />
+        <SortableHead column="margin" label="Margin" numeric sorting={sorting} />
         <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
       </TableRow>
     </TableHeader>
@@ -45,13 +82,14 @@ type ProductsTableProps = {
   currency: string
   onEdit: (product: Product) => void
   onSetActive: (product: Product, active: boolean) => void
+  sorting: SortState
 }
 
-export function ProductsTable({ products, currency, onEdit, onSetActive }: ProductsTableProps) {
+export function ProductsTable({ products, currency, onEdit, onSetActive, sorting }: ProductsTableProps) {
   return (
     <Table>
       <TableCaption className="sr-only">Products of your store</TableCaption>
-      <TableHeadings />
+      <TableHeadings sorting={sorting} />
       <TableBody>
         {products.map((product) => {
           const margin = marginPercent(product.purchase_price, product.sale_price)

@@ -11,12 +11,27 @@ export const UNAUTHORIZED_EVENT = 'inventra:unauthorized'
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
+  // Validation messages per field name, so forms can show each one under its own input.
+  readonly fieldErrors: Record<string, string>
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, fieldErrors: Record<string, string> = {}) {
     super(message)
     this.status = status
     this.code = code
+    this.fieldErrors = fieldErrors
   }
+}
+
+type ValidationIssue = { loc: (string | number)[]; msg: string }
+
+function readFieldErrors(issues: ValidationIssue[] = []): Record<string, string> {
+  const fields: Record<string, string> = {}
+  for (const { loc, msg } of issues) {
+    // loc looks like ["body", "barcode"]; keep the first message of each field.
+    const field = loc[0] === 'body' ? loc[1] : undefined
+    if (typeof field === 'string' && !(field in fields)) fields[field] = msg
+  }
+  return fields
 }
 
 // A new error object every time, so each failed attempt is a distinct event for the UI.
@@ -53,7 +68,7 @@ export async function api<T>(path: string, { method = 'GET', body }: RequestOpti
     // Every API error has the shape {code, detail}. Anything else means the API itself is
     // down (e.g. the dev proxy answers 500 when FastAPI isn't running).
     if (!data?.code) throw serverUnreachable()
-    throw new ApiError(response.status, data.code, data.detail)
+    throw new ApiError(response.status, data.code, data.detail, readFieldErrors(data.errors))
   }
   return data as T
 }

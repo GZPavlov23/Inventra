@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { productsApi, type ProductStatus } from '@/lib/products-api'
+import { AddProductDialog } from '@/pages/products/add-product-dialog'
 import { ProductsTable, ProductsTableSkeleton } from '@/pages/products/products-table'
 
 const PAGE_SIZE = 20
@@ -79,9 +80,12 @@ export function ProductsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
-        <p className="text-sm text-muted-foreground">Your product catalog: names, barcodes and prices.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
+          <p className="text-sm text-muted-foreground">Your product catalog: names, barcodes and prices.</p>
+        </div>
+        <AddProductDialog />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -142,8 +146,11 @@ export function ProductsPage() {
             <EmptyHeader>
               <EmptyMedia variant="icon"><Package /></EmptyMedia>
               <EmptyTitle>No products yet</EmptyTitle>
-              <EmptyDescription>Products you add to your catalog will appear here.</EmptyDescription>
+              <EmptyDescription>Add your first product to start building your catalog.</EmptyDescription>
             </EmptyHeader>
+            <EmptyContent>
+              <AddProductDialog />
+            </EmptyContent>
           </Empty>
         )
       ) : (

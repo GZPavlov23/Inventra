@@ -34,10 +34,21 @@ export type ProductListParams = {
   offset: number
 }
 
+export type ProductInput = {
+  name: string
+  brand: string
+  category: string
+  barcode: string
+  unit: ProductUnit
+  purchase_price: string
+  sale_price: string
+}
+
 export const productsApi = {
   list: ({ search, status, limit, offset }: ProductListParams) => {
     const query = new URLSearchParams({ status, limit: String(limit), offset: String(offset) })
     if (search) query.set('search', search)
     return api<ProductPage>(`/products?${query}`)
   },
+  create: (data: ProductInput) => api<Product>('/products', { method: 'POST', body: data }),
 }

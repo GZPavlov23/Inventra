@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router/dom'
 
 import { AuthProvider } from '@/auth/auth-provider'
+import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { queryClient } from '@/lib/query-client'
 import { router } from '@/router'
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <TooltipProvider>
           <RouterProvider router={router} />
+          <Toaster position="bottom-right" />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

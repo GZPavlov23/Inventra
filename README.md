@@ -19,7 +19,8 @@ The project is under active development. This section lists only what actually w
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
 | Employee accounts and role permissions | ⏳ planned |
 | Products page: table with search, Active/Archived/All filter, pagination | ✅ working (real data from the API) |
-| Adding and editing products in the web platform | ⏳ planned (next step) |
+| Adding products in the web platform | ✅ working |
+| Editing and archiving products in the web platform | ⏳ planned (next step) |
 | Batches, deliveries, sales | ⏳ planned |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |

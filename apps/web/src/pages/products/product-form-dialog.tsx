@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, type ReactNode, useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useCurrentUser } from '@/auth/use-auth'
+import { FormField } from '@/components/form-field'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,7 +15,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
@@ -109,8 +109,13 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
   }
 
   const error: ApiError | null = saveProduct.error ? toApiError(saveProduct.error) : null
-  // The only conflict a product can have is a barcode that is already taken.
-  const fieldErrors = error?.code === 'conflict' ? { barcode: error.message } : (error?.fieldErrors ?? {})
+  // The server's conflicts each belong to one field: a taken barcode or a unit that is locked.
+  const fieldErrors =
+    error?.code === 'conflict'
+      ? { barcode: error.message }
+      : error?.code === 'unit_locked'
+        ? { unit: error.message }
+        : (error?.fieldErrors ?? {})
   const showGeneralError = error !== null && Object.keys(fieldErrors).length === 0
 
   const margin =
@@ -125,30 +130,30 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
         </Alert>
       )}
 
-      <Field id="name" label="Name" required error={fieldErrors.name}>
+      <FormField id="name" label="Name" required error={fieldErrors.name}>
         <Input id="name" required maxLength={200} aria-invalid={Boolean(fieldErrors.name)}
           placeholder="Fresh milk 3% 1 l"
           value={form.name} onChange={(event) => update('name', event.target.value)} />
-      </Field>
+      </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="brand" label="Brand" error={fieldErrors.brand}>
+        <FormField id="brand" label="Brand" error={fieldErrors.brand}>
           <Input id="brand" maxLength={120} aria-invalid={Boolean(fieldErrors.brand)}
             value={form.brand} onChange={(event) => update('brand', event.target.value)} />
-        </Field>
-        <Field id="category" label="Category" error={fieldErrors.category}>
+        </FormField>
+        <FormField id="category" label="Category" error={fieldErrors.category}>
           <CategoryCombobox id="category" invalid={Boolean(fieldErrors.category)}
             value={form.category} onChange={(category) => update('category', category)} />
-        </Field>
+        </FormField>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="barcode" label="Barcode" error={fieldErrors.barcode}>
+        <FormField id="barcode" label="Barcode" error={fieldErrors.barcode}>
           <Input id="barcode" inputMode="numeric" maxLength={14} autoComplete="off"
             aria-invalid={Boolean(fieldErrors.barcode)}
             value={form.barcode} onChange={(event) => update('barcode', event.target.value)} />
-        </Field>
-        <Field id="unit" label="Sold by" required error={fieldErrors.unit}>
+        </FormField>
+        <FormField id="unit" label="Sold by" required error={fieldErrors.unit}>
           <Select value={form.unit} onValueChange={(value) => update('unit', value)}>
             <SelectTrigger id="unit" className="w-full">
               <SelectValue />
@@ -159,22 +164,22 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
               ))}
             </SelectContent>
           </Select>
-        </Field>
+        </FormField>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="purchase_price" label={`Purchase price (${store.currency})`} required
+        <FormField id="purchase_price" label={`Purchase price (${store.currency})`} required
           error={fieldErrors.purchase_price}>
           <Input id="purchase_price" type="number" inputMode="decimal" required min="0" step="0.01"
             aria-invalid={Boolean(fieldErrors.purchase_price)}
             value={form.purchase_price} onChange={(event) => update('purchase_price', event.target.value)} />
-        </Field>
-        <Field id="sale_price" label={`Sale price (${store.currency})`} required
+        </FormField>
+        <FormField id="sale_price" label={`Sale price (${store.currency})`} required
           error={fieldErrors.sale_price}>
           <Input id="sale_price" type="number" inputMode="decimal" required min="0" step="0.01"
             aria-invalid={Boolean(fieldErrors.sale_price)}
             value={form.sale_price} onChange={(event) => update('sale_price', event.target.value)} />
-        </Field>
+        </FormField>
       </div>
 
       {margin !== null && (
@@ -192,24 +197,5 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
         </Button>
       </DialogFooter>
     </form>
-  )
-}
-
-function Field({ id, label, required, error, children }: {
-  id: string
-  label: string
-  required?: boolean
-  error?: string
-  children: ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>
-        {label}
-        {required && <span className="text-destructive" aria-hidden> *</span>}
-      </Label>
-      {children}
-      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-    </div>
   )
 }

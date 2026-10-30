@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatMoney, marginPercent } from '@/lib/format'
+import { formatMoney, formatQuantity, marginPercent } from '@/lib/format'
 import type { Product, ProductSort, SortOrder } from '@/lib/products-api'
 
 const UNIT_LABELS = { pcs: 'pcs', kg: 'kg', l: 'l' } as const
@@ -71,6 +71,7 @@ function TableHeadings({ sorting }: { sorting?: SortState }) {
         <SortableHead column="purchase_price" label="Purchase price" numeric sorting={sorting} />
         <SortableHead column="sale_price" label="Sale price" numeric sorting={sorting} />
         <SortableHead column="margin" label="Margin" numeric sorting={sorting} />
+        <SortableHead column="stock" label="Stock" numeric sorting={sorting} />
         <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
       </TableRow>
     </TableHeader>
@@ -124,6 +125,11 @@ export function ProductsTable({ products, currency, onEdit, onSetActive, sorting
               >
                 {margin === null ? <Dash /> : `${margin.toFixed(1)}%`}
               </TableCell>
+              <TableCell
+                className={`text-right tabular-nums ${Number(product.stock) === 0 ? 'text-muted-foreground' : ''}`}
+              >
+                {formatQuantity(product.stock, product.unit)}
+              </TableCell>
               {/* Clicks here (including inside the menu) must not also open the row. */}
               <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>
                 <DropdownMenu>
@@ -174,6 +180,7 @@ export function ProductsTableSkeleton({ rows = 6 }: { rows?: number }) {
             <TableCell><Skeleton className="h-4 w-8" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
+            <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
             <TableCell />
           </TableRow>

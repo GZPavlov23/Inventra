@@ -1,10 +1,10 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Package, Plus, Search, SearchX } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Package, Plus, Search, SearchX } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { useCurrentUser } from '@/auth/use-auth'
+import { Pagination } from '@/components/pagination'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-params'
 import { toApiError } from '@/lib/api'
 import {
   type Product,
@@ -29,14 +29,13 @@ import {
 import { ProductFormDialog } from '@/pages/products/product-form-dialog'
 import { ProductsTable, ProductsTableSkeleton } from '@/pages/products/products-table'
 
-const PAGE_SIZE = 20
 const STATUSES: { value: ProductStatus; label: string }[] = [
   { value: 'active', label: 'Active' },
   { value: 'archived', label: 'Archived' },
   { value: 'all', label: 'All' },
 ]
 
-const SORT_COLUMNS: ProductSort[] = ['name', 'category', 'purchase_price', 'sale_price', 'margin']
+const SORT_COLUMNS: ProductSort[] = ['name', 'category', 'purchase_price', 'sale_price', 'margin', 'stock']
 
 function readSort(value: string | null): ProductSort {
   return SORT_COLUMNS.includes(value as ProductSort) ? (value as ProductSort) : 'name'
@@ -48,38 +47,10 @@ function readStatus(value: string | null): ProductStatus {
 
 export function ProductsPage() {
   const { store } = useCurrentUser()
-  // Search, filter and page live in the URL (/products?q=milk&sort=margin&page=2), so they
-  // survive a reload, work with the Back button and can be shared as a link.
-  const [searchParams, setSearchParams] = useSearchParams()
-  const search = searchParams.get('q') ?? ''
+  const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
-  const page = Math.max(1, Number(searchParams.get('page')) || 1)
   const sort = readSort(searchParams.get('sort'))
   const order: SortOrder = searchParams.get('order') === 'desc' ? 'desc' : 'asc'
-
-  // Sets or removes several URL parameters at once (null removes one).
-  const updateParams = useCallback(
-    (changes: Record<string, string | null>) =>
-      setSearchParams(
-        (current) => {
-          const next = new URLSearchParams(current)
-          for (const [key, value] of Object.entries(changes)) {
-            if (value) next.set(key, value)
-            else next.delete(key)
-          }
-          return next
-        },
-        { replace: true },
-      ),
-    [setSearchParams],
-  )
-
-  // The box updates instantly; the URL (and so the request) only after typing pauses.
-  const [searchInput, setSearchInput] = useState(search)
-  const debouncedSearch = useDebouncedValue(searchInput.trim())
-  useEffect(() => {
-    if (debouncedSearch !== search) updateParams({ q: debouncedSearch, page: null })
-  }, [debouncedSearch, search, updateParams])
 
   const products = useQuery({
     queryKey: ['products', { search, status, sort, order, page }],
@@ -96,15 +67,7 @@ export function ProductsPage() {
     placeholderData: keepPreviousData,
   })
 
-  // Archiving the last row of the last page would leave an empty page: go back to the last
-  // page that still has rows. (Also covers a hand-typed ?page=99.)
-  const data = products.data
-  const pageIsPastTheEnd = data !== undefined && data.items.length === 0 && data.total > 0
-  useEffect(() => {
-    if (!pageIsPastTheEnd) return
-    const lastPage = Math.ceil(data.total / PAGE_SIZE)
-    updateParams({ page: lastPage > 1 ? String(lastPage) : null })
-  }, [pageIsPastTheEnd, data, updateParams])
+  useReturnToLastPage(products.data, updateParams)
 
   const queryClient = useQueryClient()
   const setActive = useMutation({
@@ -262,35 +225,5 @@ function AddProductButton() {
       </Button>
       <ProductFormDialog open={open} onOpenChange={setOpen} />
     </>
-  )
-}
-
-function Pagination({ page, total, onPageChange }: {
-  page: number
-  total: number
-  onPageChange: (page: number) => void
-}) {
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const first = (page - 1) * PAGE_SIZE + 1
-  const last = Math.min(page * PAGE_SIZE, total)
-
-  return (
-    <div className="flex items-center justify-between text-sm text-muted-foreground">
-      <p>
-        Showing <span className="font-medium text-foreground">{first}–{last}</span> of{' '}
-        <span className="font-medium text-foreground">{total}</span>
-      </p>
-      {pageCount > 1 && (
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-            <ChevronLeft /> Previous
-          </Button>
-          <span>Page {page} of {pageCount}</span>
-          <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>
-            Next <ChevronRight />
-          </Button>
-        </div>
-      )}
-    </div>
   )
 }

@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 
 export type ProductUnit = 'pcs' | 'kg' | 'l'
 export type ProductStatus = 'active' | 'archived' | 'all'
-export type ProductSort = 'name' | 'category' | 'purchase_price' | 'sale_price' | 'margin'
+export type ProductSort = 'name' | 'category' | 'purchase_price' | 'sale_price' | 'margin' | 'stock'
 export type SortOrder = 'asc' | 'desc'
 
 export type Product = {
@@ -17,6 +17,7 @@ export type Product = {
   unit: ProductUnit
   purchase_price: string
   sale_price: string
+  stock: string
   active: boolean
   created_at: string
   updated_at: string

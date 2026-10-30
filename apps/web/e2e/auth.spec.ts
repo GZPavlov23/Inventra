@@ -72,6 +72,7 @@ test('a new owner registers, confirms the email and gets an empty store', async 
   await fillLogin(page, email, PASSWORD)
   await expect(page.getByText('E2E Shop').first()).toBeVisible()
   await expect(page.getByText('No sales yet')).toBeVisible()
+  await expect(page.getByText('No goods were written off')).toBeVisible()
 
   // Another store's products are not visible here.
   await page.goto('/products')

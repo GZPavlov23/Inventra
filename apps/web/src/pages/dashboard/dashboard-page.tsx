@@ -20,10 +20,12 @@ import { daysAgo, formatMoney, today } from '@/lib/format'
 import { inventoryApi } from '@/lib/inventory-api'
 import { salesApi } from '@/lib/sales-api'
 import { AttentionList } from '@/pages/dashboard/attention-list'
+import { ReportsCard } from '@/pages/dashboard/reports-card'
 import { SalesChart } from '@/pages/dashboard/sales-chart'
 
 const CHART_DAYS = 30
 const ATTENTION_ROWS = 6
+const COMPARED_DAYS = 7
 
 export function DashboardPage() {
   const { store } = useCurrentUser()
@@ -31,6 +33,9 @@ export function DashboardPage() {
 
   const thisDay = { dateFrom: today(), dateTo: today() }
   const lastMonth = { dateFrom: daysAgo(CHART_DAYS - 1), dateTo: today() }
+  // Finished days only: today would make every comparison look like a drop.
+  const lastWeek = { dateFrom: daysAgo(COMPARED_DAYS), dateTo: daysAgo(1) }
+  const weekBefore = { dateFrom: daysAgo(COMPARED_DAYS * 2), dateTo: daysAgo(COMPARED_DAYS + 1) }
 
   // Keys start with 'sales' and 'batches', so every sale or stock change refreshes this page too.
   const todaysSales = useQuery({
@@ -40,6 +45,14 @@ export function DashboardPage() {
   const monthSales = useQuery({
     queryKey: ['sales', 'summary', lastMonth],
     queryFn: () => salesApi.summary(lastMonth),
+  })
+  const weekSales = useQuery({
+    queryKey: ['sales', 'summary', lastWeek],
+    queryFn: () => salesApi.summary(lastWeek),
+  })
+  const previousWeekSales = useQuery({
+    queryKey: ['sales', 'summary', weekBefore],
+    queryFn: () => salesApi.summary(weekBefore),
   })
   const daily = useQuery({
     queryKey: ['sales', 'daily', lastMonth],
@@ -55,7 +68,7 @@ export function DashboardPage() {
     queryFn: () => inventoryApi.list({ search: '', status: 'expiring', limit: ATTENTION_ROWS, offset: 0 }),
   })
 
-  const queries = [todaysSales, monthSales, daily, stock, expired, expiring]
+  const queries = [todaysSales, weekSales, previousWeekSales, monthSales, daily, stock, expired, expiring]
   const failed = queries.find((query) => query.isError)
   const attention =
     expired.data && expiring.data
@@ -82,11 +95,17 @@ export function DashboardPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <StatTile
           label="Revenue today"
           value={todaysSales.data && money(todaysSales.data.revenue)}
           note={todaysSales.data && salesCount(todaysSales.data.sales)}
+        />
+        <StatTile
+          label="Revenue, last 7 days"
+          value={weekSales.data && money(weekSales.data.revenue)}
+          note={weekSales.data && previousWeekSales.data
+            && changeNote(weekSales.data.revenue, previousWeekSales.data.revenue)}
         />
         <StatTile
           label="Stock value"
@@ -159,8 +178,16 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ReportsCard />
     </div>
   )
+}
+
+function changeNote(current: string, previous: string): string {
+  if (Number(previous) === 0) return 'Nothing to compare with yet'
+  const change = ((Number(current) - Number(previous)) / Number(previous)) * 100
+  return `${change > 0 ? '+' : ''}${change.toFixed(1)}% vs the 7 days before`
 }
 
 function salesCount(count: number): string {

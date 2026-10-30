@@ -13,7 +13,7 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 101 tests |
+| Automated backend tests (pytest) | ✅ 131 tests |
 | Automated browser tests (Playwright) | ✅ 14 scenarios: login, registration, password reset, products |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
@@ -22,7 +22,7 @@ The project is under active development. This section lists only what actually w
 | Products page: table with search, Active/Archived/All filter, sorting, pagination | ✅ working (real data from the API) |
 | Adding products in the web platform, with a category picker | ✅ working |
 | Editing, archiving and restoring products in the web platform | ✅ working |
-| Batches and stock history: database, rules for receiving, waste and corrections | ✅ working in the backend, no API or screens yet |
+| Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working, no screens yet |
 | Sales | ⏳ planned |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
@@ -237,4 +237,4 @@ After running the seed script you can log in with:
 
 ## Demo data
 
-`scripts/seed_demo.py` creates a store named "Демо магазин (демо данни)" ("Demo store (demo data)") with 10 fictional products. Their barcodes start with `200`, a GS1 prefix reserved for in-store use that is never assigned to real retail products, so demo data can never be confused with a real scan.
+`scripts/seed_demo.py` creates a store named "Демо магазин (демо данни)" ("Demo store (demo data)") with 10 fictional products and batches whose expiry dates are counted from the day you run it, including one already expired. Their barcodes start with `200`, a GS1 prefix reserved for in-store use that is never assigned to real retail products, so demo data can never be confused with a real scan.

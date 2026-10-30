@@ -1,10 +1,24 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.product import Product
+
+EXPIRING_SOON_DAYS = 7
+
+
+class ExpiryStatus(StrEnum):
+    NONE = "none"  # goods that don't expire
+    FRESH = "fresh"
+    EXPIRING = "expiring"  # the last day counts: goods expiring today can still be sold
+    EXPIRED = "expired"
 
 
 class Batch(TimestampMixin, Base):
@@ -37,3 +51,16 @@ class Batch(TimestampMixin, Base):
     remaining_quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3))
     # What this delivery really cost; the product's price may change later.
     purchase_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+
+    product: Mapped["Product"] = relationship()
+
+    @property
+    def expiry_status(self) -> ExpiryStatus:
+        if self.expiry_date is None:
+            return ExpiryStatus.NONE
+        today = date.today()
+        if self.expiry_date < today:
+            return ExpiryStatus.EXPIRED
+        if self.expiry_date <= today + timedelta(days=EXPIRING_SOON_DAYS):
+            return ExpiryStatus.EXPIRING
+        return ExpiryStatus.FRESH

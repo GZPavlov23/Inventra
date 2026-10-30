@@ -3,9 +3,10 @@
 Every method takes store_id, so a query can never accidentally read another store's data.
 """
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import ColumnElement, exists, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.models.batch import Batch
 from app.models.product import Product
 from app.schemas.product import ProductSort, SortOrder
 
@@ -21,7 +22,16 @@ SORT_COLUMNS = {
     "sale_price": Product.sale_price,
     # NULLIF avoids dividing by zero: a free product simply has no margin.
     "margin": (Product.sale_price - Product.purchase_price) / func.nullif(Product.sale_price, 0),
+    "stock": Product.stock,
 }
+
+
+def matches_search(search: str) -> ColumnElement[bool]:
+    return or_(
+        Product.name.icontains(search, autoescape=True),
+        Product.brand.icontains(search, autoescape=True),
+        Product.barcode.startswith(search, autoescape=True),
+    )
 
 
 class ProductRepository:
@@ -51,13 +61,7 @@ class ProductRepository:
         if active is not None:
             conditions.append(Product.active == active)
         if search:
-            conditions.append(
-                or_(
-                    Product.name.icontains(search, autoescape=True),
-                    Product.brand.icontains(search, autoescape=True),
-                    Product.barcode.startswith(search, autoescape=True),
-                )
-            )
+            conditions.append(matches_search(search))
 
         total = self.session.scalar(select(func.count()).select_from(Product).where(*conditions))
         column = SORT_COLUMNS[sort]
@@ -92,6 +96,9 @@ class ProductRepository:
             .limit(1)
         )
         return self.session.scalar(stmt)
+
+    def has_batches(self, product_id: int) -> bool:
+        return self.session.scalar(select(exists().where(Batch.product_id == product_id)))
 
     def add(self, product: Product) -> Product:
         self.session.add(product)

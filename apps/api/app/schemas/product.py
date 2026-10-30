@@ -14,7 +14,7 @@ from pydantic import (
 from app.core.barcode import is_valid_gtin
 from app.models.product import ProductUnit
 
-ProductSort = Literal["name", "category", "purchase_price", "sale_price", "margin"]
+ProductSort = Literal["name", "category", "purchase_price", "sale_price", "margin", "stock"]
 SortOrder = Literal["asc", "desc"]
 
 ProductName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -93,6 +93,7 @@ class ProductRead(BaseModel):
     unit: ProductUnit
     purchase_price: Decimal
     sale_price: Decimal
+    stock: Decimal
     active: bool
     created_at: datetime
     updated_at: datetime

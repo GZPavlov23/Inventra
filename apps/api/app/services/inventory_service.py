@@ -21,7 +21,7 @@ from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product, ProductUnit
 from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.product_repository import ProductRepository
-from app.schemas.inventory import AdjustmentCreate, ReceiptCreate, WasteCreate
+from app.schemas.inventory import AdjustmentCreate, BatchStatus, ReceiptCreate, WasteCreate
 
 
 class InventoryService:
@@ -29,6 +29,31 @@ class InventoryService:
         self.session = session
         self.inventory = InventoryRepository(session)
         self.products = ProductRepository(session)
+
+    def list_batches(
+        self,
+        store_id: int,
+        *,
+        product_id: int | None,
+        status: BatchStatus,
+        search: str | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[Batch], int]:
+        return self.inventory.search(
+            store_id,
+            product_id=product_id,
+            status=status,
+            search=search,
+            limit=limit,
+            offset=offset,
+        )
+
+    def list_movements(
+        self, store_id: int, batch_id: int, *, limit: int, offset: int
+    ) -> tuple[list[InventoryMovement], int]:
+        batch, _ = self._get_batch(store_id, batch_id)
+        return self.inventory.list_movements(batch.id, limit=limit, offset=offset)
 
     def receive(self, store_id: int, actor_id: int, data: ReceiptCreate) -> Batch:
         product = self.products.get(store_id, data.product_id)

@@ -1,14 +1,23 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from app.models.batch import ExpiryStatus
+from app.models.inventory_movement import MovementType
+from app.models.product import ProductUnit
 from app.schemas.product import Price
 
+# Which batches a list request returns.
+BatchStatus = Literal["in_stock", "expiring", "expired", "all"]
+
+# Far above any real delivery, but low enough to refuse a barcode scanned into the quantity field.
+MAX_QUANTITY = 100_000
+
 # Above zero, with at most three decimals (grams or millilitres).
-Quantity = Annotated[Decimal, Field(gt=0, max_digits=12, decimal_places=3)]
+Quantity = Annotated[Decimal, Field(gt=0, le=MAX_QUANTITY, max_digits=12, decimal_places=3)]
 Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
@@ -39,5 +48,61 @@ class WasteCreate(BaseModel):
 class AdjustmentCreate(BaseModel):
     """A correction after counting the shelf: positive adds stock, negative removes it."""
 
-    quantity_delta: Annotated[Decimal, Field(max_digits=12, decimal_places=3)]
+    quantity_delta: Annotated[
+        Decimal, Field(ge=-MAX_QUANTITY, le=MAX_QUANTITY, max_digits=12, decimal_places=3)
+    ]
     reason: Reason
+
+
+class BatchProduct(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    barcode: str | None
+    unit: ProductUnit
+
+
+class BatchRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product: BatchProduct
+    lot_code: str | None
+    expiry_date: date | None
+    expiry_status: ExpiryStatus
+    received_at: datetime
+    received_quantity: Decimal
+    remaining_quantity: Decimal
+    purchase_price: Decimal
+
+
+class BatchPage(BaseModel):
+    items: list[BatchRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class MovementActor(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    full_name: str
+
+
+class MovementRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    type: MovementType
+    quantity_delta: Decimal
+    reason: str | None
+    occurred_at: datetime
+    actor: MovementActor
+
+
+class MovementPage(BaseModel):
+    items: list[MovementRead]
+    total: int
+    limit: int
+    offset: int

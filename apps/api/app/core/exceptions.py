@@ -49,6 +49,11 @@ class InvalidTokenError(DomainError):
     code = "invalid_token"
 
 
+class UnitLockedError(DomainError):
+    status_code = 409
+    code = "unit_locked"
+
+
 class InsufficientStockError(DomainError):
     status_code = 409
     code = "insufficient_stock"

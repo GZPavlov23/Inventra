@@ -7,7 +7,7 @@ Routes call this service; it uses the repository for data access and owns the tr
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, UnitLockedError
 from app.models.product import Product
 from app.repositories.product_repository import ProductRepository
 from app.schemas.product import ProductCreate, ProductSort, ProductUpdate, SortOrder
@@ -70,6 +70,10 @@ class ProductService:
         new_barcode = changes.get("barcode")
         if new_barcode and new_barcode != product.barcode:
             self._ensure_barcode_free(store_id, new_barcode)
+        new_unit = changes.get("unit")
+        if new_unit and new_unit != product.unit and self.products.has_batches(product.id):
+            # The stock history would change its meaning: 1.5 kg must not become 1.5 pieces.
+            raise UnitLockedError(f"'{product.name}' already has batches, its unit can't change")
         if "category" in changes:
             changes["category"] = self._existing_spelling(store_id, changes["category"])
         for field, value in changes.items():

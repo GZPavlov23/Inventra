@@ -3,9 +3,10 @@ from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Numeric, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.user import User
 
 
 class MovementType(StrEnum):
@@ -50,3 +51,5 @@ class InventoryMovement(Base):
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    actor: Mapped[User] = relationship()

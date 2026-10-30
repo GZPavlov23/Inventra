@@ -1,4 +1,4 @@
-"""Fills the database with a DEMO store and products, so the API has data to work with.
+"""Fills the database with a DEMO store, products and batches, so the API has data to work with.
 
 Run from apps/api after `alembic upgrade head`:
     macOS:   .venv/bin/python -m scripts.seed_demo
@@ -12,7 +12,7 @@ All data here is fictional DEMO data. Barcodes use the GS1 prefix 200, which is 
 in-store use and never assigned to real retail products, so they can't clash with a real scan.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -20,11 +20,14 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
+from app.models.batch import Batch
 from app.models.product import Product, ProductUnit
 from app.models.store import Store
 from app.models.user import User, UserRole
 from app.repositories.product_repository import ProductRepository
+from app.schemas.inventory import ReceiptCreate
 from app.schemas.product import ProductCreate
+from app.services.inventory_service import InventoryService
 from app.services.product_service import ProductService
 
 DEMO_STORE_NAME = "Демо магазин (демо данни)"
@@ -51,6 +54,21 @@ DEMO_PRODUCTS = [
     ("Домати", None, None, "Плодове и зеленчуци", KG, "1.60", "2.49"),
 ]
 
+# (product name, quantity, days until expiry; None means the goods don't expire)
+DEMO_BATCHES = [
+    ("Прясно мляко 3% 1 л", "24", 2),
+    ("Прясно мляко 3% 1 л", "30", 9),
+    ("Кисело мляко 3.6% 400 г", "40", 14),
+    ("Сирене краве 400 г", "12", 45),
+    ("Бял хляб 500 г", "18", 1),
+    ("Пълнозърнест хляб 400 г", "8", 3),
+    ("Яйца размер M 10 бр.", "20", 21),
+    ("Пилешко филе 500 г", "6", -1),
+    ("Минерална вода 1.5 л", "60", None),
+    ("Банани", "14.500", 5),
+    ("Домати", "9.750", 4),
+]
+
 
 def get_or_create_store(session: Session) -> Store:
     store = session.scalars(select(Store).where(Store.name == DEMO_STORE_NAME)).first()
@@ -64,22 +82,23 @@ def get_or_create_store(session: Session) -> Store:
     return store
 
 
-def get_or_create_owner(session: Session, store: Store) -> None:
-    if session.scalars(select(User).where(User.email == DEMO_OWNER_EMAIL)).first() is not None:
+def get_or_create_owner(session: Session, store: Store) -> User:
+    owner = session.scalars(select(User).where(User.email == DEMO_OWNER_EMAIL)).first()
+    if owner is not None:
         print(f"Demo owner already exists: {DEMO_OWNER_EMAIL}")
-        return
-    session.add(
-        User(
-            store_id=store.id,
-            email=DEMO_OWNER_EMAIL,
-            password_hash=hash_password(DEMO_OWNER_PASSWORD),
-            full_name="Demo Owner",
-            role=UserRole.OWNER,
-            email_verified_at=datetime.now(UTC),  # verified, so the account works right away
-        )
+        return owner
+    owner = User(
+        store_id=store.id,
+        email=DEMO_OWNER_EMAIL,
+        password_hash=hash_password(DEMO_OWNER_PASSWORD),
+        full_name="Demo Owner",
+        role=UserRole.OWNER,
+        email_verified_at=datetime.now(UTC),  # verified, so the account works right away
     )
+    session.add(owner)
     session.commit()
     print(f"Created demo owner: {DEMO_OWNER_EMAIL}")
+    return owner
 
 
 def seed_products(session: Session, store_id: int) -> None:
@@ -115,11 +134,48 @@ def seed_products(session: Session, store_id: int) -> None:
     print(f"Products: {created} created, {skipped} already existed")
 
 
+def seed_batches(session: Session, store_id: int, owner_id: int) -> None:
+    if session.scalar(select(Batch.id).where(Batch.store_id == store_id).limit(1)) is not None:
+        print("Batches already exist")
+        return
+
+    # Batches go through the service too, so every one gets its history line.
+    service = InventoryService(session)
+    created = 0
+    for name, quantity, days_left in DEMO_BATCHES:
+        stmt = select(Product).where(
+            Product.store_id == store_id, Product.name == name, Product.active
+        )
+        product = session.scalars(stmt).first()
+        if product is None:
+            continue
+
+        expired = days_left is not None and days_left < 0
+        expiry_date = None if days_left is None else date.today() + timedelta(days=days_left)
+        batch = service.receive(
+            store_id,
+            owner_id,
+            ReceiptCreate(
+                product_id=product.id,
+                quantity=Decimal(quantity),
+                expiry_date=None if expired else expiry_date,
+            ),
+        )
+        if expired:
+            # The app refuses expired goods at the door, so the demo has to age this batch itself.
+            batch.expiry_date = expiry_date
+            session.commit()
+        created += 1
+
+    print(f"Batches: {created} created")
+
+
 def main() -> None:
     with SessionLocal() as session:
         store = get_or_create_store(session)
-        get_or_create_owner(session, store)
+        owner = get_or_create_owner(session, store)
         seed_products(session, store.id)
+        seed_batches(session, store.id, owner.id)
 
     print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")
 

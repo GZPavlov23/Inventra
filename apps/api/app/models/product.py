@@ -1,10 +1,21 @@
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, CheckConstraint, Enum, ForeignKey, Numeric, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Enum,
+    ForeignKey,
+    Numeric,
+    String,
+    UniqueConstraint,
+    func,
+    select,
+)
+from sqlalchemy.orm import Mapped, column_property, mapped_column
 
 from app.db.base import Base, TimestampMixin
+from app.models.batch import Batch
 
 
 class ProductUnit(StrEnum):
@@ -46,3 +57,12 @@ class Product(TimestampMixin, Base):
     sale_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     # Products are archived, never hard-deleted, because stock history will reference them.
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+    # Calculated from the batches on every read, so there is no second number to keep in sync.
+    # Expired goods count until they are written off: they are still physically in the store.
+    stock: Mapped[Decimal] = column_property(
+        select(func.coalesce(func.sum(Batch.remaining_quantity), 0))
+        .where(Batch.product_id == id)
+        .correlate_except(Batch)
+        .scalar_subquery()
+    )

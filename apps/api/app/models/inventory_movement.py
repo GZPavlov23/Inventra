@@ -6,6 +6,7 @@ from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Numeric, Str
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.models.batch import Batch
 from app.models.user import User
 
 
@@ -60,3 +61,4 @@ class InventoryMovement(Base):
     )
 
     actor: Mapped[User] = relationship()
+    batch: Mapped[Batch] = relationship()

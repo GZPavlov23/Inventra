@@ -14,6 +14,7 @@ from app.models.user import User
 from app.services.auth_service import AuthService
 from app.services.inventory_service import InventoryService
 from app.services.product_service import ProductService
+from app.services.sale_service import SaleService
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -66,3 +67,10 @@ def get_inventory_service(db: DbSession) -> InventoryService:
 
 
 InventoryServiceDep = Annotated[InventoryService, Depends(get_inventory_service)]
+
+
+def get_sale_service(db: DbSession) -> SaleService:
+    return SaleService(db)
+
+
+SaleServiceDep = Annotated[SaleService, Depends(get_sale_service)]

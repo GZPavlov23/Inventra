@@ -1,6 +1,6 @@
 """Business rules for sales: stock leaves the store from the batch that expires first."""
 
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -13,8 +13,13 @@ from app.models.sale import Sale, SaleItem
 from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.sale_repository import SaleRepository
-from app.schemas.sale import SaleCreate, SaleItemCreate
+from app.schemas.sale import SaleCreate, SaleItemCreate, SaleSummary
 from app.services.inventory_service import ensure_whole_pieces
+
+
+def start_of_day(day: date | None) -> datetime | None:
+    # astimezone: the day is the server's local day, the same one date.today() gives.
+    return None if day is None else datetime.combine(day, time.min).astimezone()
 
 
 class SaleService:
@@ -23,6 +28,31 @@ class SaleService:
         self.sales = SaleRepository(session)
         self.inventory = InventoryRepository(session)
         self.products = ProductRepository(session)
+
+    def list_sales(
+        self,
+        store_id: int,
+        *,
+        date_from: date | None,
+        date_to: date | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[Sale], int]:
+        start, end = self._period(date_from, date_to)
+        return self.sales.search(store_id, start=start, end=end, limit=limit, offset=offset)
+
+    def summarize(
+        self, store_id: int, *, date_from: date | None, date_to: date | None
+    ) -> SaleSummary:
+        start, end = self._period(date_from, date_to)
+        sales, revenue, cost = self.sales.summarize(store_id, start=start, end=end)
+        return SaleSummary(sales=sales, revenue=revenue, cost=cost, profit=revenue - cost)
+
+    def get_sale(self, store_id: int, sale_id: int) -> Sale:
+        sale = self.sales.get(store_id, sale_id)
+        if sale is None:
+            raise NotFoundError(f"Sale {sale_id} was not found")
+        return sale
 
     def record(self, store_id: int, actor_id: int, data: SaleCreate) -> Sale:
         """Records a whole sale or nothing: one impossible line cancels all of them."""
@@ -38,6 +68,12 @@ class SaleService:
             raise
         self.session.commit()
         return sale
+
+    @staticmethod
+    def _period(date_from: date | None, date_to: date | None) -> tuple[datetime | None, ...]:
+        # date_to counts as a whole day, so the period ends where the next day starts.
+        next_day = None if date_to is None else date_to + timedelta(days=1)
+        return start_of_day(date_from), start_of_day(next_day)
 
     def _sell(self, sale: Sale, line: SaleItemCreate) -> None:
         product = self.products.get(sale.store_id, line.product_id)

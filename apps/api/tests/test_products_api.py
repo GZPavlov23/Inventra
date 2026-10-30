@@ -215,3 +215,30 @@ def test_categories_of_other_stores_stay_separate(client: TestClient, db: Sessio
     assert client.get(f"{URL}/categories").json() == []
     # Another store's spelling is not reused either.
     assert create(client, barcode=None, category="secret")["category"] == "secret"
+
+
+def test_patch_can_clear_optional_fields(client: TestClient) -> None:
+    product = create(client)
+    response = client.patch(
+        f"{URL}/{product['id']}", json={"brand": "", "category": "", "barcode": ""}
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["brand"] is None
+    assert updated["category"] is None
+    assert updated["barcode"] is None
+
+
+def test_patch_accepts_the_unchanged_barcode(client: TestClient) -> None:
+    product = create(client)
+    response = client.patch(f"{URL}/{product['id']}", json={**MILK, "name": "Renamed"})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Renamed"
+
+
+def test_archived_product_can_be_restored(client: TestClient) -> None:
+    product = create(client)
+    client.patch(f"{URL}/{product['id']}", json={"active": False})
+    response = client.patch(f"{URL}/{product['id']}", json={"active": True})
+    assert response.json()["active"] is True
+    assert client.get(URL).json()["total"] == 1

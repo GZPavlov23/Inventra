@@ -13,17 +13,19 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
+import { formatQuantity } from '@/lib/format'
 import { type Product, productsApi } from '@/lib/products-api'
 
 type ProductPickerProps = {
   id: string
   value: Product | null
   onChange: (product: Product) => void
+  placeholder?: string
 }
 
 // Finds a product on the server, because a store can have thousands of them. It searches
 // by barcode too, so a USB scanner works: it types the code and presses Enter.
-export function ProductPicker({ id, value, onChange }: ProductPickerProps) {
+export function ProductPicker({ id, value, onChange, placeholder = 'Choose a product' }: ProductPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const typed = query.trim()
@@ -69,7 +71,7 @@ export function ProductPicker({ id, value, onChange }: ProductPickerProps) {
           className="w-full justify-between font-normal"
         >
           <span className={`truncate ${value ? '' : 'text-muted-foreground'}`}>
-            {value?.name ?? 'Choose a product'}
+            {value?.name ?? placeholder}
           </span>
           <ChevronsUpDown className="text-muted-foreground" />
         </Button>
@@ -95,6 +97,9 @@ export function ProductPicker({ id, value, onChange }: ProductPickerProps) {
                   onSelect={() => choose(product)}
                 >
                   <span className="truncate">{product.name}</span>
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                    {formatQuantity(product.stock, product.unit)}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>

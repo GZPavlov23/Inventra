@@ -14,11 +14,13 @@ import { InventoryPage } from '@/pages/inventory/inventory-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { PlannedPage } from '@/pages/planned-page'
 import { ProductsPage } from '@/pages/products/products-page'
+import { SalesPage } from '@/pages/sales/sales-page'
 
 // Modules that are already built. Every other menu item shows a "Planned" placeholder.
 const BUILT_PAGES: Record<string, ReactNode> = {
   '/products': <ProductsPage />,
   '/inventory': <InventoryPage />,
+  '/sales': <SalesPage />,
 }
 
 export const router = createBrowserRouter([

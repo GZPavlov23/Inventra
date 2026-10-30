@@ -12,6 +12,14 @@ export function formatQuantity(quantity: string | number, unit: ProductUnit): st
   return `${number} ${unit}`
 }
 
+// A sale line in whole cents, rounded like the server does (half up). Whole numbers keep it
+// exact: as a binary float 0.750 × 1.89 isn't quite 1.4175, and could round the other way.
+export function lineCents(quantity: string, unitPrice: string): number {
+  const thousandths = Math.round(Number(quantity) * 1000)
+  const cents = Math.round(Number(unitPrice) * 100)
+  return Math.floor((thousandths * cents + 500) / 1000)
+}
+
 // A change in stock always shows its direction: "+12 pcs" or "-4 pcs".
 export function formatChange(quantity: string | number, unit: ProductUnit): string {
   return `${Number(quantity) > 0 ? '+' : ''}${formatQuantity(quantity, unit)}`
@@ -32,12 +40,21 @@ export function formatDay(day: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(parseDay(day))
 }
 
-// Today as "2026-10-30", the format date inputs use.
+// A day as "2026-10-30", the format date inputs and the API use.
+function toDayString(moment: Date): string {
+  const month = String(moment.getMonth() + 1).padStart(2, '0')
+  const date = String(moment.getDate()).padStart(2, '0')
+  return `${moment.getFullYear()}-${month}-${date}`
+}
+
 export function today(): string {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const date = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${date}`
+  return toDayString(new Date())
+}
+
+export function daysAgo(days: number): string {
+  const moment = new Date()
+  moment.setDate(moment.getDate() - days)
+  return toDayString(moment)
 }
 
 // Rounded, because a day with a clock change isn't exactly 24 hours long.

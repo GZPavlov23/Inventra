@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 
 import { useCurrentUser } from '@/auth/use-auth'
 import { FormField } from '@/components/form-field'
+import { ProductPicker } from '@/components/product-picker'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,7 +21,6 @@ import { type ApiError, toApiError } from '@/lib/api'
 import { formatQuantity, today } from '@/lib/format'
 import { inventoryApi } from '@/lib/inventory-api'
 import type { Product } from '@/lib/products-api'
-import { ProductPicker } from '@/pages/inventory/product-picker'
 
 export function ReceiveDialog({ open, onOpenChange }: {
   open: boolean

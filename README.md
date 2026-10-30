@@ -14,7 +14,7 @@ The project is under active development. This section lists only what actually w
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
 | Automated backend tests (pytest) | ✅ 289 tests |
-| Automated browser tests (Playwright) | ✅ 50 scenarios: login, registration, password reset, dashboard, products, inventory, sales |
+| Automated browser tests (Playwright) | ✅ 59 scenarios: login, registration, password reset, dashboard, products, inventory, sales, CSV import |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -28,7 +28,7 @@ The project is under active development. This section lists only what actually w
 | Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns are planned |
 | Dashboard page: revenue and profit chart, week over week comparison, stock value, expired and expiring stock, what needs attention | ✅ working (real data from the API) |
 | Reports on the dashboard: waste by reason, products running out, top products, sales by category | ✅ working |
-| CSV import of sales in the API: current sales that take stock, and old history for the forecast, with a check before anything is written | ✅ working, no screen yet |
+| CSV import of sales: current sales that take stock, and old history for the forecast, with a check before anything is written | ✅ working |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 

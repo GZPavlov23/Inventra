@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Plus, ReceiptText } from 'lucide-react'
+import { FileUp, Plus, ReceiptText } from 'lucide-react'
 import { useState } from 'react'
 
 import { useCurrentUser } from '@/auth/use-auth'
@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-params'
 import { daysAgo, formatMoney, today } from '@/lib/format'
 import { type Sale, type SalePeriod, salesApi } from '@/lib/sales-api'
+import { ImportDialog } from '@/pages/sales/import-dialog'
 import { NewSaleDialog } from '@/pages/sales/new-sale-dialog'
 import { SaleDetailsDialog } from '@/pages/sales/sale-details-dialog'
 import { SalesTable, SalesTableSkeleton } from '@/pages/sales/sales-table'
@@ -68,7 +69,10 @@ export function SalesPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Sales</h2>
           <p className="text-sm text-muted-foreground">What you sold, and what you earned from it.</p>
         </div>
-        <NewSaleButton />
+        <div className="flex flex-wrap gap-2">
+          <ImportButton />
+          <NewSaleButton />
+        </div>
       </div>
 
       <Tabs
@@ -151,6 +155,19 @@ export function SalesPage() {
 function marginNote(revenue?: string, profit?: string): string | undefined {
   if (!revenue || !profit || Number(revenue) === 0) return undefined
   return `Margin ${((Number(profit) / Number(revenue)) * 100).toFixed(1)}%`
+}
+
+function ImportButton() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        <FileUp />
+        Import CSV
+      </Button>
+      <ImportDialog open={open} onOpenChange={setOpen} />
+    </>
+  )
 }
 
 function NewSaleButton() {

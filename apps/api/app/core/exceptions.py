@@ -47,3 +47,18 @@ class AccountLockedError(DomainError):
 class InvalidTokenError(DomainError):
     status_code = 400
     code = "invalid_token"
+
+
+class InsufficientStockError(DomainError):
+    status_code = 409
+    code = "insufficient_stock"
+
+
+class InvalidQuantityError(DomainError):
+    status_code = 422
+    code = "invalid_quantity"
+
+
+class InvalidReceiptError(DomainError):
+    status_code = 422
+    code = "invalid_receipt"

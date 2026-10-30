@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -13,6 +13,9 @@ from pydantic import (
 
 from app.core.barcode import is_valid_gtin
 from app.models.product import ProductUnit
+
+ProductSort = Literal["name", "category", "purchase_price", "sale_price", "margin"]
+SortOrder = Literal["asc", "desc"]
 
 ProductName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 OptionalText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None

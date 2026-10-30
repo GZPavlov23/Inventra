@@ -6,7 +6,14 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentStore, ProductServiceDep
 from app.schemas.common import ErrorResponse
-from app.schemas.product import ProductCreate, ProductPage, ProductRead, ProductUpdate
+from app.schemas.product import (
+    ProductCreate,
+    ProductPage,
+    ProductRead,
+    ProductSort,
+    ProductUpdate,
+    SortOrder,
+)
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -23,11 +30,19 @@ def list_products(
     service: ProductServiceDep,
     search: str | None = Query(None, max_length=100, description="Name, brand or barcode prefix"),
     status: Literal["active", "archived", "all"] = Query("active"),
+    sort: ProductSort = Query("name"),
+    order: SortOrder = Query("asc"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> ProductPage:
     items, total = service.list_products(
-        store.id, search=search, active=STATUS_FILTER[status], limit=limit, offset=offset
+        store.id,
+        search=search,
+        active=STATUS_FILTER[status],
+        sort=sort,
+        order=order,
+        limit=limit,
+        offset=offset,
     )
     return ProductPage(
         items=[ProductRead.model_validate(item) for item in items],

@@ -7,10 +7,21 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.product import Product
+from app.schemas.product import ProductSort, SortOrder
 
 # Unicode (ICU) sort order: alphabetical for Latin and Cyrillic alike. The operating system's
 # default collation sorts Bulgarian names wrongly on macOS, so we never rely on it.
 ALPHABETICAL = "und-x-icu"
+
+# The only columns a list can be sorted by; the API can't ask for anything else.
+SORT_COLUMNS = {
+    "name": Product.name.collate(ALPHABETICAL),
+    "category": Product.category.collate(ALPHABETICAL),
+    "purchase_price": Product.purchase_price,
+    "sale_price": Product.sale_price,
+    # NULLIF avoids dividing by zero: a free product simply has no margin.
+    "margin": (Product.sale_price - Product.purchase_price) / func.nullif(Product.sale_price, 0),
+}
 
 
 class ProductRepository:
@@ -31,6 +42,8 @@ class ProductRepository:
         *,
         search: str | None,
         active: bool | None,
+        sort: ProductSort = "name",
+        order: SortOrder = "asc",
         limit: int,
         offset: int,
     ) -> tuple[list[Product], int]:
@@ -47,10 +60,12 @@ class ProductRepository:
             )
 
         total = self.session.scalar(select(func.count()).select_from(Product).where(*conditions))
+        column = SORT_COLUMNS[sort]
+        ordering = column.desc() if order == "desc" else column.asc()
         stmt = (
             select(Product)
             .where(*conditions)
-            .order_by(Product.name.collate(ALPHABETICAL), Product.id)
+            .order_by(ordering.nulls_last(), Product.name.collate(ALPHABETICAL), Product.id)
             .limit(limit)
             .offset(offset)
         )

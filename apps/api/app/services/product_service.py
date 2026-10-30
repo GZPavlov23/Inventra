@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.product import Product
 from app.repositories.product_repository import ProductRepository
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.schemas.product import ProductCreate, ProductSort, ProductUpdate, SortOrder
 
 
 class ProductService:
@@ -19,10 +19,24 @@ class ProductService:
         self.products = ProductRepository(session)
 
     def list_products(
-        self, store_id: int, *, search: str | None, active: bool | None, limit: int, offset: int
+        self,
+        store_id: int,
+        *,
+        search: str | None,
+        active: bool | None,
+        sort: ProductSort,
+        order: SortOrder,
+        limit: int,
+        offset: int,
     ) -> tuple[list[Product], int]:
         return self.products.search(
-            store_id, search=search, active=active, limit=limit, offset=offset
+            store_id,
+            search=search,
+            active=active,
+            sort=sort,
+            order=order,
+            limit=limit,
+            offset=offset,
         )
 
     def list_categories(self, store_id: int) -> list[str]:

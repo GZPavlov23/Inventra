@@ -242,3 +242,52 @@ def test_archived_product_can_be_restored(client: TestClient) -> None:
     response = client.patch(f"{URL}/{product['id']}", json={"active": True})
     assert response.json()["active"] is True
     assert client.get(URL).json()["total"] == 1
+
+
+def sorted_names(client: TestClient, sort: str, order: str = "asc") -> list[str]:
+    items = client.get(URL, params={"sort": sort, "order": order}).json()["items"]
+    return [item["name"] for item in items]
+
+
+def test_list_can_be_sorted_by_price_both_ways(client: TestClient) -> None:
+    create(client, name="Cheap", barcode=None, sale_price="1.00")
+    create(client, name="Expensive", barcode=None, sale_price="10.00")
+    create(client, name="Middle", barcode=None, sale_price="5.00")
+
+    assert sorted_names(client, "sale_price") == ["Cheap", "Middle", "Expensive"]
+    assert sorted_names(client, "sale_price", "desc") == ["Expensive", "Middle", "Cheap"]
+
+
+def test_sorting_covers_the_whole_catalog_not_just_one_page(client: TestClient) -> None:
+    for number in range(1, 6):
+        create(client, name=f"P{number}", barcode=None, sale_price=str(number * 10))
+    page = client.get(URL, params={"sort": "sale_price", "order": "desc", "limit": 2}).json()
+    assert [item["name"] for item in page["items"]] == ["P5", "P4"]
+
+
+def test_list_can_be_sorted_by_margin(client: TestClient) -> None:
+    create(client, name="Half", barcode=None, purchase_price="5.00", sale_price="10.00")
+    create(client, name="Tenth", barcode=None, purchase_price="9.00", sale_price="10.00")
+    create(client, name="Loss", barcode=None, purchase_price="12.00", sale_price="10.00")
+    assert sorted_names(client, "margin", "desc") == ["Half", "Tenth", "Loss"]
+
+
+def test_free_product_does_not_break_margin_sorting(client: TestClient) -> None:
+    create(client, name="Free", barcode=None, purchase_price="1.00", sale_price="0")
+    create(client, name="Paid", barcode=None, purchase_price="1.00", sale_price="2.00")
+    response = client.get(URL, params={"sort": "margin"})
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["items"]] == ["Paid", "Free"]
+
+
+def test_products_without_category_are_always_last(client: TestClient) -> None:
+    create(client, name="None", barcode=None, category=None)
+    create(client, name="Bread", barcode=None, category="Bread")
+    create(client, name="Dairy", barcode=None, category="Dairy")
+    assert sorted_names(client, "category") == ["Bread", "Dairy", "None"]
+    assert sorted_names(client, "category", "desc") == ["Dairy", "Bread", "None"]
+
+
+def test_unknown_sort_column_is_rejected(client: TestClient) -> None:
+    assert client.get(URL, params={"sort": "password_hash"}).status_code == 422
+    assert client.get(URL, params={"order": "sideways"}).status_code == 422

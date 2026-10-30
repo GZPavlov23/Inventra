@@ -54,7 +54,7 @@ export type AdjustmentInput = {
 
 export type Movement = {
   id: number
-  type: 'receipt' | 'adjustment' | 'waste'
+  type: 'receipt' | 'adjustment' | 'waste' | 'sale'
   quantity_delta: string
   reason: string | null
   occurred_at: string

@@ -259,6 +259,21 @@ test('the history shows every change, who made it and why', async ({ page }) => 
   await expect(dialog(page).getByRole('button', { name: 'Show older' })).toHaveCount(0)
 })
 
+test('a sale shows in the history of the batch it came from', async ({ page }) => {
+  const product = await createProduct(page, 'Е2Е Продадено')
+  await receiveThroughApi(page, product.id, '10')
+  const sale = await page.request.post(`${API}/sales`, {
+    data: { items: [{ product_id: product.id, quantity: '4' }] },
+  })
+  expect(sale.ok()).toBe(true)
+  await showOnly(page, 'Е2Е Продадено')
+
+  await expect(row(page, 'Е2Е Продадено')).toContainText('6 pcs')
+  await openBatchAction(page, 'Е2Е Продадено', 'History')
+  await expect(dialog(page).getByRole('listitem').first()).toContainText('Sold')
+  await expect(dialog(page).getByRole('listitem').first()).toContainText('-4 pcs')
+})
+
 test('a long history loads in parts, newest first', async ({ page }) => {
   const product = await createProduct(page, 'Е2Е Дълга')
   const batch = await receiveThroughApi(page, product.id, '100')

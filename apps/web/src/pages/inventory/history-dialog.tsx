@@ -20,6 +20,7 @@ const MOVEMENT_LABELS: Record<Movement['type'], string> = {
   receipt: 'Received',
   waste: 'Written off',
   adjustment: 'Correction',
+  sale: 'Sold',
 }
 
 // Waste reasons are stored as codes; a correction's reason is what the person typed.

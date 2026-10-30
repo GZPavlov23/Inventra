@@ -78,6 +78,22 @@ DEMO_BATCHES = [
     ("Домати", "9.750", 4),
 ]
 
+# (days ago, product name, quantity, reason)
+DEMO_WASTE = [
+    (2, "Бял хляб 500 г", "5", "expired"),
+    (4, "Прясно мляко 3% 1 л", "4", "expired"),
+    (6, "Домати", "1.200", "damaged"),
+    (8, "Бял хляб 500 г", "6", "expired"),
+    (10, "Банани", "0.800", "damaged"),
+    (13, "Яйца размер M 10 бр.", "2", "damaged"),
+    (15, "Пилешко филе 500 г", "3", "expired"),
+    (18, "Кисело мляко 3.6% 400 г", "4", "expired"),
+    (21, "Минерална вода 1.5 л", "2", "other"),
+    (24, "Домати", "0.900", "expired"),
+    (27, "Бял хляб 500 г", "4", "expired"),
+    (33, "Прясно мляко 3% 1 л", "3", "expired"),
+]
+
 # How many weeks of invented sales the demo store has.
 DEMO_SALES_WEEKS = 8
 # Sales per day, Monday to Sunday: small stores are busiest before and on the weekend.
@@ -292,6 +308,61 @@ def seed_sales(session: Session, store_id: int, owner_id: int) -> None:
     print(f"Sales history: {len(sales)} demo sales created")
 
 
+def seed_waste(session: Session, store_id: int, owner_id: int) -> None:
+    """Invented past write-offs, each on its own used-up batch, so today's stock stays as it is."""
+    today_start = datetime.combine(date.today(), time.min).astimezone()
+    stmt = select(InventoryMovement.id).where(
+        InventoryMovement.store_id == store_id,
+        InventoryMovement.type == MovementType.WASTE,
+        InventoryMovement.occurred_at < today_start,
+    )
+    if session.scalar(stmt.limit(1)) is not None:
+        print("Waste history already exists")
+        return
+
+    created = 0
+    for days_ago, name, quantity, reason in DEMO_WASTE:
+        stmt = select(Product).where(Product.store_id == store_id, Product.name == name)
+        product = session.scalars(stmt).first()
+        if product is None:
+            continue
+
+        amount = Decimal(quantity)
+        day = date.today() - timedelta(days=days_ago)
+        received_at = datetime.combine(day - timedelta(days=5), time(7)).astimezone()
+        thrown_away_at = datetime.combine(day, time(20)).astimezone()
+        batch = Batch(
+            store_id=store_id,
+            product_id=product.id,
+            expiry_date=day - timedelta(days=1),
+            received_at=received_at,
+            received_quantity=amount,
+            remaining_quantity=0,
+            purchase_price=product.purchase_price,
+        )
+        session.add(batch)
+        session.flush()
+        for movement_type, delta, reason_text, moment in (
+            (MovementType.RECEIPT, amount, None, received_at),
+            (MovementType.WASTE, -amount, reason, thrown_away_at),
+        ):
+            session.add(
+                InventoryMovement(
+                    store_id=store_id,
+                    product_id=product.id,
+                    batch_id=batch.id,
+                    actor_id=owner_id,
+                    type=movement_type,
+                    quantity_delta=delta,
+                    reason=reason_text,
+                    occurred_at=moment,
+                )
+            )
+        created += 1
+    session.commit()
+    print(f"Waste history: {created} demo write-offs created")
+
+
 def demo_quantity(rng: random.Random, product: Product) -> Decimal:
     if product.unit == ProductUnit.PIECE:
         return Decimal(rng.randint(1, 3))
@@ -307,6 +378,7 @@ def main() -> None:
             delete_demo_stock(session, store.id)
         seed_batches(session, store.id, owner.id)
         seed_sales(session, store.id, owner.id)
+        seed_waste(session, store.id, owner.id)
 
     print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")
 

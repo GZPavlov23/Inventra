@@ -16,6 +16,7 @@ from scripts.seed_demo import (
     seed_batches,
     seed_products,
     seed_sales,
+    seed_waste,
 )
 
 
@@ -24,6 +25,7 @@ def seeded(db: Session, store: Store, owner: User) -> Store:
     seed_products(db, store.id)
     seed_batches(db, store.id, owner.id)
     seed_sales(db, store.id, owner.id)
+    seed_waste(db, store.id, owner.id)
     return store
 
 
@@ -89,6 +91,7 @@ def test_running_it_twice_adds_nothing(db: Session, seeded: Store, owner: User) 
     sales, batches = count(db, Sale), count(db, Batch)
     seed_batches(db, seeded.id, owner.id)
     seed_sales(db, seeded.id, owner.id)
+    seed_waste(db, seeded.id, owner.id)
     assert (count(db, Sale), count(db, Batch)) == (sales, batches)
 
 
@@ -138,3 +141,21 @@ def test_fresh_demo_replaces_everything_but_touches_no_other_store(
     assert count(db, Sale) > 0
     stmt = select(InventoryMovement).where(InventoryMovement.type == MovementType.SALE)
     assert db.scalars(stmt).first() is not None
+
+
+def test_waste_history_keeps_todays_stock_and_has_every_reason(
+    db: Session, store: Store, owner: User
+) -> None:
+    seed_products(db, store.id)
+    seed_batches(db, store.id, owner.id)
+    stock = {p.id: p.stock for p in db.scalars(select(Product))}
+
+    seed_waste(db, store.id, owner.id)
+
+    db.expire_all()
+    assert {p.id: p.stock for p in db.scalars(select(Product))} == stock
+    stmt = select(InventoryMovement).where(InventoryMovement.type == MovementType.WASTE)
+    waste = list(db.scalars(stmt))
+    assert {line.reason for line in waste} == {"expired", "damaged", "other"}
+    assert all(line.quantity_delta < 0 for line in waste)
+    assert all(line.occurred_at.date() < date.today() for line in waste)

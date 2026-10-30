@@ -13,8 +13,8 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 155 tests |
-| Automated browser tests (Playwright) | ✅ 28 scenarios: login, registration, password reset, products, inventory |
+| Automated backend tests (pytest) | ✅ 180 tests |
+| Automated browser tests (Playwright) | ✅ 29 scenarios: login, registration, password reset, products, inventory |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -24,7 +24,7 @@ The project is under active development. This section lists only what actually w
 | Editing, archiving and restoring products in the web platform | ✅ working |
 | Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working |
 | Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history; stock column on Products | ✅ working |
-| Sales: database, rules for selling the batch that expires first, whole sale or nothing | ✅ working in the backend, no API or screens yet |
+| Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working, no screens yet |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 

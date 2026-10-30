@@ -40,6 +40,10 @@ export function formatDay(day: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(parseDay(day))
 }
 
+export function formatMonthDay(day: string): string {
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(parseDay(day))
+}
+
 // A day as "2026-10-30", the format date inputs and the API use.
 function toDayString(moment: Date): string {
   const month = String(moment.getMonth() + 1).padStart(2, '0')

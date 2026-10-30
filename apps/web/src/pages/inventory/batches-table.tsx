@@ -1,6 +1,5 @@
 import { ClipboardCheck, Ellipsis, History, Trash2 } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -18,8 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { daysUntil, formatDay, formatMoney, formatQuantity } from '@/lib/format'
+import { formatDay, formatMoney, formatQuantity } from '@/lib/format'
 import type { Batch } from '@/lib/inventory-api'
+import { ExpiryBadge } from '@/pages/inventory/expiry-badge'
 
 export type BatchAction = 'write-off' | 'correct' | 'history'
 
@@ -38,28 +38,12 @@ function TableHeadings() {
   )
 }
 
-function expiryText(days: number): string {
-  if (days < -1) return `Expired ${-days} days ago`
-  if (days === -1) return 'Expired yesterday'
-  if (days === 0) return 'Expires today'
-  if (days === 1) return 'Expires tomorrow'
-  return `${days} days left`
-}
-
 function ExpiryCell({ batch }: { batch: Batch }) {
   if (!batch.expiry_date) return <Dash />
-  const { expiry_status: status } = batch
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span className="tabular-nums">{formatDay(batch.expiry_date)}</span>
-      {status === 'expired' && (
-        <Badge variant="destructive">{expiryText(daysUntil(batch.expiry_date))}</Badge>
-      )}
-      {status === 'expiring' && (
-        <Badge variant="secondary" className="bg-amber-100 text-amber-900">
-          {expiryText(daysUntil(batch.expiry_date))}
-        </Badge>
-      )}
+      <ExpiryBadge batch={batch} />
     </div>
   )
 }

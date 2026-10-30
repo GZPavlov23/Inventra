@@ -70,7 +70,8 @@ test('a new owner registers, confirms the email and gets an empty store', async 
 
   await page.goto('/login')
   await fillLogin(page, email, PASSWORD)
-  await expect(page.getByText('E2E Shop')).toBeVisible()
+  await expect(page.getByText('E2E Shop').first()).toBeVisible()
+  await expect(page.getByText('No sales yet')).toBeVisible()
 
   // Another store's products are not visible here.
   await page.goto('/products')
@@ -115,5 +116,5 @@ test('a forgotten password can be replaced through the emailed link', async ({ p
   await expect(page.getByText('Invalid email or password')).toBeVisible()
 
   await fillLogin(page, email, newPassword)
-  await expect(page.getByText('Forgetful Shop')).toBeVisible()
+  await expect(page.getByText('Forgetful Shop').first()).toBeVisible()
 })

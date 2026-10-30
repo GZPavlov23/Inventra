@@ -67,8 +67,9 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.72 0.12 166);
-    --chart-1: oklch(0.55 0.13 158);
-    --chart-2: oklch(0.7 0.12 175);
+    /* Series colors. Checked for color blindness and contrast on white with a validator. */
+    --chart-1: #0d7f64;
+    --chart-2: #d97706;
     --chart-3: oklch(0.6 0.1 220);
     --chart-4: oklch(0.8 0.12 120);
     --chart-5: oklch(0.75 0.13 75);

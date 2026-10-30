@@ -4,9 +4,9 @@ import { useState } from 'react'
 
 import { useCurrentUser } from '@/auth/use-auth'
 import { Pagination } from '@/components/pagination'
+import { StatTile } from '@/components/stat-tile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import {
   Empty,
   EmptyContent,
@@ -15,7 +15,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-params'
 import { daysAgo, formatMoney, today } from '@/lib/format'
@@ -152,21 +151,6 @@ export function SalesPage() {
 function marginNote(revenue?: string, profit?: string): string | undefined {
   if (!revenue || !profit || Number(revenue) === 0) return undefined
   return `Margin ${((Number(profit) / Number(revenue)) * 100).toFixed(1)}%`
-}
-
-function StatTile({ label, value, note }: { label: string; value?: string; note?: string }) {
-  return (
-    <Card className="gap-1 px-4" role="group" aria-label={label}>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      {value === undefined ? (
-        <Skeleton className="my-1 h-7 w-24" />
-      ) : (
-        <p className="text-2xl font-semibold tracking-tight">{value}</p>
-      )}
-      {/* Keeps all three tiles the same height. */}
-      <p className="min-h-4 text-xs text-muted-foreground">{note}</p>
-    </Card>
-  )
 }
 
 function NewSaleButton() {

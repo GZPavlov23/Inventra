@@ -26,6 +26,13 @@ export type BatchPage = {
   offset: number
 }
 
+export type InventorySummary = {
+  stock_value: string
+  expired_value: string
+  expired_batches: number
+  expiring_batches: number
+}
+
 export type BatchListParams = {
   search: string
   status: BatchStatus
@@ -74,6 +81,7 @@ export const inventoryApi = {
     if (search) query.set('search', search)
     return api<BatchPage>(`/batches?${query}`)
   },
+  summary: () => api<InventorySummary>('/batches/summary'),
   receive: (data: ReceiptInput) => api<Batch>('/batches', { method: 'POST', body: data }),
   writeOff: (batchId: number, data: WasteInput) =>
     api<Batch>(`/batches/${batchId}/waste`, { method: 'POST', body: data }),

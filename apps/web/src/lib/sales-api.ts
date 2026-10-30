@@ -41,6 +41,14 @@ export type SaleSummary = {
   profit: string
 }
 
+export type DailySales = {
+  day: string
+  sales: number
+  revenue: string
+  cost: string
+  profit: string
+}
+
 export type SaleInput = {
   items: { product_id: number; quantity: string; unit_price: string }[]
 }
@@ -66,5 +74,6 @@ export const salesApi = {
     return api<SalePage>(`/sales?${query}`)
   },
   summary: (period: SalePeriod) => api<SaleSummary>(`/sales/summary?${periodQuery(period)}`),
+  daily: (period: SalePeriod) => api<DailySales[]>(`/sales/daily?${periodQuery(period)}`),
   create: (data: SaleInput) => api<Sale>('/sales', { method: 'POST', body: data }),
 }

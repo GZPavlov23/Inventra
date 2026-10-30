@@ -13,7 +13,7 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 80 tests |
+| Automated backend tests (pytest) | ✅ 101 tests |
 | Automated browser tests (Playwright) | ✅ 14 scenarios: login, registration, password reset, products |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
@@ -22,7 +22,8 @@ The project is under active development. This section lists only what actually w
 | Products page: table with search, Active/Archived/All filter, sorting, pagination | ✅ working (real data from the API) |
 | Adding products in the web platform, with a category picker | ✅ working |
 | Editing, archiving and restoring products in the web platform | ✅ working |
-| Batches, deliveries, sales | ⏳ planned |
+| Batches and stock history: database, rules for receiving, waste and corrections | ✅ working in the backend, no API or screens yet |
+| Sales | ⏳ planned |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 

@@ -13,7 +13,7 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 180 tests |
+| Automated backend tests (pytest) | ✅ 199 tests |
 | Automated browser tests (Playwright) | ✅ 37 scenarios: login, registration, password reset, products, inventory, sales |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
@@ -26,6 +26,7 @@ The project is under active development. This section lists only what actually w
 | Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history; stock column on Products | ✅ working |
 | Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working |
 | Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns and CSV import are planned |
+| Dashboard data in the API: sales per day, stock value, expired and expiring stock | ✅ working, no page yet |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 
@@ -239,4 +240,4 @@ After running the seed script you can log in with:
 
 ## Demo data
 
-`scripts/seed_demo.py` creates a store named "Демо магазин (демо данни)" ("Demo store (demo data)") with 10 fictional products and batches whose expiry dates are counted from the day you run it, including one already expired. To replace aged demo batches with fresh ones, run the script with `--fresh-batches`; this deletes the demo store's batches and their history. Their barcodes start with `200`, a GS1 prefix reserved for in-store use that is never assigned to real retail products, so demo data can never be confused with a real scan.
+`scripts/seed_demo.py` creates a store named "Демо магазин (демо данни)" ("Demo store (demo data)") with 10 fictional products and batches whose expiry dates are counted from the day you run it, including one already expired, plus 8 weeks of invented past sales. To replace aged demo data with fresh data, run the script with `--fresh-demo`; this deletes the demo store's batches, sales and their history. Their barcodes start with `200`, a GS1 prefix reserved for in-store use that is never assigned to real retail products, so demo data can never be confused with a real scan.

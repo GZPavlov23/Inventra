@@ -22,6 +22,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
 import { marginPercent } from '@/lib/format'
 import { productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
+import { CategoryCombobox } from '@/pages/products/category-combobox'
 
 const EMPTY_PRODUCT: ProductInput = {
   name: '',
@@ -120,8 +121,8 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
             value={form.brand} onChange={(event) => update('brand', event.target.value)} />
         </Field>
         <Field id="category" label="Category" error={fieldErrors.category}>
-          <Input id="category" maxLength={80} aria-invalid={Boolean(fieldErrors.category)}
-            value={form.category} onChange={(event) => update('category', event.target.value)} />
+          <CategoryCombobox id="category" invalid={Boolean(fieldErrors.category)}
+            value={form.category} onChange={(category) => update('category', category)} />
         </Field>
       </div>
 

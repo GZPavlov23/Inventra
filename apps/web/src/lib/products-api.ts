@@ -50,5 +50,6 @@ export const productsApi = {
     if (search) query.set('search', search)
     return api<ProductPage>(`/products?${query}`)
   },
+  categories: () => api<string[]>('/products/categories'),
   create: (data: ProductInput) => api<Product>('/products', { method: 'POST', body: data }),
 }

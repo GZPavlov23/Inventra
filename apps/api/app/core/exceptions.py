@@ -59,6 +59,11 @@ class InsufficientStockError(DomainError):
     code = "insufficient_stock"
 
 
+class StockChangedError(DomainError):
+    status_code = 409
+    code = "stock_changed"
+
+
 class InvalidQuantityError(DomainError):
     status_code = 422
     code = "invalid_quantity"

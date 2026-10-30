@@ -14,6 +14,7 @@ from app.core.exceptions import (
     InvalidQuantityError,
     InvalidReceiptError,
     NotFoundError,
+    StockChangedError,
 )
 from app.models import Batch, InventoryMovement, MovementType, Product, ProductUnit, Store, User
 from app.repositories.inventory_repository import InventoryRepository
@@ -215,6 +216,37 @@ def test_adjustment_cannot_go_below_zero_or_be_zero(
     zero = AdjustmentCreate(quantity_delta=Decimal("0"), reason="Stocktaking")
     with pytest.raises(InvalidQuantityError):
         service.adjust(store.id, owner.id, batch.id, zero)
+
+
+def test_correction_based_on_an_old_number_is_refused(
+    service: InventoryService, db: Session, store: Store, owner: User, milk: Product
+) -> None:
+    batch = receive(service, store, owner, milk, "10")
+    # Someone counted 8 while the screen showed 10, so the correction is -2...
+    counted = AdjustmentCreate(
+        quantity_delta=Decimal("-2"), reason="Count", expected_quantity=Decimal("10")
+    )
+    # ...but a colleague threw away one item first.
+    waste = WasteCreate(quantity=Decimal("1"), reason=WasteReason.DAMAGED)
+    service.write_off(store.id, owner.id, batch.id, waste)
+
+    with pytest.raises(StockChangedError) as error:
+        service.adjust(store.id, owner.id, batch.id, counted)
+
+    assert "it now has 9" in error.value.message
+    db.refresh(batch)
+    assert batch.remaining_quantity == Decimal("9")
+    assert len(movements(db, batch)) == 2  # no history line for a refused change
+
+
+def test_correction_based_on_the_current_number_works(
+    service: InventoryService, store: Store, owner: User, milk: Product
+) -> None:
+    batch = receive(service, store, owner, milk, "10")
+    data = AdjustmentCreate(
+        quantity_delta=Decimal("-2"), reason="Count", expected_quantity=Decimal("10.000")
+    )
+    assert service.adjust(store.id, owner.id, batch.id, data).remaining_quantity == Decimal("8")
 
 
 # The rule everything else relies on

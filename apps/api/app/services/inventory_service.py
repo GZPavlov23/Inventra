@@ -15,6 +15,7 @@ from app.core.exceptions import (
     InvalidQuantityError,
     InvalidReceiptError,
     NotFoundError,
+    StockChangedError,
 )
 from app.models.batch import Batch
 from app.models.inventory_movement import InventoryMovement, MovementType
@@ -86,15 +87,18 @@ class InventoryService:
         self._ensure_whole_pieces(product, data.quantity)
         return self._apply(batch, actor_id, MovementType.WASTE, -data.quantity, data.reason.value)
 
-    def adjust(
-        self, store_id: int, actor_id: int, batch_id: int, data: AdjustmentCreate
-    ) -> Batch:
+    def adjust(self, store_id: int, actor_id: int, batch_id: int, data: AdjustmentCreate) -> Batch:
         batch, product = self._get_batch(store_id, batch_id)
         if data.quantity_delta == 0:
             raise InvalidQuantityError("The correction can't be zero")
         self._ensure_whole_pieces(product, data.quantity_delta)
         return self._apply(
-            batch, actor_id, MovementType.ADJUSTMENT, data.quantity_delta, data.reason
+            batch,
+            actor_id,
+            MovementType.ADJUSTMENT,
+            data.quantity_delta,
+            data.reason,
+            expected=data.expected_quantity,
         )
 
     def _apply(
@@ -104,12 +108,14 @@ class InventoryService:
         movement_type: MovementType,
         delta: Decimal,
         reason: str,
+        expected: Decimal | None = None,
     ) -> Batch:
-        if not self.inventory.change_remaining(batch, delta):
+        if not self.inventory.change_remaining(batch, delta, expected):
             self.session.rollback()
-            raise InsufficientStockError(
-                f"Only {batch.remaining_quantity.normalize():f} left in this batch"
-            )
+            left = f"{batch.remaining_quantity.normalize():f}"
+            if expected is not None and batch.remaining_quantity != expected:
+                raise StockChangedError(f"This batch changed meanwhile, it now has {left}")
+            raise InsufficientStockError(f"Only {left} left in this batch")
         self._record(batch, actor_id, movement_type, delta, reason)
         self.session.commit()
         return batch

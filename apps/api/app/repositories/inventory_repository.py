@@ -85,16 +85,21 @@ class InventoryRepository:
         self.session.add(entity)
         self.session.flush()
 
-    def change_remaining(self, batch: Batch, delta: Decimal) -> bool:
+    def change_remaining(
+        self, batch: Batch, delta: Decimal, expected: Decimal | None = None
+    ) -> bool:
         """Adds delta to the stock of a batch, only if the result isn't negative.
 
         Checking and changing happen in one SQL statement. PostgreSQL locks the row while it
         runs, so two simultaneous requests can't both use the same last items. Returns False
-        when there wasn't enough stock.
+        when there wasn't enough stock, or when the stock isn't the expected one anymore.
         """
+        conditions = [Batch.id == batch.id, Batch.remaining_quantity + delta >= 0]
+        if expected is not None:
+            conditions.append(Batch.remaining_quantity == expected)
         stmt = (
             update(Batch)
-            .where(Batch.id == batch.id, Batch.remaining_quantity + delta >= 0)
+            .where(*conditions)
             .values(remaining_quantity=Batch.remaining_quantity + delta)
         )
         changed = self.session.execute(stmt).rowcount == 1

@@ -194,6 +194,21 @@ def test_correction_needs_an_explanation(client: TestClient) -> None:
     assert Decimal(response.json()["remaining_quantity"]) == 7
 
 
+def test_correction_from_an_old_number_gets_its_own_code(client: TestClient) -> None:
+    batch = receive(client, make_product(client), "5")
+    assert waste(client, batch, "1").status_code == 200
+
+    response = client.post(
+        f"{URL}/{batch['id']}/adjustments",
+        json={"quantity_delta": "-1", "reason": "Count", "expected_quantity": "5"},
+    )
+    assert response.status_code == 409
+    assert response.json() == {
+        "code": "stock_changed",
+        "detail": "This batch changed meanwhile, it now has 4",
+    }
+
+
 # The list
 
 

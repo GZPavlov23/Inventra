@@ -6,21 +6,28 @@ Run from apps/api after `alembic upgrade head`:
 
 Safe to run many times: existing records are skipped, never duplicated.
 
+Expiry dates are counted from the day of seeding, so demo batches age. Before a presentation,
+replace them with fresh ones (this deletes the demo store's batches and their history):
+    macOS:   .venv/bin/python -m scripts.seed_demo --fresh-batches
+    Windows: .venv\\Scripts\\python -m scripts.seed_demo --fresh-batches
+
 It also creates a verified DEMO owner account (credentials below) for testing and for the jury.
 
 All data here is fictional DEMO data. Barcodes use the GS1 prefix 200, which is reserved for
 in-store use and never assigned to real retail products, so they can't clash with a real scan.
 """
 
+import sys
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.batch import Batch
+from app.models.inventory_movement import InventoryMovement
 from app.models.product import Product, ProductUnit
 from app.models.store import Store
 from app.models.user import User, UserRole
@@ -134,6 +141,14 @@ def seed_products(session: Session, store_id: int) -> None:
     print(f"Products: {created} created, {skipped} already existed")
 
 
+def delete_batches(session: Session, store_id: int) -> None:
+    # Only ever called with the demo store. The history goes first, because it points at batches.
+    session.execute(delete(InventoryMovement).where(InventoryMovement.store_id == store_id))
+    session.execute(delete(Batch).where(Batch.store_id == store_id))
+    session.commit()
+    print("Deleted the demo store's batches")
+
+
 def seed_batches(session: Session, store_id: int, owner_id: int) -> None:
     if session.scalar(select(Batch.id).where(Batch.store_id == store_id).limit(1)) is not None:
         print("Batches already exist")
@@ -175,6 +190,8 @@ def main() -> None:
         store = get_or_create_store(session)
         owner = get_or_create_owner(session, store)
         seed_products(session, store.id)
+        if "--fresh-batches" in sys.argv:
+            delete_batches(session, store.id)
         seed_batches(session, store.id, owner.id)
 
     print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")

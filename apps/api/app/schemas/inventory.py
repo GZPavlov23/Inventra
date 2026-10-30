@@ -52,6 +52,11 @@ class AdjustmentCreate(BaseModel):
         Decimal, Field(ge=-MAX_QUANTITY, le=MAX_QUANTITY, max_digits=12, decimal_places=3)
     ]
     reason: Reason
+    # The stock the client based its calculation on. If someone changed the batch in the
+    # meantime, the correction is refused instead of being applied to a different number.
+    expected_quantity: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=3)] | None = (
+        None
+    )
 
 
 class BatchProduct(BaseModel):

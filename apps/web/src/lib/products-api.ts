@@ -52,4 +52,6 @@ export const productsApi = {
   },
   categories: () => api<string[]>('/products/categories'),
   create: (data: ProductInput) => api<Product>('/products', { method: 'POST', body: data }),
+  update: (id: number, data: Partial<ProductInput> & { active?: boolean }) =>
+    api<Product>(`/products/${id}`, { method: 'PATCH', body: data }),
 }

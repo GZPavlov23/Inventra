@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -13,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
 import { marginPercent } from '@/lib/format'
-import { productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
+import { type Product, productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
 import { CategoryCombobox } from '@/pages/products/category-combobox'
 
 const EMPTY_PRODUCT: ProductInput = {
@@ -40,17 +38,28 @@ const UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'l', label: 'Liters' },
 ]
 
-export function AddProductDialog() {
-  const [open, setOpen] = useState(false)
+function toFormValues(product: Product): ProductInput {
+  return {
+    name: product.name,
+    brand: product.brand ?? '',
+    category: product.category ?? '',
+    barcode: product.barcode ?? '',
+    unit: product.unit,
+    purchase_price: product.purchase_price,
+    sale_price: product.sale_price,
+  }
+}
 
+type ProductFormDialogProps = {
+  // With a product it edits that product; without one it creates a new product.
+  product?: Product
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function ProductFormDialog({ product, open, onOpenChange }: ProductFormDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus />
-          Add product
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A click outside doesn't close it, so a filled-in form isn't lost by accident.
           On small screens it scrolls, so the buttons can always be reached. */}
       <DialogContent
@@ -58,48 +67,55 @@ export function AddProductDialog() {
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Add product</DialogTitle>
-          <DialogDescription>Add a product to your catalog. Only the marked fields are required.</DialogDescription>
+          <DialogTitle>{product ? 'Edit product' : 'Add product'}</DialogTitle>
+          <DialogDescription>
+            {product
+              ? 'Change the details of this product.'
+              : 'Add a product to your catalog. Only the marked fields are required.'}
+          </DialogDescription>
         </DialogHeader>
-        {/* The form only exists while the dialog is open, so it always starts empty. */}
-        <AddProductForm onClose={() => setOpen(false)} />
+        {/* The form only exists while the dialog is open, so it always starts from fresh values. */}
+        <ProductForm key={product?.id} product={product} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
 }
 
-function AddProductForm({ onClose }: { onClose: () => void }) {
+function ProductForm({ product, onClose }: { product?: Product; onClose: () => void }) {
   const { store } = useCurrentUser()
   const queryClient = useQueryClient()
-  const [form, setForm] = useState<ProductInput>(EMPTY_PRODUCT)
+  const initialValues = product ? toFormValues(product) : EMPTY_PRODUCT
+  const [form, setForm] = useState<ProductInput>(initialValues)
 
-  const createProduct = useMutation({
-    mutationFn: productsApi.create,
-    onSuccess: (product) => {
-      // Marks every product list as out of date, so the table refetches and shows the new row.
+  const saveProduct = useMutation({
+    mutationFn: (values: ProductInput) =>
+      product ? productsApi.update(product.id, values) : productsApi.create(values),
+    onSuccess: (saved) => {
+      // Marks every product list as out of date, so the table refetches and shows the change.
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success(`${product.name} was added`)
+      toast.success(product ? `${saved.name} was saved` : `${saved.name} was added`)
       onClose()
     },
   })
 
   const update = (field: keyof ProductInput, value: string) => {
     setForm((current) => ({ ...current, [field]: value }))
-    if (createProduct.isError) createProduct.reset()
+    if (saveProduct.isError) saveProduct.reset()
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    createProduct.mutate(form)
+    saveProduct.mutate(form)
   }
 
-  const error: ApiError | null = createProduct.error ? toApiError(createProduct.error) : null
-  // The only conflict a new product can have is a barcode that is already taken.
+  const error: ApiError | null = saveProduct.error ? toApiError(saveProduct.error) : null
+  // The only conflict a product can have is a barcode that is already taken.
   const fieldErrors = error?.code === 'conflict' ? { barcode: error.message } : (error?.fieldErrors ?? {})
   const showGeneralError = error !== null && Object.keys(fieldErrors).length === 0
 
   const margin =
     form.purchase_price && form.sale_price ? marginPercent(form.purchase_price, form.sale_price) : null
+  const hasChanges = JSON.stringify(form) !== JSON.stringify(initialValues)
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -170,9 +186,9 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit" disabled={createProduct.isPending}>
-          {createProduct.isPending && <Spinner />}
-          Add product
+        <Button type="submit" disabled={saveProduct.isPending || (Boolean(product) && !hasChanges)}>
+          {saveProduct.isPending && <Spinner />}
+          {product ? 'Save changes' : 'Add product'}
         </Button>
       </DialogFooter>
     </form>

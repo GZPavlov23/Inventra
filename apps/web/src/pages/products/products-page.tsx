@@ -1,7 +1,8 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Package, Search, SearchX } from 'lucide-react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ChevronLeft, ChevronRight, Package, Plus, Search, SearchX } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { toast } from 'sonner'
 
 import { useCurrentUser } from '@/auth/use-auth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -17,8 +18,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { productsApi, type ProductStatus } from '@/lib/products-api'
-import { AddProductDialog } from '@/pages/products/add-product-dialog'
+import { toApiError } from '@/lib/api'
+import { type Product, productsApi, type ProductStatus } from '@/lib/products-api'
+import { ProductFormDialog } from '@/pages/products/product-form-dialog'
 import { ProductsTable, ProductsTableSkeleton } from '@/pages/products/products-table'
 
 const PAGE_SIZE = 20
@@ -73,6 +75,42 @@ export function ProductsPage() {
     placeholderData: keepPreviousData,
   })
 
+  // Archiving the last row of the last page would leave an empty page: go back to the last
+  // page that still has rows. (Also covers a hand-typed ?page=99.)
+  const data = products.data
+  const pageIsPastTheEnd = data !== undefined && data.items.length === 0 && data.total > 0
+  useEffect(() => {
+    if (!pageIsPastTheEnd) return
+    const lastPage = Math.ceil(data.total / PAGE_SIZE)
+    updateParams({ page: lastPage > 1 ? String(lastPage) : null })
+  }, [pageIsPastTheEnd, data, updateParams])
+
+  const queryClient = useQueryClient()
+  const setActive = useMutation({
+    mutationFn: ({ product, active }: { product: Product; active: boolean }) =>
+      productsApi.update(product.id, { active }),
+    onSuccess: (_, { product, active }) => {
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
+      if (active) {
+        toast.success(`${product.name} was restored`)
+      } else {
+        // Archiving is safe to undo, so one click does it and the toast offers the way back.
+        toast.success(`${product.name} was archived`, {
+          action: { label: 'Undo', onClick: () => setActive.mutate({ product, active: true }) },
+        })
+      }
+    },
+    onError: (error) => toast.error(toApiError(error).message),
+  })
+
+  // Kept separately from `editing`, so the form doesn't change during the closing animation.
+  const [editing, setEditing] = useState<Product | undefined>()
+  const [editOpen, setEditOpen] = useState(false)
+  const openEdit = (product: Product) => {
+    setEditing(product)
+    setEditOpen(true)
+  }
+
   const clearFilters = () => {
     setSearchInput('')
     updateParams({ q: null, status: null, page: null })
@@ -85,7 +123,7 @@ export function ProductsPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
           <p className="text-sm text-muted-foreground">Your product catalog: names, barcodes and prices.</p>
         </div>
-        <AddProductDialog />
+        <AddProductButton />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -149,7 +187,7 @@ export function ProductsPage() {
               <EmptyDescription>Add your first product to start building your catalog.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <AddProductDialog />
+              <AddProductButton />
             </EmptyContent>
           </Empty>
         )
@@ -160,7 +198,12 @@ export function ProductsPage() {
             className={`rounded-lg border transition-opacity ${products.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={products.isFetching}
           >
-            <ProductsTable products={products.data.items} currency={store.currency} />
+            <ProductsTable
+              products={products.data.items}
+              currency={store.currency}
+              onEdit={openEdit}
+              onSetActive={(product, active) => setActive.mutate({ product, active })}
+            />
           </div>
           <Pagination
             page={page}
@@ -169,7 +212,22 @@ export function ProductsPage() {
           />
         </>
       )}
+
+      <ProductFormDialog product={editing} open={editOpen} onOpenChange={setEditOpen} />
     </div>
+  )
+}
+
+function AddProductButton() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>
+        <Plus />
+        Add product
+      </Button>
+      <ProductFormDialog open={open} onOpenChange={setOpen} />
+    </>
   )
 }
 

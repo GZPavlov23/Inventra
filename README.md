@@ -13,8 +13,8 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 199 tests |
-| Automated browser tests (Playwright) | ✅ 42 scenarios: login, registration, password reset, dashboard, products, inventory, sales |
+| Automated backend tests (pytest) | ✅ 224 tests |
+| Automated browser tests (Playwright) | ✅ 50 scenarios: login, registration, password reset, dashboard, products, inventory, sales |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -26,7 +26,8 @@ The project is under active development. This section lists only what actually w
 | Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history; stock column on Products | ✅ working |
 | Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working |
 | Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns and CSV import are planned |
-| Dashboard page: revenue and profit chart, stock value, expired and expiring stock, what needs attention | ✅ working (real data from the API) |
+| Dashboard page: revenue and profit chart, week over week comparison, stock value, expired and expiring stock, what needs attention | ✅ working (real data from the API) |
+| Reports on the dashboard: waste by reason, products running out, top products, sales by category | ✅ working |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 
@@ -240,4 +241,4 @@ After running the seed script you can log in with:
 
 ## Demo data
 
-`scripts/seed_demo.py` creates a store named "Демо магазин (демо данни)" ("Demo store (demo data)") with 10 fictional products and batches whose expiry dates are counted from the day you run it, including one already expired, plus 8 weeks of invented past sales. To replace aged demo data with fresh data, run the script with `--fresh-demo`; this deletes the demo store's batches, sales and their history. Their barcodes start with `200`, a GS1 prefix reserved for in-store use that is never assigned to real retail products, so demo data can never be confused with a real scan.
+`scripts/seed_demo.py` creates a store named "Демо магазин (демо данни)" ("Demo store (demo data)") with 10 fictional products and batches whose expiry dates are counted from the day you run it, including one already expired, plus 8 weeks of invented past sales and write-offs. To replace aged demo data with fresh data, run the script with `--fresh-demo`; this deletes the demo store's batches, sales and their history. Their barcodes start with `200`, a GS1 prefix reserved for in-store use that is never assigned to real retail products, so demo data can never be confused with a real scan.

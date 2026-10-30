@@ -13,7 +13,7 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 224 tests |
+| Automated backend tests (pytest) | ✅ 289 tests |
 | Automated browser tests (Playwright) | ✅ 50 scenarios: login, registration, password reset, dashboard, products, inventory, sales |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
@@ -25,9 +25,10 @@ The project is under active development. This section lists only what actually w
 | Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working |
 | Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history; stock column on Products | ✅ working |
 | Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working |
-| Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns and CSV import are planned |
+| Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns are planned |
 | Dashboard page: revenue and profit chart, week over week comparison, stock value, expired and expiring stock, what needs attention | ✅ working (real data from the API) |
 | Reports on the dashboard: waste by reason, products running out, top products, sales by category | ✅ working |
+| CSV import of sales in the API: current sales that take stock, and old history for the forecast, with a check before anything is written | ✅ working, no screen yet |
 | Demand forecasting (ML) | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 

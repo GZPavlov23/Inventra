@@ -25,6 +25,11 @@ from app.repositories.product_repository import ProductRepository
 from app.schemas.inventory import AdjustmentCreate, BatchStatus, ReceiptCreate, WasteCreate
 
 
+def ensure_whole_pieces(product: Product, quantity: Decimal) -> None:
+    if product.unit == ProductUnit.PIECE and quantity != quantity.to_integral_value():
+        raise InvalidQuantityError(f"'{product.name}' is counted in whole pieces")
+
+
 class InventoryService:
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -62,7 +67,7 @@ class InventoryService:
             raise NotFoundError(f"Product {data.product_id} was not found")
         if not product.active:
             raise ConflictError(f"'{product.name}' is archived. Restore it before receiving stock")
-        self._ensure_whole_pieces(product, data.quantity)
+        ensure_whole_pieces(product, data.quantity)
         if data.expiry_date is not None and data.expiry_date < date.today():
             raise InvalidReceiptError("The expiry date is in the past")
 
@@ -84,14 +89,14 @@ class InventoryService:
 
     def write_off(self, store_id: int, actor_id: int, batch_id: int, data: WasteCreate) -> Batch:
         batch, product = self._get_batch(store_id, batch_id)
-        self._ensure_whole_pieces(product, data.quantity)
+        ensure_whole_pieces(product, data.quantity)
         return self._apply(batch, actor_id, MovementType.WASTE, -data.quantity, data.reason.value)
 
     def adjust(self, store_id: int, actor_id: int, batch_id: int, data: AdjustmentCreate) -> Batch:
         batch, product = self._get_batch(store_id, batch_id)
         if data.quantity_delta == 0:
             raise InvalidQuantityError("The correction can't be zero")
-        self._ensure_whole_pieces(product, data.quantity_delta)
+        ensure_whole_pieces(product, data.quantity_delta)
         return self._apply(
             batch,
             actor_id,
@@ -145,8 +150,3 @@ class InventoryService:
         if batch is None:
             raise NotFoundError(f"Batch {batch_id} was not found")
         return batch, self.products.get(store_id, batch.product_id)
-
-    @staticmethod
-    def _ensure_whole_pieces(product: Product, quantity: Decimal) -> None:
-        if product.unit == ProductUnit.PIECE and quantity != quantity.to_integral_value():
-            raise InvalidQuantityError(f"'{product.name}' is counted in whole pieces")

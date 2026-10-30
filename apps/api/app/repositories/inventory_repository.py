@@ -81,6 +81,27 @@ class InventoryRepository:
         )
         return list(self.session.scalars(stmt)), total or 0
 
+    def lock_sellable_batches(self, store_id: int, product_id: int, today: date) -> list[Batch]:
+        """The batches a product can be sold from, the one that expires first at the front.
+
+        FOR UPDATE keeps the rows locked until the transaction ends, so a simultaneous sale waits
+        here and then sees what this one left. populate_existing replaces any older values this
+        session remembers with the ones read under the lock.
+        """
+        stmt = (
+            select(Batch)
+            .where(
+                Batch.store_id == store_id,
+                Batch.product_id == product_id,
+                Batch.remaining_quantity > 0,
+                or_(Batch.expiry_date.is_(None), Batch.expiry_date >= today),
+            )
+            .order_by(Batch.expiry_date.asc().nulls_last(), Batch.received_at, Batch.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return list(self.session.scalars(stmt))
+
     def add(self, entity: Batch | InventoryMovement) -> None:
         self.session.add(entity)
         self.session.flush()

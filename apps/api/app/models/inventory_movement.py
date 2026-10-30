@@ -13,6 +13,7 @@ class MovementType(StrEnum):
     RECEIPT = "receipt"
     ADJUSTMENT = "adjustment"
     WASTE = "waste"
+    SALE = "sale"
 
 
 class InventoryMovement(Base):
@@ -22,11 +23,16 @@ class InventoryMovement(Base):
     __table_args__ = (
         CheckConstraint("quantity_delta <> 0", name="quantity_delta_not_zero"),
         CheckConstraint(
-            "(type <> 'receipt' OR quantity_delta > 0) AND (type <> 'waste' OR quantity_delta < 0)",
+            "(type <> 'receipt' OR quantity_delta > 0) "
+            "AND (type NOT IN ('waste', 'sale') OR quantity_delta < 0)",
             name="quantity_delta_matches_type",
         ),
-        # Stock must never change without an explanation, except when goods arrive.
-        CheckConstraint("type = 'receipt' OR reason IS NOT NULL", name="reason_required"),
+        # Stock must never change without an explanation. Goods arriving or being sold explain
+        # themselves; a sale's explanation is the sale line it points to.
+        CheckConstraint(
+            "type IN ('receipt', 'sale') OR reason IS NOT NULL", name="reason_required"
+        ),
+        CheckConstraint("(type = 'sale') = (sale_item_id IS NOT NULL)", name="sale_has_item"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -34,6 +40,7 @@ class InventoryMovement(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     batch_id: Mapped[int] = mapped_column(ForeignKey("batches.id"), index=True)
     actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    sale_item_id: Mapped[int | None] = mapped_column(ForeignKey("sale_items.id"), index=True)
 
     type: Mapped[MovementType] = mapped_column(
         Enum(

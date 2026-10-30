@@ -17,12 +17,19 @@ from app.core.exceptions import (
     NotFoundError,
     StockChangedError,
 )
+from app.core.money import to_cents
 from app.models.batch import Batch
 from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product, ProductUnit
 from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.product_repository import ProductRepository
-from app.schemas.inventory import AdjustmentCreate, BatchStatus, ReceiptCreate, WasteCreate
+from app.schemas.inventory import (
+    AdjustmentCreate,
+    BatchStatus,
+    InventorySummary,
+    ReceiptCreate,
+    WasteCreate,
+)
 
 
 def ensure_whole_pieces(product: Product, quantity: Decimal) -> None:
@@ -53,6 +60,17 @@ class InventoryService:
             search=search,
             limit=limit,
             offset=offset,
+        )
+
+    def summarize(self, store_id: int) -> InventorySummary:
+        stock_value, expired_value, expired_batches, expiring_batches = self.inventory.summarize(
+            store_id, date.today()
+        )
+        return InventorySummary(
+            stock_value=to_cents(stock_value),
+            expired_value=to_cents(expired_value),
+            expired_batches=expired_batches,
+            expiring_batches=expiring_batches,
         )
 
     def list_movements(

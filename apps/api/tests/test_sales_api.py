@@ -65,7 +65,13 @@ def ids(response) -> list[int]:
 
 @pytest.mark.parametrize(
     ("method", "path"),
-    [("get", URL), ("post", URL), ("get", f"{URL}/summary"), ("get", f"{URL}/1")],
+    [
+        ("get", URL),
+        ("post", URL),
+        ("get", f"{URL}/summary"),
+        ("get", f"{URL}/daily"),
+        ("get", f"{URL}/1"),
+    ],
 )
 def test_every_endpoint_requires_login(anon_client: TestClient, method: str, path: str) -> None:
     assert anon_client.request(method, path, json={}).status_code == 401
@@ -322,3 +328,65 @@ def test_summary_rounds_a_line_from_two_batches_like_the_sale_does(client: TestC
 
     assert sale["cost"] == "0.01"
     assert client.get(f"{URL}/summary").json()["cost"] == "0.01"
+
+
+# Sales per day
+
+
+def daily(client: TestClient, first: int, last: int):
+    return client.get(
+        f"{URL}/daily",
+        params={"date_from": in_days(first).isoformat(), "date_to": in_days(last).isoformat()},
+    )
+
+
+def test_daily_has_every_day_of_the_period(client: TestClient, db: Session) -> None:
+    milk = stocked(client)
+    sold(client, (milk, "1"))
+    sold(client, (milk, "2"))
+    old = sold(client, (milk, "1"))
+    backdate(db, old, 2)
+
+    days = daily(client, -3, 0).json()
+
+    assert [day["day"] for day in days] == [in_days(n).isoformat() for n in (-3, -2, -1, 0)]
+    assert [day["sales"] for day in days] == [0, 1, 0, 2]
+    assert Decimal(days[0]["revenue"]) == 0
+    assert days[3]["revenue"] == "4.77"
+    assert days[3]["cost"] == "3.30"
+    assert days[3]["profit"] == "1.47"
+
+
+def test_daily_adds_up_to_the_summary_of_the_same_period(client: TestClient, db: Session) -> None:
+    bananas = make_product(client, "Bananas", unit="kg", sale_price="1.89", purchase_price="1.23")
+    receive(client, bananas, "1.111", purchase_price="1.23")
+    receive(client, bananas, "5", purchase_price="1.27")
+    backdate(db, sold(client, (bananas, "0.750")), 1)
+    sold(client, (bananas, "0.777"))
+    sold(client, (bananas, "0.125"))
+
+    days = daily(client, -1, 0).json()
+    period = {"date_from": in_days(-1).isoformat(), "date_to": in_days(0).isoformat()}
+    summary = client.get(f"{URL}/summary", params=period).json()
+
+    assert sum(day["sales"] for day in days) == summary["sales"]
+    for field in ("revenue", "cost", "profit"):
+        assert sum(Decimal(day[field]) for day in days) == Decimal(summary[field])
+
+
+def test_daily_period_must_make_sense(client: TestClient) -> None:
+    response = daily(client, 0, -1)
+    assert (response.status_code, response.json()["code"]) == (422, "invalid_period")
+    assert daily(client, -366, 0).status_code == 422
+    assert daily(client, -365, 0).status_code == 200
+    assert client.get(f"{URL}/daily").status_code == 422
+
+
+def test_daily_shows_only_this_store(client: TestClient, db: Session, owner: User) -> None:
+    sold(client, (stocked(client), "1"))
+    other_store = Store(name="Someone else's store")
+    db.add(other_store)
+    db.flush()
+    owner.store_id = other_store.id
+    db.commit()
+    assert [day["sales"] for day in daily(client, 0, 0).json()] == [0]

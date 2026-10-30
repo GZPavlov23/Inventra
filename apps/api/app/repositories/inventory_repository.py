@@ -63,6 +63,22 @@ class InventoryRepository:
         )
         return list(self.session.scalars(stmt)), total or 0
 
+    def summarize(self, store_id: int, today: date) -> tuple[Decimal, Decimal, int, int]:
+        """Value of good stock, value of expired stock, expired and expiring batch counts."""
+        value = Batch.remaining_quantity * Batch.purchase_price
+        expired = Batch.expiry_date < today
+        soon = today + timedelta(days=EXPIRING_SOON_DAYS)
+        stmt = select(
+            func.coalesce(func.sum(value).filter(or_(Batch.expiry_date.is_(None), ~expired)), 0),
+            func.coalesce(func.sum(value).filter(expired), 0),
+            func.count().filter(expired),
+            func.count().filter(Batch.expiry_date.between(today, soon)),
+        ).where(Batch.store_id == store_id, Batch.remaining_quantity > 0)
+        stock_value, expired_value, expired_batches, expiring_batches = self.session.execute(
+            stmt
+        ).one()
+        return stock_value, expired_value, expired_batches, expiring_batches
+
     def list_movements(
         self, batch_id: int, *, limit: int, offset: int
     ) -> tuple[list[InventoryMovement], int]:

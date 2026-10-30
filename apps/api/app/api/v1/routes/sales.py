@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentStore, CurrentUser, SaleServiceDep
 from app.schemas.common import ErrorResponse
-from app.schemas.sale import SaleCreate, SalePage, SaleRead, SaleSummary
+from app.schemas.sale import DailySales, SaleCreate, SalePage, SaleRead, SaleSummary
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -35,7 +35,7 @@ def list_sales(
     )
 
 
-# Declared before /{sale_id}, otherwise "summary" would be read as a sale id.
+# Declared before /{sale_id}, otherwise "summary" and "daily" would be read as sale ids.
 @router.get("/summary", response_model=SaleSummary)
 def summarize_sales(
     store: CurrentStore,
@@ -45,6 +45,17 @@ def summarize_sales(
 ) -> SaleSummary:
     """Number of sales, revenue, cost and profit of a whole period."""
     return service.summarize(store.id, date_from=date_from, date_to=date_to)
+
+
+@router.get("/daily", response_model=list[DailySales])
+def daily_sales(
+    store: CurrentStore,
+    service: SaleServiceDep,
+    date_from: date = Query(description="First day, included"),
+    date_to: date = Query(description="Last day, included"),
+) -> list[DailySales]:
+    """One row for every day of the period, also for days without sales."""
+    return service.daily(store.id, date_from=date_from, date_to=date_to)
 
 
 @router.post("", response_model=SaleRead, status_code=201, responses={**NOT_FOUND, **CONFLICT})

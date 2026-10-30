@@ -6,10 +6,10 @@ Run from apps/api after `alembic upgrade head`:
 
 Safe to run many times: existing records are skipped, never duplicated.
 
-Expiry dates are counted from the day of seeding, so demo batches age. Before a presentation,
-replace them with fresh ones (this deletes the demo store's batches and their history):
-    macOS:   .venv/bin/python -m scripts.seed_demo --fresh-batches
-    Windows: .venv\\Scripts\\python -m scripts.seed_demo --fresh-batches
+Dates are counted from the day of seeding, so demo data ages. Before a presentation, replace it
+with fresh data (this deletes the demo store's batches, sales and their history):
+    macOS:   .venv/bin/python -m scripts.seed_demo --fresh-demo
+    Windows: .venv\\Scripts\\python -m scripts.seed_demo --fresh-demo
 
 It also creates a verified DEMO owner account (credentials below) for testing and for the jury.
 
@@ -17,8 +17,9 @@ All data here is fictional DEMO data. Barcodes use the GS1 prefix 200, which is 
 in-store use and never assigned to real retail products, so they can't clash with a real scan.
 """
 
+import random
 import sys
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 
 from sqlalchemy import delete, select
@@ -27,8 +28,9 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.batch import Batch
-from app.models.inventory_movement import InventoryMovement
+from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product, ProductUnit
+from app.models.sale import Sale, SaleItem
 from app.models.store import Store
 from app.models.user import User, UserRole
 from app.repositories.product_repository import ProductRepository
@@ -75,6 +77,13 @@ DEMO_BATCHES = [
     ("Банани", "14.500", 5),
     ("Домати", "9.750", 4),
 ]
+
+# How many weeks of invented sales the demo store has.
+DEMO_SALES_WEEKS = 8
+# Sales per day, Monday to Sunday: small stores are busiest before and on the weekend.
+DEMO_SALES_PER_DAY = (9, 8, 9, 10, 14, 17, 12)
+# Always the same numbers, so the demo doesn't change between runs.
+DEMO_RANDOM_SEED = 2026
 
 
 def get_or_create_store(session: Session) -> Store:
@@ -141,12 +150,13 @@ def seed_products(session: Session, store_id: int) -> None:
     print(f"Products: {created} created, {skipped} already existed")
 
 
-def delete_batches(session: Session, store_id: int) -> None:
-    # Only ever called with the demo store. The history goes first, because it points at batches.
+def delete_demo_stock(session: Session, store_id: int) -> None:
+    # Only ever called with the demo store. History goes first, because it points at the rest.
     session.execute(delete(InventoryMovement).where(InventoryMovement.store_id == store_id))
+    session.execute(delete(Sale).where(Sale.store_id == store_id))
     session.execute(delete(Batch).where(Batch.store_id == store_id))
     session.commit()
-    print("Deleted the demo store's batches")
+    print("Deleted the demo store's batches and sales")
 
 
 def seed_batches(session: Session, store_id: int, owner_id: int) -> None:
@@ -185,14 +195,118 @@ def seed_batches(session: Session, store_id: int, owner_id: int) -> None:
     print(f"Batches: {created} created")
 
 
+def seed_sales(session: Session, store_id: int, owner_id: int) -> None:
+    """Invented past sales, so reports and charts have something to show.
+
+    The sold goods come from old batches that are used up, so today's stock stays as it is.
+    Records are written directly, because the app only records sales as they happen.
+    """
+    today_start = datetime.combine(date.today(), time.min).astimezone()
+    stmt = select(Sale.id).where(Sale.store_id == store_id, Sale.sold_at < today_start).limit(1)
+    if session.scalar(stmt) is not None:
+        print("Sales history already exists")
+        return
+
+    stmt = select(Product).where(Product.store_id == store_id, Product.active)
+    products = list(session.scalars(stmt.order_by(Product.id)))
+    if not products:
+        return
+
+    rng = random.Random(DEMO_RANDOM_SEED)
+    first_day = date.today() - timedelta(weeks=DEMO_SALES_WEEKS)
+    received_at = datetime.combine(first_day - timedelta(days=1), time(7)).astimezone()
+
+    sales: list[tuple[datetime, list[tuple[Product, Decimal]]]] = []
+    for offset in range(DEMO_SALES_WEEKS * 7):
+        day = first_day + timedelta(days=offset)
+        for _ in range(DEMO_SALES_PER_DAY[day.weekday()]):
+            moment = time(rng.randint(8, 19), rng.randint(0, 59))
+            lines = [
+                (product, demo_quantity(rng, product))
+                for product in rng.sample(products, rng.randint(1, 3))
+            ]
+            sales.append((datetime.combine(day, moment).astimezone(), lines))
+    sales.sort(key=lambda sale: sale[0])
+
+    # One used-up batch per product, large enough for everything sold from it.
+    sold: dict[int, Decimal] = {}
+    for _, lines in sales:
+        for product, quantity in lines:
+            sold[product.id] = sold.get(product.id, Decimal(0)) + quantity
+
+    batches: dict[int, Batch] = {}
+    for product in products:
+        if product.id not in sold:
+            continue
+        batch = Batch(
+            store_id=store_id,
+            product_id=product.id,
+            expiry_date=date.today() - timedelta(days=1),
+            received_at=received_at,
+            received_quantity=sold[product.id],
+            remaining_quantity=0,
+            purchase_price=product.purchase_price,
+        )
+        session.add(batch)
+        session.flush()
+        batches[product.id] = batch
+        session.add(
+            InventoryMovement(
+                store_id=store_id,
+                product_id=product.id,
+                batch_id=batch.id,
+                actor_id=owner_id,
+                type=MovementType.RECEIPT,
+                quantity_delta=sold[product.id],
+                occurred_at=received_at,
+            )
+        )
+
+    for moment, lines in sales:
+        sale = Sale(store_id=store_id, actor_id=owner_id, sold_at=moment)
+        session.add(sale)
+        session.flush()
+        for product, quantity in lines:
+            item = SaleItem(
+                store_id=store_id,
+                sale_id=sale.id,
+                product_id=product.id,
+                quantity=quantity,
+                unit_price=product.sale_price,
+            )
+            session.add(item)
+            session.flush()
+            session.add(
+                InventoryMovement(
+                    store_id=store_id,
+                    product_id=product.id,
+                    batch_id=batches[product.id].id,
+                    actor_id=owner_id,
+                    type=MovementType.SALE,
+                    quantity_delta=-quantity,
+                    sale_item_id=item.id,
+                    occurred_at=moment,
+                )
+            )
+    session.commit()
+    print(f"Sales history: {len(sales)} demo sales created")
+
+
+def demo_quantity(rng: random.Random, product: Product) -> Decimal:
+    if product.unit == ProductUnit.PIECE:
+        return Decimal(rng.randint(1, 3))
+    return Decimal(rng.randint(250, 1500)).scaleb(-3).quantize(Decimal("0.001"))
+
+
 def main() -> None:
     with SessionLocal() as session:
         store = get_or_create_store(session)
         owner = get_or_create_owner(session, store)
         seed_products(session, store.id)
-        if "--fresh-batches" in sys.argv:
-            delete_batches(session, store.id)
+        if "--fresh-demo" in sys.argv:
+            delete_demo_stock(session, store.id)
         seed_batches(session, store.id, owner.id)
+        seed_sales(session, store.id, owner.id)
 
     print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")
 

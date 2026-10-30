@@ -72,3 +72,8 @@ class InvalidQuantityError(DomainError):
 class InvalidReceiptError(DomainError):
     status_code = 422
     code = "invalid_receipt"
+
+
+class InvalidPeriodError(DomainError):
+    status_code = 422
+    code = "invalid_period"

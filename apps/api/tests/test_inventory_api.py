@@ -82,6 +82,7 @@ def ids(response) -> list[int]:
     [
         ("get", URL),
         ("post", URL),
+        ("get", f"{URL}/summary"),
         ("post", f"{URL}/1/waste"),
         ("post", f"{URL}/1/adjustments"),
         ("get", f"{URL}/1/movements"),
@@ -361,3 +362,47 @@ def test_unit_is_locked_once_a_product_has_batches(client: TestClient) -> None:
 
     # Saving the form with the same unit is not a change.
     assert client.patch(url, json={"unit": "pcs", "name": "Fresh milk"}).status_code == 200
+
+
+# Summary
+
+
+def test_empty_store_has_a_zero_summary(client: TestClient) -> None:
+    summary = client.get(f"{URL}/summary").json()
+    assert Decimal(summary["stock_value"]) == Decimal(summary["expired_value"]) == 0
+    assert summary["expired_batches"] == summary["expiring_batches"] == 0
+
+
+def test_summary_separates_good_expiring_and_expired_stock(client: TestClient, db: Session) -> None:
+    product = make_product(client)
+    receive(client, product, "10", purchase_price="1.00")  # no expiry date: 10.00
+    receive(client, product, "2", in_days(0), purchase_price="1.50")  # expiring today: 3.00
+    receive(client, product, "4", in_days(EXPIRING_SOON_DAYS), purchase_price="2.00")  # 8.00
+    receive(client, product, "1", in_days(EXPIRING_SOON_DAYS + 1), purchase_price="5.00")  # 5.00
+
+    expired = receive(client, product, "3", in_days(1), purchase_price="2.50")  # 7.50
+    db.get(Batch, expired["id"]).expiry_date = in_days(-1)
+    db.flush()
+
+    # Used up, so it doesn't count at all.
+    empty = receive(client, product, "1", in_days(1), purchase_price="9.00")
+    assert waste(client, empty, "1").status_code == 200
+
+    summary = client.get(f"{URL}/summary").json()
+    assert summary == {
+        "stock_value": "26.00",
+        "expired_value": "7.50",
+        "expired_batches": 1,
+        "expiring_batches": 2,
+    }
+
+
+def test_summary_rounds_to_cents(client: TestClient) -> None:
+    product = make_product(client, unit="kg")
+    receive(client, product, "1.333", purchase_price="1.27")  # 1.69291
+    assert client.get(f"{URL}/summary").json()["stock_value"] == "1.69"
+
+
+def test_summary_shows_only_this_store(client: TestClient, db: Session) -> None:
+    foreign_batch(db)
+    assert Decimal(client.get(f"{URL}/summary").json()["stock_value"]) == 0

@@ -9,6 +9,7 @@ from app.schemas.inventory import (
     BatchPage,
     BatchRead,
     BatchStatus,
+    InventorySummary,
     MovementPage,
     MovementRead,
     ReceiptCreate,
@@ -48,6 +49,12 @@ def list_batches(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/summary", response_model=InventorySummary)
+def summarize_stock(store: CurrentStore, service: InventoryServiceDep) -> InventorySummary:
+    """What the stock is worth at purchase prices, and how much of it needs attention."""
+    return service.summarize(store.id)
 
 
 @router.post("", response_model=BatchRead, status_code=201, responses={**NOT_FOUND, **CONFLICT})

@@ -82,6 +82,15 @@ class BatchRead(BaseModel):
     purchase_price: Decimal
 
 
+class InventorySummary(BaseModel):
+    """What the stock is worth at purchase prices, and how much of it needs attention."""
+
+    stock_value: Decimal
+    expired_value: Decimal
+    expired_batches: int
+    expiring_batches: int
+
+
 class BatchPage(BaseModel):
     items: list[BatchRead]
     total: int

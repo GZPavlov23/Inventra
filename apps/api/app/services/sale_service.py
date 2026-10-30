@@ -5,7 +5,13 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, DomainError, InsufficientStockError, NotFoundError
+from app.core.exceptions import (
+    ConflictError,
+    DomainError,
+    InsufficientStockError,
+    InvalidPeriodError,
+    NotFoundError,
+)
 from app.models.batch import Batch
 from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product
@@ -13,8 +19,11 @@ from app.models.sale import Sale, SaleItem
 from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.sale_repository import SaleRepository
-from app.schemas.sale import SaleCreate, SaleItemCreate, SaleSummary
+from app.schemas.sale import DailySales, SaleCreate, SaleItemCreate, SaleSummary
 from app.services.inventory_service import ensure_whole_pieces
+
+# A chart of more than a year wouldn't be readable anyway.
+MAX_DAILY_DAYS = 366
 
 
 def start_of_day(day: date | None) -> datetime | None:
@@ -47,6 +56,26 @@ class SaleService:
         start, end = self._period(date_from, date_to)
         sales, revenue, cost = self.sales.summarize(store_id, start=start, end=end)
         return SaleSummary(sales=sales, revenue=revenue, cost=cost, profit=revenue - cost)
+
+    def daily(self, store_id: int, *, date_from: date, date_to: date) -> list[DailySales]:
+        """Every day of the period, also those without sales, so a chart has no gaps."""
+        days = (date_to - date_from).days + 1
+        if days < 1:
+            raise InvalidPeriodError("The period ends before it starts")
+        if days > MAX_DAILY_DAYS:
+            raise InvalidPeriodError(f"The period can't be longer than {MAX_DAILY_DAYS} days")
+
+        start, end = self._period(date_from, date_to)
+        rows = {row[0]: row for row in self.sales.daily(store_id, start=start, end=end)}
+
+        result = []
+        for offset in range(days):
+            day = date_from + timedelta(days=offset)
+            _, sales, revenue, cost = rows.get(day, (day, 0, Decimal(0), Decimal(0)))
+            result.append(
+                DailySales(day=day, sales=sales, revenue=revenue, cost=cost, profit=revenue - cost)
+            )
+        return result
 
     def get_sale(self, store_id: int, sale_id: int) -> Sale:
         sale = self.sales.get(store_id, sale_id)

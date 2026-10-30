@@ -75,3 +75,11 @@ class SaleSummary(BaseModel):
     revenue: Decimal
     cost: Decimal
     profit: Decimal
+
+
+class DailySales(BaseModel):
+    day: date
+    sales: int
+    revenue: Decimal
+    cost: Decimal
+    profit: Decimal

@@ -1,17 +1,14 @@
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.money import to_cents
 from app.db.base import Base
 from app.models.inventory_movement import InventoryMovement
 from app.models.product import Product
 from app.models.user import User
-
-
-def to_cents(amount: Decimal) -> Decimal:
-    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class Sale(Base):

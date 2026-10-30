@@ -46,6 +46,9 @@ class ProductRepository:
         stmt = select(Product).where(Product.store_id == store_id, Product.barcode == barcode)
         return self.session.scalars(stmt).first()
 
+    def all_in_store(self, store_id: int) -> list[Product]:
+        return list(self.session.scalars(select(Product).where(Product.store_id == store_id)))
+
     def search(
         self,
         store_id: int,

@@ -1,7 +1,16 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.money import to_cents
@@ -18,12 +27,16 @@ class Sale(Base):
     __table_args__ = (
         # Sales of a period: the query behind every report and the demand forecast.
         Index("ix_sales_store_id_sold_at", "store_id", "sold_at"),
+        # The same receipt can't be imported twice. Sales typed in by hand have none.
+        UniqueConstraint("store_id", "external_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
     actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     sold_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # The receipt number from the till, for sales that came from a file.
+    external_id: Mapped[str | None] = mapped_column(String(64))
 
     actor: Mapped[User] = relationship()
     items: Mapped[list["SaleItem"]] = relationship(order_by="SaleItem.id")

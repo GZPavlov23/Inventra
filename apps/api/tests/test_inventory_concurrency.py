@@ -1,6 +1,7 @@
 """Two requests at the same moment. Needs real commits, so it doesn't use the rollback session."""
 
 from collections.abc import Callable, Iterator
+from datetime import date
 from decimal import Decimal
 from threading import Barrier, Thread
 
@@ -15,7 +16,9 @@ from app.core.security import hash_password
 from app.models import Batch, Product, ProductUnit, Store, User, UserRole
 from app.schemas.inventory import ReceiptCreate, WasteCreate, WasteReason
 from app.schemas.sale import SaleCreate, SaleItemCreate
+from app.schemas.sale_import import SalesImportRequest
 from app.services.inventory_service import InventoryService
+from app.services.sale_import_service import SaleImportService
 from app.services.sale_service import SaleService
 
 
@@ -193,5 +196,62 @@ def test_sales_of_the_same_products_in_opposite_order_do_not_block_each_other(
         in_parallel(milk_then_bread, bread_then_milk)
 
     assert outcomes == ["sold"] * 10
+    assert total_stock(engine, milk) == Decimal("10")
+    assert total_stock(engine, bread) == Decimal("0")
+
+
+def receipts_csv(day: str, *lines: tuple[str, str]) -> str:
+    rows = [f"{receipt};{day};Milk;{quantity}" for receipt, quantity in lines]
+    return "\n".join(["receipt;date;product;quantity", *rows])
+
+
+def test_the_same_file_uploaded_twice_at_once_counts_once(
+    engine: Engine, shelf: tuple[int, int, int, int]
+) -> None:
+    store_id, user_id, milk, _ = shelf
+    today = date.today().isoformat()
+    data = SalesImportRequest(
+        mode="current", content=receipts_csv(today, ("R-1", "3")), dry_run=False
+    )
+    applied: list[bool] = []
+
+    def upload() -> None:
+        with Session(engine) as session:
+            report = SaleImportService(session).import_sales(store_id, user_id, data)
+            applied.append(report.applied)
+
+    in_parallel(upload, upload)
+
+    assert sorted(applied) == [False, True]
+    assert total_stock(engine, milk) == Decimal("17")
+
+
+def test_an_import_and_live_sales_do_not_block_each_other(
+    engine: Engine, shelf: tuple[int, int, int, int]
+) -> None:
+    store_id, user_id, milk, bread = shelf
+    today = date.today().isoformat()
+    outcomes: list[str] = []
+
+    for run in range(5):
+        content = "\n".join(
+            [
+                "receipt;date;product;quantity",
+                f"BREAD-{run};{today};Bread;1",
+                f"MILK-{run};{today};Milk;1",
+            ]
+        )
+        data = SalesImportRequest(mode="current", content=content, dry_run=False)
+
+        def upload(request: SalesImportRequest = data) -> None:
+            with Session(engine) as session:
+                SaleImportService(session).import_sales(store_id, user_id, request)
+
+        def live_sale() -> None:
+            sell(engine, store_id, user_id, [(milk, "1"), (bread, "1")], outcomes)
+
+        in_parallel(upload, live_sale)
+
+    assert outcomes == ["sold"] * 5
     assert total_stock(engine, milk) == Decimal("10")
     assert total_stock(engine, bread) == Decimal("0")

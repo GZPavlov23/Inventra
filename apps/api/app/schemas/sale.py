@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.inventory import BatchProduct, MovementActor, Quantity
 from app.schemas.product import Price
 
+MAX_SALE_LINES = 200
+
 
 class SaleItemCreate(BaseModel):
     product_id: int
@@ -16,7 +18,7 @@ class SaleItemCreate(BaseModel):
 
 
 class SaleCreate(BaseModel):
-    items: Annotated[list[SaleItemCreate], Field(min_length=1, max_length=200)]
+    items: Annotated[list[SaleItemCreate], Field(min_length=1, max_length=MAX_SALE_LINES)]
 
 
 class SoldBatch(BaseModel):

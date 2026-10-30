@@ -4,9 +4,11 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import ColumnElement, Subquery, distinct, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.batch import Batch
+from app.models.demand_day import DemandDay
 from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.sale import Sale, SaleItem
 
@@ -60,6 +62,16 @@ class SaleRepository:
     def add(self, entity: Sale | SaleItem) -> None:
         self.session.add(entity)
         self.session.flush()
+
+    def replace_demand_days(self, store_id: int, days: list[dict]) -> None:
+        """Adds the days, or replaces them if a file already brought those days."""
+        for start in range(0, len(days), 1000):
+            stmt = insert(DemandDay).values(days[start : start + 1000])
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[DemandDay.store_id, DemandDay.product_id, DemandDay.day],
+                set_={"quantity": stmt.excluded.quantity, "revenue": stmt.excluded.revenue},
+            )
+            self.session.execute(stmt)
 
     def get(self, store_id: int, sale_id: int) -> Sale | None:
         stmt = (

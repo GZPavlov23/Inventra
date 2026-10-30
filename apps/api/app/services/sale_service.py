@@ -1,6 +1,6 @@
 """Business rules for sales: stock leaves the store from the batch that expires first."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -72,20 +72,39 @@ class SaleService:
 
     def record(self, store_id: int, actor_id: int, data: SaleCreate) -> Sale:
         """Records a whole sale or nothing: one impossible line cancels all of them."""
-        sale = Sale(store_id=store_id, actor_id=actor_id)
-        self.sales.add(sale)
         try:
-            # Always the same order: two sales of the same products in opposite order would
-            # otherwise each hold a lock the other one waits for, forever (a deadlock).
-            for line in sorted(data.items, key=lambda item: item.product_id):
-                self._sell(sale, line)
+            sale = self.add_sale(store_id, actor_id, data)
         except DomainError:
             self.session.rollback()
             raise
         self.session.commit()
         return sale
 
-    def _sell(self, sale: Sale, line: SaleItemCreate) -> None:
+    def add_sale(
+        self,
+        store_id: int,
+        actor_id: int,
+        data: SaleCreate,
+        *,
+        sold_on: date | None = None,
+        sold_at: datetime | None = None,
+        external_id: str | None = None,
+    ) -> Sale:
+        """Adds a sale without committing, so an import can keep many in one transaction.
+
+        An imported sale happened earlier: sold_on decides which goods had not expired yet.
+        """
+        sale = Sale(store_id=store_id, actor_id=actor_id, external_id=external_id)
+        if sold_at is not None:
+            sale.sold_at = sold_at
+        self.sales.add(sale)
+        # Always the same order: two sales of the same products in opposite order would
+        # otherwise each hold a lock the other one waits for, forever (a deadlock).
+        for line in sorted(data.items, key=lambda item: item.product_id):
+            self._sell(sale, line, sold_on or date.today())
+        return sale
+
+    def _sell(self, sale: Sale, line: SaleItemCreate, day: date) -> None:
         product = self.products.get(sale.store_id, line.product_id)
         if product is None:
             raise NotFoundError(f"Product {line.product_id} was not found")
@@ -93,7 +112,7 @@ class SaleService:
             raise ConflictError(f"'{product.name}' is archived. Restore it before selling it")
         ensure_whole_pieces(product, line.quantity)
 
-        batches = self.inventory.lock_sellable_batches(sale.store_id, product.id, date.today())
+        batches = self.inventory.lock_sellable_batches(sale.store_id, product.id, day)
         self._ensure_enough(product, batches, line.quantity)
 
         item = SaleItem(
@@ -119,6 +138,7 @@ class SaleService:
                     type=MovementType.SALE,
                     quantity_delta=-taken,
                     sale_item_id=item.id,
+                    occurred_at=sale.sold_at,
                 )
             )
             left -= taken

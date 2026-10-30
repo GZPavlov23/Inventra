@@ -13,12 +13,13 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated tests (pytest) | ✅ 74 tests |
+| Automated backend tests (pytest) | ✅ 80 tests |
+| Automated browser tests (Playwright) | ✅ 14 scenarios: login, registration, password reset, products |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Every module page is still a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
 | Employee accounts and role permissions | ⏳ planned |
-| Products page: table with search, Active/Archived/All filter, pagination | ✅ working (real data from the API) |
+| Products page: table with search, Active/Archived/All filter, sorting, pagination | ✅ working (real data from the API) |
 | Adding products in the web platform, with a category picker | ✅ working |
 | Editing, archiving and restoring products in the web platform | ✅ working |
 | Batches, deliveries, sales | ⏳ planned |
@@ -158,6 +159,21 @@ Open **http://localhost:8000/docs** for the interactive API documentation, where
 | `.venv/bin/pytest` | `.venv\Scripts\pytest` |
 
 The tests use the separate `inventra_test` database and never touch development data.
+
+Browser tests run a real browser against the real web app, API and PostgreSQL. Install the browser once:
+
+```bash
+cd apps/web
+npx playwright install chromium
+```
+
+Then run them (Playwright starts its own servers on ports 8010 and 5183, so your development servers can keep running):
+
+```bash
+npm run test:e2e
+```
+
+They rebuild the `inventra_test` database, so don't run them at the same time as `pytest`. After a failure, `npx playwright show-report` shows a step-by-step recording.
 
 ### 5. Web platform
 

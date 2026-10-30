@@ -18,6 +18,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Playwright output
+test-results/
+playwright-report/
+
 # ML artifacts (large files never go to Git)
 ml/data/raw/
 ml/data/processed/

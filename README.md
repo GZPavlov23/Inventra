@@ -13,8 +13,8 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 458 tests |
-| Automated browser tests (Playwright) | ✅ 91 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders |
+| Automated backend tests (pytest) | ✅ 474 tests |
+| Automated browser tests (Playwright) | ✅ 94 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -32,7 +32,7 @@ The project is under active development. This section lists only what actually w
 | Reports on the dashboard: waste by reason, products running out, top products, sales by category | ✅ working |
 | CSV import of sales: current sales that take stock, and old history for the forecast, with a check before anything is written | ✅ working |
 | Forecast page and API: expected sales per product, shortages, models measured on the store's own past | ✅ working |
-| Orders page: what to order and why, counting only stock that will sell before it expires, with a safety buffer and CSV download | ✅ working. Suppliers and pack sizes are planned |
+| Orders page: what to order and why, counting only stock that will sell before it expires and goods already on the way, with a safety buffer, CSV download and one delivery per supplier | ✅ working. Pack sizes are planned |
 | Machine learning demand model, used only where it beats the simple models on the store's own sales | ✅ working, see `ml/README.md`. Trained on public data, not on real Bulgarian stores |
 | Mobile app (Expo) | ⏳ planned |
 

@@ -1,0 +1,5 @@
+# Training only: the API doesn't need these two. The API itself comes along, because training
+# uses its feature code, and that also brings the same scikit-learn version the API runs on.
+-e ../apps/api
+pandas==2.3.3
+pyarrow==21.0.0

@@ -1,0 +1,43 @@
+{
+  "data": "FreshRetailNet-50K, CC BY 4.0",
+  "hidden_stores": 179,
+  "hidden_series": 9369,
+  "test_weeks": 4,
+  "weeks_won_by_machine_learning": 4,
+  "scores": {
+    "all": {
+      "machine_learning": {
+        "daily_wape": 0.3234,
+        "weekly_wape": 0.2005,
+        "bias": -0.0355
+      },
+      "recent_7_days": {
+        "daily_wape": 0.3429,
+        "weekly_wape": 0.2151,
+        "bias": -0.0348
+      },
+      "same_weekday": {
+        "daily_wape": 0.3791,
+        "weekly_wape": 0.2469,
+        "bias": -0.0675
+      }
+    },
+    "slowest_quarter": {
+      "machine_learning": {
+        "daily_wape": 0.4308,
+        "weekly_wape": 0.2519,
+        "bias": -0.0292
+      },
+      "recent_7_days": {
+        "daily_wape": 0.4557,
+        "weekly_wape": 0.2735,
+        "bias": -0.0083
+      },
+      "same_weekday": {
+        "daily_wape": 0.4679,
+        "weekly_wape": 0.2705,
+        "bias": -0.0835
+      }
+    }
+  }
+}

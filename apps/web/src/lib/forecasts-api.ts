@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import type { ProductUnit } from '@/lib/products-api'
+import type { SupplierRef } from '@/lib/suppliers-api'
 
 // Shapes match the backend schemas in apps/api/app/schemas/forecast.py.
 
@@ -35,10 +36,12 @@ export type AccuracyReport = {
 
 export type OrderLine = {
   product: { id: number; name: string; barcode: string | null; unit: ProductUnit }
+  supplier: SupplierRef | null
   expected: string
   from_stock: string
   expiring_unsold: string
   left_over: string
+  on_the_way: string
   buffer: string
   order: string
   unit_cost: string

@@ -15,7 +15,8 @@ import { type OrderLine, recommendedQuantity } from '@/lib/forecasts-api'
 function explanation(line: OrderLine): string {
   const { unit } = line.product
   const stock = Number(line.from_stock) + Number(line.left_over)
-  return `Expected ${formatExpected(line.expected, unit)}, plus a buffer of ${formatExpected(line.buffer, unit)}, minus ${formatExpected(stock, unit)} of usable stock`
+  const sum = `Expected ${formatExpected(line.expected, unit)}, plus a buffer of ${formatExpected(line.buffer, unit)}, minus ${formatExpected(stock, unit)} of usable stock`
+  return Number(line.on_the_way) > 0 ? `${sum} and ${formatExpected(line.on_the_way, unit)} on the way` : sum
 }
 
 type OrdersTableProps = {
@@ -45,6 +46,9 @@ export function OrdersTable({ lines, quantities, currency, onChange }: OrdersTab
             <TableRow key={product.id}>
               <TableCell className="whitespace-normal">
                 <p className="font-medium">{product.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {line.supplier?.name ?? 'No supplier'}
+                </p>
                 <p className="text-xs text-muted-foreground">{explanation(line)}</p>
                 {Number(line.expiring_unsold) > 0 && (
                   <p className="text-xs text-amber-900">

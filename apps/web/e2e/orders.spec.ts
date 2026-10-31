@@ -12,6 +12,8 @@ type Line = {
   cost: string
   unit_cost: string
   expiring_unsold: string
+  on_the_way: string
+  supplier: { id: number; name: string; active: boolean } | null
 }
 type Report = { items: Line[]; total_cost: string; buffer_share: string; products_checked: number }
 
@@ -138,4 +140,57 @@ test('on a phone the table fits', async ({ page }) => {
   await expect(table).toBeVisible()
   expect(await table.evaluate((box) => box.scrollWidth - box.clientWidth)).toBeLessThanOrEqual(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+})
+
+test('every line says who supplies it, and goods on the way are subtracted', async ({ page }) => {
+  const order = await report(page)
+  const row = page.getByRole('row').filter({ hasText: order.items[0].product.name })
+  await expect(row).toContainText(order.items[0].supplier?.name ?? 'No supplier')
+
+  const waiting = order.items.find((line) => Number(line.on_the_way) > 0)
+  test.skip(!waiting, 'The demo order has nothing on the way today')
+  await expect(page.getByRole('row').filter({ hasText: waiting?.product.name })).toContainText('on the way')
+})
+
+test('products without an active supplier stay out of the deliveries, and it says so', async ({ page }) => {
+  let lonely = ''
+  await page.route(`**${API}/forecasts/orders?days=7`, async (route) => {
+    const order = (await (await route.fetch()).json()) as Report
+    lonely = order.items[0].product.name
+    order.items[0].supplier = null
+    await route.fulfill({ json: order })
+  })
+  await page.reload()
+  await expect(page.locator('tbody tr').first()).toContainText('No supplier')
+
+  await page.getByRole('button', { name: 'Create deliveries' }).click()
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText(lonely)
+  await expect(page.getByRole('list', { name: 'Deliveries to create' })).not.toContainText(lonely)
+})
+
+// Last, because it puts the whole order on the way.
+test('the order becomes one delivery per supplier and is not recommended again', async ({ page }) => {
+  const order = await report(page)
+  // Products other test files left behind may have no supplier, and those stay out.
+  const lines = order.items.filter((line) => line.supplier?.active)
+  const first = lines[0]
+  const suppliers = new Set(lines.map((line) => line.supplier?.id))
+
+  await page.getByLabel(`Order of ${first.product.name}`).fill(String(Number(first.order) + 7))
+  await page.getByRole('button', { name: 'Create deliveries' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(page.getByRole('list', { name: 'Deliveries to create' }).getByRole('listitem')).toHaveCount(suppliers.size)
+  await dialog.getByRole('button', { name: /^Create \d+ deliver/ }).click()
+  await expect(page.getByText(/deliver(y was|ies were) created/)).toBeVisible()
+
+  await expect.poll(async () => Number((await report(page)).total_cost)).toBeLessThan(Number(order.total_cost))
+  const after = await report(page)
+  expect(after.items.map((line) => line.product.name)).not.toContain(first.product.name)
+
+  await page.goto('/deliveries')
+  const list = await (await page.request.get(`${API}/deliveries?status=ordered`)).json()
+  const created = list.items.flatMap((delivery: { items: { product: { name: string }; ordered_quantity: string }[] }) => delivery.items)
+    .find((item: { product: { name: string } }) => item.product.name === first.product.name)
+  expect(Number(created.ordered_quantity)).toBe(Number(first.order) + 7)
+  await expect(page.getByRole('row').filter({ hasText: first.supplier?.name ?? '' }).first()).toBeVisible()
 })

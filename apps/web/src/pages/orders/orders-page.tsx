@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { CircleCheck, Download, TrendingUp } from 'lucide-react'
+import { CircleCheck, Download, TrendingUp, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { downloadCsv } from '@/lib/csv'
 import { formatMoney, lineCents, today } from '@/lib/format'
 import { forecastsApi, type OrderLine, recommendedQuantity } from '@/lib/forecasts-api'
+import { CreateDeliveriesDialog } from '@/pages/orders/create-deliveries-dialog'
 import { OrdersTable } from '@/pages/orders/orders-table'
 
 const PERIODS = [7, 14]
@@ -44,6 +45,7 @@ export function OrdersPage() {
   const totalCents = lines?.reduce((sum, line) => sum + lineCents(quantityOf(line), line.unit_cost), 0)
   const ordered = lines?.filter((line) => Number(quantityOf(line)) > 0)
   const edited = Object.keys(quantities).length > 0
+  const [createOpen, setCreateOpen] = useState(false)
 
   const changePeriod = (value: string) => {
     setQuantities({})
@@ -52,7 +54,7 @@ export function OrdersPage() {
 
   const download = () => {
     downloadCsv(`inventra-order-${today()}.csv`, [
-      ['product', 'barcode', 'quantity', 'unit', 'unit_cost', 'cost'],
+      ['product', 'barcode', 'quantity', 'unit', 'unit_cost', 'cost', 'supplier'],
       ...(ordered ?? []).map((line) => [
         line.product.name,
         line.product.barcode ?? '',
@@ -60,6 +62,7 @@ export function OrdersPage() {
         line.product.unit,
         line.unit_cost,
         (lineCents(quantityOf(line), line.unit_cost) / 100).toFixed(2),
+        line.supplier?.name ?? '',
       ]),
     ])
   }
@@ -71,10 +74,16 @@ export function OrdersPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Orders</h2>
           <p className="text-sm text-muted-foreground">What to order, how much, and why.</p>
         </div>
-        <Button onClick={download} disabled={!ordered?.length}>
-          <Download />
-          Download order
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={download} disabled={!ordered?.length}>
+            <Download />
+            Download order
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} disabled={!ordered?.length}>
+            <Truck />
+            Create deliveries
+          </Button>
+        </div>
       </div>
 
       {orders.isError ? (
@@ -159,12 +168,21 @@ export function OrdersPage() {
           {orders.data && (
             <p className="text-sm text-muted-foreground">
               Forecast model: {orders.data.method}. Stock that will expire before it sells isn't
-              counted on. Orders are rounded up, so they can be a little above
-              the sum shown. Pack sizes and suppliers aren't taken into account yet.
+              counted on, and goods already on the way are. Orders are rounded up, so they can be
+              a little above the sum shown. Pack sizes aren't taken into account yet.
             </p>
           )}
         </>
       )}
+
+      <CreateDeliveriesDialog
+        lines={ordered ?? []}
+        quantityOf={quantityOf}
+        currency={store.currency}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => setQuantities({})}
+      />
     </div>
   )
 }

@@ -43,6 +43,11 @@ export type DeliveryInput = {
   items: { product_id: number; quantity: string; unit_cost: string }[]
 }
 
+export type OrderDeliveriesInput = {
+  expected_on: string | null
+  items: { product_id: number; quantity: string; unit_cost: string }[]
+}
+
 export type DeliveryReceiptInput = {
   invoice_number: string
   items: {
@@ -58,6 +63,8 @@ export const deliveriesApi = {
   list: (status: DeliveryFilter, limit: number, offset: number) =>
     api<DeliveryPage>(`/deliveries?status=${status}&limit=${limit}&offset=${offset}`),
   create: (data: DeliveryInput) => api<Delivery>('/deliveries', { method: 'POST', body: data }),
+  fromOrder: (data: OrderDeliveriesInput) =>
+    api<Delivery[]>('/deliveries/from-order', { method: 'POST', body: data }),
   receive: (id: number, data: DeliveryReceiptInput) =>
     api<Delivery>(`/deliveries/${id}/receive`, { method: 'POST', body: data }),
   cancel: (id: number) => api<Delivery>(`/deliveries/${id}/cancel`, { method: 'POST' }),

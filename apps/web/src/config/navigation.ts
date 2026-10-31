@@ -73,7 +73,7 @@ export const NAV_GROUPS: NavGroup[] = [
         title: 'Orders',
         path: '/orders',
         icon: ClipboardList,
-        description: 'Replenishment lists for suppliers, based on the recommendations.',
+        description: 'What to order, how much and why, based on the forecast and your stock.',
       },
       {
         title: 'Forecast',

@@ -33,7 +33,32 @@ export type AccuracyReport = {
   models: ModelAccuracy[]
 }
 
+export type OrderLine = {
+  product: { id: number; name: string; barcode: string | null; unit: ProductUnit }
+  expected: string
+  from_stock: string
+  expiring_unsold: string
+  left_over: string
+  buffer: string
+  order: string
+  unit_cost: string
+  cost: string
+}
+
+export type OrderReport = {
+  days: number
+  method: string
+  buffer_share: string
+  items: OrderLine[]
+  total_cost: string
+  products_checked: number
+}
+
+// The API writes 31.0 for 31 pieces, which is no way to show a number of pieces in a form.
+export const recommendedQuantity = (line: OrderLine) => String(Number(line.order))
+
 export const forecastsApi = {
   forecast: (horizon: number) => api<ForecastReport>(`/forecasts?horizon=${horizon}`),
   accuracy: () => api<AccuracyReport>('/forecasts/accuracy'),
+  orders: (days: number) => api<OrderReport>(`/forecasts/orders?days=${days}`),
 }

@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { downloadCsv } from '@/lib/csv'
 
 // Shapes match the backend schemas in apps/api/app/schemas/sale_import.py.
 
@@ -39,18 +40,11 @@ export async function readTextFile(file: File): Promise<string> {
   }
 }
 
-const TEMPLATE_ROWS = [
-  'receipt;date;barcode;product;quantity;unit_price',
-  'R-1001;30.10.2026;2000000000015;;2;1,59',
-  'R-1001;30.10.2026;;Банани;1,250;',
-]
-
-// Starts with a byte order mark, so Excel shows the Cyrillic text correctly.
+// A template to fill in: one line with a barcode, and one sold by weight without a barcode.
 export function downloadTemplate() {
-  const blob = new Blob([`﻿${TEMPLATE_ROWS.join('\r\n')}\r\n`], { type: 'text/csv' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = 'inventra-sales-template.csv'
-  link.click()
-  URL.revokeObjectURL(link.href)
+  downloadCsv('inventra-sales-template.csv', [
+    ['receipt', 'date', 'barcode', 'product', 'quantity', 'unit_price'],
+    ['R-1001', '30.10.2026', '2000000000015', '', '2', '1,59'],
+    ['R-1001', '30.10.2026', '', 'Банани', '1,250', ''],
+  ])
 }

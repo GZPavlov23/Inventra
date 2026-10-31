@@ -1,6 +1,7 @@
 # Import every model here so Alembic autogenerate and tests see the full schema.
 from app.models.auth_token import AuthToken, AuthTokenPurpose
 from app.models.batch import Batch, ExpiryStatus
+from app.models.delivery import Delivery, DeliveryItem, DeliveryStatus
 from app.models.demand_day import DemandDay
 from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product, ProductUnit
@@ -14,6 +15,9 @@ __all__ = [
     "AuthToken",
     "AuthTokenPurpose",
     "Batch",
+    "Delivery",
+    "DeliveryItem",
+    "DeliveryStatus",
     "DemandDay",
     "ExpiryStatus",
     "InventoryMovement",

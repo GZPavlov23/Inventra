@@ -59,6 +59,11 @@ class SupplierArchivedError(DomainError):
     code = "supplier_archived"
 
 
+class DeliveryClosedError(DomainError):
+    status_code = 409
+    code = "delivery_closed"
+
+
 class InsufficientStockError(DomainError):
     status_code = 409
     code = "insufficient_stock"

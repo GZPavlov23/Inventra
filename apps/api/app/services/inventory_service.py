@@ -80,6 +80,14 @@ class InventoryService:
         return self.inventory.list_movements(batch.id, limit=limit, offset=offset)
 
     def receive(self, store_id: int, actor_id: int, data: ReceiptCreate) -> Batch:
+        batch = self.add_receipt(store_id, actor_id, data)
+        self.session.commit()
+        return batch
+
+    def add_receipt(
+        self, store_id: int, actor_id: int, data: ReceiptCreate, reason: str | None = None
+    ) -> Batch:
+        """Adds a batch without committing, so a delivery can keep all its lines together."""
         product = self.products.get(store_id, data.product_id)
         if product is None:
             raise NotFoundError(f"Product {data.product_id} was not found")
@@ -87,7 +95,7 @@ class InventoryService:
             raise ConflictError(f"'{product.name}' is archived. Restore it before receiving stock")
         ensure_whole_pieces(product, data.quantity)
         if data.expiry_date is not None and data.expiry_date < date.today():
-            raise InvalidReceiptError("The expiry date is in the past")
+            raise InvalidReceiptError(f"The expiry date of '{product.name}' is in the past")
 
         batch = Batch(
             store_id=store_id,
@@ -101,8 +109,7 @@ class InventoryService:
             ),
         )
         self.inventory.add(batch)
-        self._record(batch, actor_id, MovementType.RECEIPT, data.quantity, reason=None)
-        self.session.commit()
+        self._record(batch, actor_id, MovementType.RECEIPT, data.quantity, reason)
         return batch
 
     def write_off(self, store_id: int, actor_id: int, batch_id: int, data: WasteCreate) -> Batch:

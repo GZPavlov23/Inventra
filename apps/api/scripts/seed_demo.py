@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.batch import Batch
+from app.models.delivery import Delivery, DeliveryItem, DeliveryStatus
 from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product, ProductUnit
 from app.models.sale import Sale, SaleItem
@@ -35,9 +36,11 @@ from app.models.store import Store
 from app.models.user import User, UserRole
 from app.repositories.product_repository import ProductRepository
 from app.repositories.supplier_repository import SupplierRepository
+from app.schemas.delivery import DeliveryCreate, DeliveryItemCreate
 from app.schemas.inventory import ReceiptCreate
 from app.schemas.product import ProductCreate
 from app.schemas.supplier import SupplierCreate
+from app.services.delivery_service import DeliveryService
 from app.services.inventory_service import InventoryService
 from app.services.product_service import ProductService
 from app.services.supplier_service import SupplierService
@@ -133,6 +136,22 @@ DEMO_WASTE = [
     (27, "Бял хляб 500 г", "4", "expired"),
     (33, "Прясно мляко 3% 1 л", "3", "expired"),
 ]
+
+# (supplier, days until it is expected, [(product name, quantity)]). A negative day is a late one.
+DEMO_DELIVERIES = [
+    (
+        "Зелена долина (демо)",
+        1,
+        [
+            ("Прясно мляко 3% 1 л", "24"),
+            ("Кисело мляко 3.6% 400 г", "20"),
+            ("Сирене краве 400 г", "6"),
+        ],
+    ),
+    ("Ферма Слънце (демо)", -1, [("Яйца размер M 10 бр.", "15"), ("Пилешко филе 500 г", "10")]),
+]
+# This supplier's first goods of the sales history arrived as a delivery that is already received.
+DEMO_RECEIVED_FROM = "Пекарна Изгрев (демо)"
 
 # How many weeks of invented sales the demo store has.
 DEMO_SALES_WEEKS = 8
@@ -232,6 +251,7 @@ def seed_suppliers(session: Session, store_id: int) -> None:
 
 def delete_demo_stock(session: Session, store_id: int) -> None:
     # Only ever called with the demo store. History goes first, because it points at the rest.
+    session.execute(delete(Delivery).where(Delivery.store_id == store_id))
     session.execute(delete(InventoryMovement).where(InventoryMovement.store_id == store_id))
     session.execute(delete(Sale).where(Sale.store_id == store_id))
     session.execute(delete(Batch).where(Batch.store_id == store_id))
@@ -427,6 +447,92 @@ def seed_waste(session: Session, store_id: int, owner_id: int) -> None:
     print(f"Waste history: {created} demo write-offs created")
 
 
+def seed_deliveries(session: Session, store_id: int, owner_id: int) -> None:
+    """Two deliveries on their way, and one that arrived before the sales history begins.
+
+    Those on their way go through the service. The received one points at batches that were
+    used up long ago, so today's stock stays as it is.
+    """
+    stmt = select(Delivery.id).where(Delivery.store_id == store_id).limit(1)
+    if session.scalar(stmt) is not None:
+        print("Deliveries already exist")
+        return
+
+    repository = SupplierRepository(session)
+    service = DeliveryService(session)
+    products = {
+        product.name: product
+        for product in session.scalars(select(Product).where(Product.store_id == store_id))
+    }
+    for supplier_name, days_left, lines in DEMO_DELIVERIES:
+        supplier = repository.find_by_name(store_id, supplier_name)
+        if supplier is None:
+            continue
+        delivery = service.create(
+            store_id,
+            owner_id,
+            DeliveryCreate(
+                supplier_id=supplier.id,
+                expected_on=date.today() + timedelta(days=max(days_left, 0)),
+                items=[
+                    DeliveryItemCreate(product_id=products[name].id, quantity=Decimal(quantity))
+                    for name, quantity in lines
+                ],
+            ),
+        )
+        # The app refuses a date in the past, so the demo has to make this delivery late itself.
+        delivery.expected_on = date.today() + timedelta(days=days_left)
+    session.commit()
+
+    seed_received_delivery(session, store_id, owner_id)
+    print("Deliveries: demo deliveries created")
+
+
+def seed_received_delivery(session: Session, store_id: int, owner_id: int) -> None:
+    supplier = SupplierRepository(session).find_by_name(store_id, DEMO_RECEIVED_FROM)
+    if supplier is None:
+        return
+    stmt = (
+        select(Batch)
+        .join(Product, Batch.product_id == Product.id)
+        .where(Product.supplier_id == supplier.id, Batch.remaining_quantity == 0)
+        .order_by(Batch.received_at)
+    )
+    # The oldest batch of each product: the one all of its demo sales came from.
+    batches: dict[int, Batch] = {}
+    for batch in session.scalars(stmt):
+        batches.setdefault(batch.product_id, batch)
+    if not batches:
+        return
+
+    received_at = min(batch.received_at for batch in batches.values())
+    delivery = Delivery(
+        store_id=store_id,
+        supplier_id=supplier.id,
+        actor_id=owner_id,
+        status=DeliveryStatus.RECEIVED,
+        expected_on=received_at.date(),
+        received_at=received_at,
+        invoice_number="DEMO-0001",
+        created_at=received_at - timedelta(days=2),
+    )
+    session.add(delivery)
+    session.flush()
+    session.add_all(
+        DeliveryItem(
+            store_id=store_id,
+            delivery_id=delivery.id,
+            product_id=batch.product_id,
+            batch_id=batch.id,
+            ordered_quantity=batch.received_quantity,
+            unit_cost=batch.purchase_price,
+            received_quantity=batch.received_quantity,
+        )
+        for batch in batches.values()
+    )
+    session.commit()
+
+
 def demo_quantity(rng: random.Random, product: Product) -> Decimal:
     if product.unit == ProductUnit.PIECE:
         return Decimal(rng.randint(1, 3))
@@ -444,6 +550,7 @@ def main() -> None:
         seed_batches(session, store.id, owner.id)
         seed_sales(session, store.id, owner.id)
         seed_waste(session, store.id, owner.id)
+        seed_deliveries(session, store.id, owner.id)
 
     print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")
 

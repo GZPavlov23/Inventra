@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     Batch,
+    Delivery,
+    DeliveryItem,
+    DeliveryStatus,
     InventoryMovement,
     MovementType,
     Product,
@@ -24,6 +27,7 @@ from scripts.seed_demo import (
     DEMO_SALES_WEEKS,
     delete_demo_stock,
     seed_batches,
+    seed_deliveries,
     seed_products,
     seed_sales,
     seed_suppliers,
@@ -54,6 +58,41 @@ def test_every_product_has_a_demo_supplier_and_a_second_run_changes_nothing(
     assert count(db, Supplier) == 4
     assert all(name.endswith("(демо)") for name in db.scalars(select(Supplier.name)))
     assert all(product.supplier is not None for product in db.scalars(select(Product)))
+
+
+def test_demo_deliveries_cover_every_status_a_visitor_should_see(
+    db: Session, seeded: Store, owner: User
+) -> None:
+    seed_suppliers(db, seeded.id)
+    stock = {p.id: p.stock for p in db.scalars(select(Product))}
+
+    seed_deliveries(db, seeded.id, owner.id)
+    seed_deliveries(db, seeded.id, owner.id)
+
+    deliveries = list(db.scalars(select(Delivery)))
+    assert sorted(d.status for d in deliveries) == [
+        DeliveryStatus.ORDERED,
+        DeliveryStatus.ORDERED,
+        DeliveryStatus.RECEIVED,
+    ]
+    assert any(d.expected_on < date.today() for d in deliveries if d.status == "ordered")
+    received = next(d for d in deliveries if d.status == DeliveryStatus.RECEIVED)
+    assert all(item.batch.remaining_quantity == 0 for item in received.items)
+
+    db.expire_all()
+    assert {p.id: p.stock for p in db.scalars(select(Product))} == stock
+
+
+def test_a_fresh_demo_can_delete_stock_that_deliveries_point_at(
+    db: Session, seeded: Store, owner: User
+) -> None:
+    seed_suppliers(db, seeded.id)
+    seed_deliveries(db, seeded.id, owner.id)
+
+    delete_demo_stock(db, seeded.id)
+
+    assert count(db, Batch) == 0
+    assert count(db, DeliveryItem) == 0
 
 
 def test_every_batch_matches_its_history(db: Session, seeded: Store) -> None:

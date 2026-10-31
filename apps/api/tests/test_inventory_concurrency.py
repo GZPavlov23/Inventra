@@ -11,12 +11,19 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.exceptions import InsufficientStockError
+from app.core.exceptions import DeliveryClosedError, InsufficientStockError
 from app.core.security import hash_password
-from app.models import Batch, Product, ProductUnit, Store, User, UserRole
+from app.models import Batch, Delivery, Product, ProductUnit, Store, Supplier, User, UserRole
+from app.schemas.delivery import (
+    DeliveryCreate,
+    DeliveryItemCreate,
+    DeliveryItemReceipt,
+    DeliveryReceipt,
+)
 from app.schemas.inventory import ReceiptCreate, WasteCreate, WasteReason
 from app.schemas.sale import SaleCreate, SaleItemCreate
 from app.schemas.sale_import import SalesImportRequest
+from app.services.delivery_service import DeliveryService
 from app.services.inventory_service import InventoryService
 from app.services.sale_import_service import SaleImportService
 from app.services.sale_service import SaleService
@@ -255,3 +262,96 @@ def test_an_import_and_live_sales_do_not_block_each_other(
     assert outcomes == ["sold"] * 5
     assert total_stock(engine, milk) == Decimal("10")
     assert total_stock(engine, bread) == Decimal("0")
+
+
+@pytest.fixture
+def open_delivery(engine: Engine, stock: tuple[int, int, int]) -> tuple[int, int, int, int]:
+    """Commits a delivery of 7 items; returns store, user, delivery and line ids."""
+    store_id, user_id, batch_id = stock
+    with Session(engine) as session:
+        batch = session.get(Batch, batch_id)
+        supplier = Supplier(store_id=store_id, name="Dairy")
+        session.add(supplier)
+        session.commit()
+        delivery = DeliveryService(session).create(
+            store_id,
+            user_id,
+            DeliveryCreate(
+                supplier_id=supplier.id,
+                items=[DeliveryItemCreate(product_id=batch.product_id, quantity=Decimal("7"))],
+            ),
+        )
+        return store_id, user_id, delivery.id, delivery.items[0].id
+
+
+def full_receipt(item_id: int) -> DeliveryReceipt:
+    return DeliveryReceipt(items=[DeliveryItemReceipt(item_id=item_id, quantity=Decimal("7"))])
+
+
+def stock_batches(engine: Engine, store_id: int) -> int:
+    with Session(engine) as session:
+        return len(list(session.scalars(select(Batch).where(Batch.store_id == store_id))))
+
+
+def test_a_second_receipt_waits_for_the_first_and_is_then_refused(
+    engine: Engine, open_delivery: tuple[int, int, int, int]
+) -> None:
+    """Started one after the other on purpose: left to chance, two threads rarely overlap, and
+    the test would pass even without the lock.
+    """
+    store_id, user_id, delivery_id, item_id = open_delivery
+    outcomes: list[str] = []
+
+    def second_receipt() -> None:
+        with Session(engine) as session:
+            try:
+                DeliveryService(session).receive(
+                    store_id, user_id, delivery_id, full_receipt(item_id)
+                )
+                outcomes.append("received")
+            except DeliveryClosedError:
+                outcomes.append("refused")
+
+    second = Thread(target=second_receipt)
+    with Session(engine) as session:
+        first = DeliveryService(session)
+        delivery = first.deliveries.lock(store_id, delivery_id)
+        second.start()
+        second.join(timeout=0.5)
+        assert second.is_alive(), "the second receipt didn't wait for the lock"
+
+        first.receive(store_id, user_id, delivery.id, full_receipt(item_id))
+
+    second.join()
+    assert outcomes == ["refused"]
+    assert stock_batches(engine, store_id) == 2  # the one from the fixture and this delivery
+
+
+def test_a_receipt_and_a_cancellation_cannot_both_win(
+    engine: Engine, open_delivery: tuple[int, int, int, int]
+) -> None:
+    store_id, user_id, delivery_id, item_id = open_delivery
+    outcomes: list[str] = []
+
+    def attempt(name: str, action: Callable[[DeliveryService], Delivery]) -> None:
+        with Session(engine) as session:
+            try:
+                action(DeliveryService(session))
+                outcomes.append(name)
+            except DeliveryClosedError:
+                outcomes.append("refused")
+
+    in_parallel(
+        lambda: attempt(
+            "received",
+            lambda service: service.receive(store_id, user_id, delivery_id, full_receipt(item_id)),
+        ),
+        lambda: attempt("cancelled", lambda service: service.cancel(store_id, delivery_id)),
+    )
+
+    assert "refused" in outcomes
+    assert len(outcomes) == 2
+    with Session(engine) as session:
+        status = session.get(Delivery, delivery_id).status
+    assert status in outcomes
+    assert stock_batches(engine, store_id) == (2 if status == "received" else 1)

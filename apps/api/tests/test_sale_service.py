@@ -296,6 +296,7 @@ def test_every_batch_keeps_matching_its_history(
     repository = InventoryRepository(db)
     assert repository.movements_total(first.id) == first.remaining_quantity
     assert repository.movements_total(second.id) == second.remaining_quantity
+    db.refresh(milk)
     assert milk.stock == Decimal("8")
     assert {line.sale_item_id for line in sale_movements(db)} == {sale.items[0].id}
     assert {line.actor_id for line in sale_movements(db)} == {owner.id}

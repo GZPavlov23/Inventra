@@ -72,7 +72,13 @@ def db(connection: Connection) -> Iterator[Session]:
     SAVEPOINT inside the outer transaction, which we roll back when the test ends.
     """
     transaction = connection.begin()
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
+    session = Session(
+        bind=connection,
+        join_transaction_mode="create_savepoint",
+        # The same settings as SessionLocal, so tests see what the running app sees.
+        autoflush=False,
+        expire_on_commit=False,
+    )
     yield session
     session.close()
     transaction.rollback()
@@ -109,7 +115,14 @@ def outbox() -> FakeEmailSender:
 @pytest.fixture
 def anon_client(db: Session, outbox: FakeEmailSender) -> Iterator[TestClient]:
     """An HTTP client for the app that uses the test session and is NOT logged in."""
-    app.dependency_overrides[get_db] = lambda: db
+
+    def session_for_request() -> Session:
+        # The running app opens a new session for every request, so nothing a request loaded
+        # may be remembered by the next one.
+        db.expire_all()
+        return db
+
+    app.dependency_overrides[get_db] = session_for_request
     app.dependency_overrides[get_email_sender] = lambda: outbox
     with TestClient(app) as test_client:
         yield test_client

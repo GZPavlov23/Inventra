@@ -5,9 +5,11 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.core.money import to_cents
 from app.core.period import period_bounds
 from app.forecasting.backtest import MIN_HISTORY_DAYS, BacktestResult, backtest
 from app.forecasting.models import Model, Series, next_days, recent_average, seasonal_average
+from app.forecasting.ordering import StockBatch, plan_stock, round_order
 from app.repositories.forecast_repository import ForecastRepository
 from app.repositories.report_repository import ReportRepository
 from app.schemas.forecast import (
@@ -15,11 +17,20 @@ from app.schemas.forecast import (
     ForecastDay,
     ForecastReport,
     ModelAccuracy,
+    OrderLine,
+    OrderReport,
     ProductForecast,
 )
 
 # Enough for the accuracy check: four weeks of tests, each with history behind it.
 HISTORY_DAYS = 120
+
+# The buffer follows the forecast's measured error, within limits: a very accurate forecast still
+# needs some reserve, and a very poor one shouldn't fill the shelf with goods that may go to waste.
+MIN_BUFFER_SHARE = Decimal("0.10")
+MAX_BUFFER_SHARE = Decimal("0.50")
+# Used until the error can be measured.
+DEFAULT_BUFFER_SHARE = Decimal("0.25")
 
 # The first one is used when nothing can be measured yet, because weekdays usually do matter.
 MODELS: dict[str, Model] = {
@@ -77,6 +88,64 @@ class ForecastService:
             items=items,
             not_enough_history=not_enough_history,
         )
+
+    def orders(self, store_id: int, days: int) -> OrderReport:
+        today = date.today()
+        forecast = self.forecast(store_id, days)
+        share = self._buffer_share(self.accuracy(store_id))
+        prices = {
+            product.id: product.purchase_price
+            for product in self.forecasts.active_products(store_id)
+        }
+
+        batches: dict[int, list[StockBatch]] = {}
+        for batch in self.reports.sellable_batches(store_id, today):
+            stock = StockBatch(float(batch.remaining_quantity), batch.expiry_date)
+            batches.setdefault(batch.product_id, []).append(stock)
+
+        items = []
+        for item in forecast.items:
+            demand = [float(day.quantity) for day in item.days]
+            plan = plan_stock(batches.get(item.product.id, []), demand, today)
+            expected = sum(demand)
+            buffer = expected * float(share)
+            needed = expected + buffer - plan.served - plan.left_over
+            order = round_order(needed, item.product.unit) if needed > 0 else 0.0
+            if order == 0:
+                continue
+
+            unit_cost = prices[item.product.id]
+            amount = _decimal(order)
+            items.append(
+                OrderLine(
+                    product=item.product,
+                    expected=_decimal(expected),
+                    from_stock=_decimal(plan.served),
+                    expiring_unsold=_decimal(plan.expiring_unsold),
+                    left_over=_decimal(plan.left_over),
+                    buffer=_decimal(buffer),
+                    order=amount,
+                    unit_cost=unit_cost,
+                    cost=to_cents(amount * unit_cost),
+                )
+            )
+
+        items.sort(key=lambda line: (-line.cost, line.product.name))
+        return OrderReport(
+            days=days,
+            method=forecast.method,
+            buffer_share=share,
+            items=items,
+            total_cost=sum((line.cost for line in items), Decimal(0)),
+            products_checked=len(forecast.items),
+        )
+
+    @staticmethod
+    def _buffer_share(accuracy: AccuracyReport) -> Decimal:
+        chosen = next(model for model in accuracy.models if model.method == accuracy.chosen)
+        if chosen.weekly_wape is None:
+            return DEFAULT_BUFFER_SHARE
+        return min(max(chosen.weekly_wape, MIN_BUFFER_SHARE), MAX_BUFFER_SHARE)
 
     def accuracy(self, store_id: int) -> AccuracyReport:
         last_day = date.today() - timedelta(days=1)
@@ -140,6 +209,10 @@ class ForecastService:
             days=result.days,
             products=result.products,
         )
+
+
+def _decimal(quantity: float) -> Decimal:
+    return Decimal(str(round(quantity, 3)))
 
 
 def _rounded(share: float | None) -> Decimal | None:

@@ -62,6 +62,14 @@ class ReportRepository:
         )
         return {product_id: stock for product_id, stock in self.session.execute(stmt)}
 
+    def sellable_batches(self, store_id: int, today: date) -> list[Batch]:
+        stmt = select(Batch).where(
+            Batch.store_id == store_id,
+            Batch.remaining_quantity > 0,
+            or_(Batch.expiry_date.is_(None), Batch.expiry_date >= today),
+        )
+        return list(self.session.scalars(stmt))
+
     def top_products(
         self, store_id: int, *, start: datetime | None, end: datetime | None, limit: int
     ) -> list[tuple[Product, Decimal, Decimal, Decimal]]:

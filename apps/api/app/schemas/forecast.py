@@ -43,3 +43,28 @@ class AccuracyReport(BaseModel):
     # The one forecasts use: the most accurate on this store's own past.
     chosen: str
     models: list[ModelAccuracy]
+
+
+class OrderLine(BaseModel):
+    product: BatchProduct
+    # The arithmetic behind the order, so nobody has to trust a number they can't follow.
+    expected: Decimal
+    from_stock: Decimal
+    expiring_unsold: Decimal
+    left_over: Decimal
+    buffer: Decimal
+    order: Decimal
+    unit_cost: Decimal
+    cost: Decimal
+
+
+class OrderReport(BaseModel):
+    days: int
+    method: str
+    # The extra on top of the forecast, as a share of it.
+    buffer_share: Decimal
+    # Only products that need ordering, the most expensive first.
+    items: list[OrderLine]
+    total_cost: Decimal
+    # Products checked, including those that have enough.
+    products_checked: int

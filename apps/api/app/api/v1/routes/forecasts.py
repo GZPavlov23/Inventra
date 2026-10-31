@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentStore, ForecastServiceDep
-from app.schemas.forecast import AccuracyReport, ForecastReport
+from app.schemas.forecast import AccuracyReport, ForecastReport, OrderReport
 
 router = APIRouter(prefix="/forecasts", tags=["forecasts"])
 
@@ -16,6 +16,16 @@ def forecast_demand(
 ) -> ForecastReport:
     """Expected sales per product, the biggest shortage first."""
     return service.forecast(store.id, horizon)
+
+
+@router.get("/orders", response_model=OrderReport)
+def recommend_orders(
+    store: CurrentStore,
+    service: ForecastServiceDep,
+    days: int = Query(7, ge=1, le=14, description="Days the order should cover, starting today"),
+) -> OrderReport:
+    """What to order and how much, with the arithmetic behind every number."""
+    return service.orders(store.id, days)
 
 
 @router.get("/accuracy", response_model=AccuracyReport)

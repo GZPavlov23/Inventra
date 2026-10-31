@@ -57,7 +57,7 @@ test('every line explains its number', async ({ page }) => {
   await expect(page.locator('tbody tr').first()).toContainText('Expected')
   await expect(page.locator('tbody tr').first()).toContainText('a buffer of')
   await expect(page.locator('tbody tr').first()).toContainText('of usable stock')
-  await expect(page.getByText('a simple statistical model')).toBeVisible()
+  await expect(page.getByText('Forecast model:')).toBeVisible()
 })
 
 test('stock that will expire unsold is called out', async ({ page }) => {

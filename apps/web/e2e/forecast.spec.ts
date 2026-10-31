@@ -80,9 +80,11 @@ test('the accuracy of both models is shown, and which one is used', async ({ pag
   await expect(page.getByText('Used', { exact: true })).toHaveCount(1)
 })
 
-test('the page says plainly that this is not machine learning yet', async ({ page }) => {
-  await expect(page.getByText('not machine learning yet')).toBeVisible()
-  await expect(page.getByText('counts as a day without demand')).toBeVisible()
+test('the page is plain about the machine learning model and sold-out days', async ({ page }) => {
+  await expect(page.getByRole('row').filter({ hasText: 'Machine learning' })).toBeVisible()
+  await expect(page.getByText('trained on public sales data of fresh food, not on your store')).toBeVisible()
+  await expect(page.getByText('used only if it beats the simple models')).toBeVisible()
+  await expect(page.getByText('take such a day for low demand')).toBeVisible()
 })
 
 test('a product opens its forecast day by day', async ({ page }) => {

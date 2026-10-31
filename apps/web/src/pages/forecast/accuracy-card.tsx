@@ -18,7 +18,7 @@ export function AccuracyCard({ accuracy }: { accuracy: AccuracyReport }) {
       <CardHeader>
         <CardTitle>How accurate is it?</CardTitle>
         <CardDescription>
-          Both models were tested on your last 4 weeks. Each one saw only the days before a week,
+          All models were tested on your last 4 weeks. Each one saw only the days before a week,
           predicted that week, and was compared with what really sold.
         </CardDescription>
       </CardHeader>
@@ -55,10 +55,14 @@ export function AccuracyCard({ accuracy }: { accuracy: AccuracyReport }) {
             The weekly number decides which model is used, because orders are made for a week, and
             on a single day chance plays a big part in a small store.
           </li>
-          <li>These are simple statistical models, not machine learning yet.</li>
           <li>
-            A day when a product was sold out counts as a day without demand, so products that often
-            run out may be forecast too low.
+            The machine learning model was trained on public sales data of fresh food, not on your
+            store. It is used only if it beats the simple models on your own sales.
+          </li>
+          <li>
+            Days when a product was sold out aren't part of the test, because their sales show how
+            much stock there was, not how much people wanted. The simple models still take such a
+            day for low demand. The machine learning model knows the difference.
           </li>
         </ul>
       </CardContent>

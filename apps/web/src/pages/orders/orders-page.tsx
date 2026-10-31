@@ -158,8 +158,8 @@ export function OrdersPage() {
 
           {orders.data && (
             <p className="text-sm text-muted-foreground">
-              Forecast model: {orders.data.method}, a simple statistical model. Stock that will expire
-              before it sells isn't counted on. Orders are rounded up, so they can be a little above
+              Forecast model: {orders.data.method}. Stock that will expire before it sells isn't
+              counted on. Orders are rounded up, so they can be a little above
               the sum shown. Pack sizes and suppliers aren't taken into account yet.
             </p>
           )}

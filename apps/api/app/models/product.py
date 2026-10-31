@@ -1,5 +1,6 @@
 from decimal import Decimal
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -12,10 +13,13 @@ from sqlalchemy import (
     func,
     select,
 )
-from sqlalchemy.orm import Mapped, column_property, mapped_column
+from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
 from app.models.batch import Batch
+
+if TYPE_CHECKING:
+    from app.models.supplier import Supplier
 
 
 class ProductUnit(StrEnum):
@@ -36,6 +40,11 @@ class Product(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    # Who this product is usually ordered from. SET NULL, so that removing a supplier can never
+    # block deleting a whole store, whichever table the database empties first.
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="SET NULL"), index=True
+    )
 
     name: Mapped[str] = mapped_column(String(200))
     brand: Mapped[str | None] = mapped_column(String(120))
@@ -66,3 +75,6 @@ class Product(TimestampMixin, Base):
         .correlate_except(Batch)
         .scalar_subquery()
     )
+
+    # selectin, not a join: lists stay one extra query however many products they have.
+    supplier: Mapped["Supplier | None"] = relationship(lazy="selectin")

@@ -13,6 +13,8 @@ from pydantic import (
 
 from app.core.barcode import is_valid_gtin
 from app.models.product import ProductUnit
+from app.schemas.common import empty_to_none
+from app.schemas.supplier import SupplierRef
 
 ProductSort = Literal["name", "category", "purchase_price", "sale_price", "margin", "stock"]
 SortOrder = Literal["asc", "desc"]
@@ -34,10 +36,6 @@ def normalize_barcode(value: str | None) -> str | None:
     return value
 
 
-def empty_to_none(value: str | None) -> str | None:
-    return value or None
-
-
 def clean_category(value: str | None) -> str | None:
     # "Milk   products" and "Milk products" must not become two categories.
     return " ".join(value.split()) or None if value else None
@@ -51,6 +49,7 @@ class ProductCreate(BaseModel):
     unit: ProductUnit = ProductUnit.PIECE
     purchase_price: Price
     sale_price: Price
+    supplier_id: int | None = None
 
     _check_barcode = field_validator("barcode")(normalize_barcode)
     _clean_brand = field_validator("brand")(empty_to_none)
@@ -67,6 +66,7 @@ class ProductUpdate(BaseModel):
     unit: ProductUnit | None = None
     purchase_price: Price | None = None
     sale_price: Price | None = None
+    supplier_id: int | None = None
     active: bool | None = None
 
     _check_barcode = field_validator("barcode")(normalize_barcode)
@@ -94,6 +94,7 @@ class ProductRead(BaseModel):
     purchase_price: Decimal
     sale_price: Decimal
     stock: Decimal
+    supplier: SupplierRef | None
     active: bool
     created_at: datetime
     updated_at: datetime

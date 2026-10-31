@@ -6,6 +6,7 @@ from app.models.inventory_movement import InventoryMovement, MovementType
 from app.models.product import Product, ProductUnit
 from app.models.sale import Sale, SaleItem
 from app.models.store import Store
+from app.models.supplier import Supplier
 from app.models.user import User, UserRole
 from app.models.user_session import UserSession
 
@@ -22,6 +23,7 @@ __all__ = [
     "Sale",
     "SaleItem",
     "Store",
+    "Supplier",
     "User",
     "UserRole",
     "UserSession",

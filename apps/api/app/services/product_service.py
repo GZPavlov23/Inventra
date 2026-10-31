@@ -7,9 +7,15 @@ Routes call this service; it uses the repository for data access and owns the tr
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, NotFoundError, UnitLockedError
+from app.core.exceptions import (
+    ConflictError,
+    NotFoundError,
+    SupplierArchivedError,
+    UnitLockedError,
+)
 from app.models.product import Product
 from app.repositories.product_repository import ProductRepository
+from app.repositories.supplier_repository import SupplierRepository
 from app.schemas.product import ProductCreate, ProductSort, ProductUpdate, SortOrder
 
 
@@ -17,6 +23,7 @@ class ProductService:
     def __init__(self, session: Session) -> None:
         self.session = session
         self.products = ProductRepository(session)
+        self.suppliers = SupplierRepository(session)
 
     def list_products(
         self,
@@ -57,6 +64,7 @@ class ProductService:
     def create_product(self, store_id: int, data: ProductCreate) -> Product:
         if data.barcode:
             self._ensure_barcode_free(store_id, data.barcode)
+        self._ensure_supplier_usable(store_id, data.supplier_id)
         values = data.model_dump()
         values["category"] = self._existing_spelling(store_id, values["category"])
         product = Product(store_id=store_id, **values)
@@ -74,11 +82,16 @@ class ProductService:
         if new_unit and new_unit != product.unit and self.products.has_batches(product.id):
             # The stock history would change its meaning: 1.5 kg must not become 1.5 pieces.
             raise UnitLockedError(f"'{product.name}' already has batches, its unit can't change")
+        new_supplier = changes.get("supplier_id")
+        if new_supplier != product.supplier_id:
+            self._ensure_supplier_usable(store_id, new_supplier)
         if "category" in changes:
             changes["category"] = self._existing_spelling(store_id, changes["category"])
         for field, value in changes.items():
             setattr(product, field, value)
         self._commit()
+        # Otherwise the response would still show the supplier loaded before the change.
+        self.session.refresh(product)
         return product
 
     def _existing_spelling(self, store_id: int, category: str | None) -> str | None:
@@ -92,6 +105,16 @@ class ProductService:
         existing = self.products.get_by_barcode(store_id, barcode)
         if existing is not None:
             raise ConflictError(f"Barcode {barcode} is already used by '{existing.name}'")
+
+    def _ensure_supplier_usable(self, store_id: int, supplier_id: int | None) -> None:
+        # Checked against the logged-in store, so a product can't point at another store's supplier.
+        if supplier_id is None:
+            return
+        supplier = self.suppliers.get(store_id, supplier_id)
+        if supplier is None:
+            raise NotFoundError(f"Supplier {supplier_id} was not found")
+        if not supplier.active:
+            raise SupplierArchivedError(f"'{supplier.name}' is archived")
 
     def _commit(self) -> None:
         # The pre-check above gives a friendly message; the database unique constraint is

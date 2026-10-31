@@ -54,6 +54,11 @@ class UnitLockedError(DomainError):
     code = "unit_locked"
 
 
+class SupplierArchivedError(DomainError):
+    status_code = 409
+    code = "supplier_archived"
+
+
 class InsufficientStockError(DomainError):
     status_code = 409
     code = "insufficient_stock"

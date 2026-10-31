@@ -7,7 +7,17 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Batch, InventoryMovement, MovementType, Product, Sale, SaleItem, Store, User
+from app.models import (
+    Batch,
+    InventoryMovement,
+    MovementType,
+    Product,
+    Sale,
+    SaleItem,
+    Store,
+    Supplier,
+    User,
+)
 from app.models.batch import ExpiryStatus
 from app.repositories.inventory_repository import InventoryRepository
 from scripts.seed_demo import (
@@ -16,6 +26,7 @@ from scripts.seed_demo import (
     seed_batches,
     seed_products,
     seed_sales,
+    seed_suppliers,
     seed_waste,
 )
 
@@ -31,6 +42,18 @@ def seeded(db: Session, store: Store, owner: User) -> Store:
 
 def count(db: Session, model: type) -> int:
     return db.scalar(select(func.count()).select_from(model))
+
+
+def test_every_product_has_a_demo_supplier_and_a_second_run_changes_nothing(
+    db: Session, store: Store
+) -> None:
+    seed_products(db, store.id)
+    seed_suppliers(db, store.id)
+    seed_suppliers(db, store.id)
+
+    assert count(db, Supplier) == 4
+    assert all(name.endswith("(демо)") for name in db.scalars(select(Supplier.name)))
+    assert all(product.supplier is not None for product in db.scalars(select(Product)))
 
 
 def test_every_batch_matches_its_history(db: Session, seeded: Store) -> None:

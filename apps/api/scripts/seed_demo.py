@@ -34,10 +34,13 @@ from app.models.sale import Sale, SaleItem
 from app.models.store import Store
 from app.models.user import User, UserRole
 from app.repositories.product_repository import ProductRepository
+from app.repositories.supplier_repository import SupplierRepository
 from app.schemas.inventory import ReceiptCreate
 from app.schemas.product import ProductCreate
+from app.schemas.supplier import SupplierCreate
 from app.services.inventory_service import InventoryService
 from app.services.product_service import ProductService
+from app.services.supplier_service import SupplierService
 
 DEMO_STORE_NAME = "Демо магазин (демо данни)"
 
@@ -61,6 +64,43 @@ DEMO_PRODUCTS = [
     # Sold by weight, without a barcode — shows that barcode is optional.
     ("Банани", None, None, "Плодове и зеленчуци", KG, "1.20", "1.89"),
     ("Домати", None, None, "Плодове и зеленчуци", KG, "1.60", "2.49"),
+]
+
+# (name, contact, phone, email, notes, brands it supplies; None means products without a brand)
+# Phone numbers start with 000 after the area code, which is never assigned to a real line.
+DEMO_SUPPLIERS = [
+    (
+        "Зелена долина (демо)",
+        "Мария Демова",
+        "02 000 0001",
+        "orders@zelena-dolina.example",
+        "Поръчки до вторник на обед",
+        ("Зелена долина",),
+    ),
+    (
+        "Пекарна Изгрев (демо)",
+        "Иван Демов",
+        "02 000 0002",
+        "orders@izgrev.example",
+        "Доставка всеки ден до 7:00",
+        ("Пекарна Изгрев",),
+    ),
+    (
+        "Ферма Слънце (демо)",
+        "Елена Демова",
+        "02 000 0003",
+        "orders@ferma-slantse.example",
+        None,
+        ("Ферма Слънце", "Извор Демо"),
+    ),
+    (
+        "Плод и зеленчук (демо)",
+        "Георги Демов",
+        "02 000 0004",
+        None,
+        "Плащане в брой при доставка",
+        (None,),
+    ),
 ]
 
 # (product name, quantity, days until expiry; None means the goods don't expire)
@@ -164,6 +204,30 @@ def seed_products(session: Session, store_id: int) -> None:
         created += 1
 
     print(f"Products: {created} created, {skipped} already existed")
+
+
+def seed_suppliers(session: Session, store_id: int) -> None:
+    service = SupplierService(session)
+    repository = SupplierRepository(session)
+    created = 0
+
+    for name, contact, phone, email, notes, brands in DEMO_SUPPLIERS:
+        supplier = repository.find_by_name(store_id, name)
+        if supplier is None:
+            supplier = service.create_supplier(
+                store_id,
+                SupplierCreate(
+                    name=name, contact_name=contact, phone=phone, email=email, notes=notes
+                ),
+            )
+            created += 1
+        stmt = select(Product).where(Product.store_id == store_id, Product.supplier_id.is_(None))
+        for product in session.scalars(stmt):
+            if product.brand in brands:
+                product.supplier_id = supplier.id
+        session.commit()
+
+    print(f"Suppliers: {created} created")
 
 
 def delete_demo_stock(session: Session, store_id: int) -> None:
@@ -374,6 +438,7 @@ def main() -> None:
         store = get_or_create_store(session)
         owner = get_or_create_owner(session, store)
         seed_products(session, store.id)
+        seed_suppliers(session, store.id)
         if "--fresh-demo" in sys.argv:
             delete_demo_stock(session, store.id)
         seed_batches(session, store.id, owner.id)

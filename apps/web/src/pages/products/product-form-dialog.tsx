@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -20,6 +20,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
 import { marginPercent } from '@/lib/format'
 import { type Product, productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
+import { suppliersApi } from '@/lib/suppliers-api'
 import { CategoryCombobox } from '@/pages/products/category-combobox'
 
 const EMPTY_PRODUCT: ProductInput = {
@@ -30,7 +31,11 @@ const EMPTY_PRODUCT: ProductInput = {
   unit: 'pcs',
   purchase_price: '',
   sale_price: '',
+  supplier_id: null,
 }
+
+// A Select can't hold an empty value, so "no supplier" needs a name of its own.
+const NO_SUPPLIER = 'none'
 
 const UNITS: { value: ProductUnit; label: string }[] = [
   { value: 'pcs', label: 'Pieces' },
@@ -47,6 +52,7 @@ function toFormValues(product: Product): ProductInput {
     unit: product.unit,
     purchase_price: product.purchase_price,
     sale_price: product.sale_price,
+    supplier_id: product.supplier?.id ?? null,
   }
 }
 
@@ -87,6 +93,13 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
   const initialValues = product ? toFormValues(product) : EMPTY_PRODUCT
   const [form, setForm] = useState<ProductInput>(initialValues)
 
+  const suppliers = useQuery({ queryKey: ['suppliers', 'choices'], queryFn: suppliersApi.choices })
+  const supplierChoices = suppliers.data?.items ?? []
+  // A product keeps a supplier that was archived, so it stays in the list for this product only.
+  const currentSupplier = product?.supplier
+  const keepCurrentChoice =
+    currentSupplier && !supplierChoices.some((choice) => choice.id === currentSupplier.id)
+
   const saveProduct = useMutation({
     mutationFn: (values: ProductInput) =>
       product ? productsApi.update(product.id, values) : productsApi.create(values),
@@ -98,7 +111,7 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
     },
   })
 
-  const update = (field: keyof ProductInput, value: string) => {
+  const update = <Field extends keyof ProductInput>(field: Field, value: ProductInput[Field]) => {
     setForm((current) => ({ ...current, [field]: value }))
     if (saveProduct.isError) saveProduct.reset()
   }
@@ -115,7 +128,9 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
       ? { barcode: error.message }
       : error?.code === 'unit_locked'
         ? { unit: error.message }
-        : (error?.fieldErrors ?? {})
+        : error?.code === 'supplier_archived'
+          ? { supplier_id: error.message }
+          : (error?.fieldErrors ?? {})
   const showGeneralError = error !== null && Object.keys(fieldErrors).length === 0
 
   const margin =
@@ -154,7 +169,7 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
             value={form.barcode} onChange={(event) => update('barcode', event.target.value)} />
         </FormField>
         <FormField id="unit" label="Sold by" required error={fieldErrors.unit}>
-          <Select value={form.unit} onValueChange={(value) => update('unit', value)}>
+          <Select value={form.unit} onValueChange={(value) => update('unit', value as ProductUnit)}>
             <SelectTrigger id="unit" className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -166,6 +181,28 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
           </Select>
         </FormField>
       </div>
+
+      <FormField id="supplier" label="Supplier" error={fieldErrors.supplier_id}>
+        <Select
+          value={form.supplier_id === null ? NO_SUPPLIER : String(form.supplier_id)}
+          onValueChange={(value) => update('supplier_id', value === NO_SUPPLIER ? null : Number(value))}
+        >
+          <SelectTrigger id="supplier" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_SUPPLIER}>No supplier</SelectItem>
+            {keepCurrentChoice && (
+              <SelectItem value={String(currentSupplier.id)}>
+                {currentSupplier.name}{currentSupplier.active ? '' : ' (archived)'}
+              </SelectItem>
+            )}
+            {supplierChoices.map((choice) => (
+              <SelectItem key={choice.id} value={String(choice.id)}>{choice.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField id="purchase_price" label={`Purchase price (${store.currency})`} required

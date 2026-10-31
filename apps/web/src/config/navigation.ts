@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Building2,
   ClipboardList,
   LayoutDashboard,
   type LucideIcon,
@@ -57,6 +58,12 @@ export const NAV_GROUPS: NavGroup[] = [
         path: '/deliveries',
         icon: Truck,
         description: 'Receiving deliveries from suppliers into new batches.',
+      },
+      {
+        title: 'Suppliers',
+        path: '/suppliers',
+        icon: Building2,
+        description: 'The companies you buy from and how to reach them.',
       },
     ],
   },

@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import type { SupplierRef } from '@/lib/suppliers-api'
 
 // Shapes match the backend schemas in apps/api/app/schemas/product.py.
 // Prices arrive as strings ("1.59"): the API sends exact decimals, not binary floats.
@@ -18,6 +19,7 @@ export type Product = {
   purchase_price: string
   sale_price: string
   stock: string
+  supplier: SupplierRef | null
   active: boolean
   created_at: string
   updated_at: string
@@ -47,6 +49,7 @@ export type ProductInput = {
   unit: ProductUnit
   purchase_price: string
   sale_price: string
+  supplier_id: number | null
 }
 
 export const productsApi = {

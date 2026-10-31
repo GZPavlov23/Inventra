@@ -18,12 +18,14 @@ import { OrdersPage } from '@/pages/orders/orders-page'
 import { PlannedPage } from '@/pages/planned-page'
 import { ProductsPage } from '@/pages/products/products-page'
 import { SalesPage } from '@/pages/sales/sales-page'
+import { SuppliersPage } from '@/pages/suppliers/suppliers-page'
 
 // Modules that are already built. Every other menu item shows a "Planned" placeholder.
 const BUILT_PAGES: Record<string, ReactNode> = {
   '/': <DashboardPage />,
   '/products': <ProductsPage />,
   '/inventory': <InventoryPage />,
+  '/suppliers': <SuppliersPage />,
   '/sales': <SalesPage />,
   '/forecast': <ForecastPage />,
   '/orders': <OrdersPage />,

@@ -13,7 +13,7 @@ order is based on, so that is the number models are compared by.
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from app.forecasting.models import Model, Series, known_before, next_days
+from app.forecasting.models import NEVER_SOLD_OUT, Case, Model, Series, known_before, next_days
 
 BACKTEST_HORIZON = 7
 BACKTEST_WEEKS = 4
@@ -48,25 +48,41 @@ def origins(last_day: date) -> list[date]:
     ]
 
 
-def backtest(products: dict[int, Series], model: Model, last_day: date) -> BacktestResult:
+def backtest(
+    products: dict[int, Series],
+    model: Model,
+    last_day: date,
+    sold_out: dict[int, frozenset[date]] | None = None,
+) -> BacktestResult:
+    """Scores every model on days when the goods were there.
+
+    On a sold-out day the sales show how much stock there was, not how much people wanted, so
+    a model can't be right or wrong about that day.
+    """
+    judged = [
+        (product_id, Case(series, origin, (sold_out or {}).get(product_id, NEVER_SOLD_OUT)))
+        for product_id, series in products.items()
+        for origin in origins(last_day)
+        if len(known_before(series, origin)) >= MIN_HISTORY_DAYS
+    ]
+    forecasts = model([case for _, case in judged], BACKTEST_HORIZON) if judged else []
+
     days = 0
     used: set[int] = set()
     sold = daily_error = weekly_error = bias = 0.0
 
-    for product_id, series in products.items():
-        for origin in origins(last_day):
-            if len(known_before(series, origin)) < MIN_HISTORY_DAYS:
+    for (product_id, case), forecast in zip(judged, forecasts, strict=True):
+        week_error = 0.0
+        for day, predicted in zip(next_days(case.origin, BACKTEST_HORIZON), forecast, strict=True):
+            if day in case.sold_out:
                 continue
-            forecast = model(series, origin, BACKTEST_HORIZON)
-            week_error = 0.0
-            for day, predicted in zip(next_days(origin, BACKTEST_HORIZON), forecast, strict=True):
-                actual = series[day]
-                days += 1
-                used.add(product_id)
-                sold += actual
-                daily_error += abs(predicted - actual)
-                week_error += predicted - actual
-            weekly_error += abs(week_error)
-            bias += week_error
+            actual = case.series[day]
+            days += 1
+            used.add(product_id)
+            sold += actual
+            daily_error += abs(predicted - actual)
+            week_error += predicted - actual
+        weekly_error += abs(week_error)
+        bias += week_error
 
     return BacktestResult(days, len(used), sold, daily_error, weekly_error, bias)

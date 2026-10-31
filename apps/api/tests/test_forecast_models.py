@@ -5,7 +5,14 @@ from datetime import date, timedelta
 import pytest
 
 from app.forecasting.backtest import MIN_HISTORY_DAYS, backtest, origins
-from app.forecasting.models import Series, known_before, recent_average, seasonal_average
+from app.forecasting.models import (
+    Case,
+    Series,
+    known_before,
+    one_by_one,
+    recent_average,
+    seasonal_average,
+)
 
 # A Monday, so weekdays in these tests are easy to follow.
 ORIGIN = date(2026, 10, 5)
@@ -71,6 +78,12 @@ def test_models_can_not_see_the_future(model) -> None:
     assert model({**series, **future}, ORIGIN, 7) == expected
 
 
+def test_one_by_one_answers_every_case_in_order() -> None:
+    model = one_by_one(lambda series, _origin, horizon: [series[ORIGIN]] * horizon)
+    cases = [Case({ORIGIN: 1.0}, ORIGIN), Case({ORIGIN: 2.0}, ORIGIN)]
+    assert model(cases, 2) == [[1.0, 1.0], [2.0, 2.0]]
+
+
 def test_known_before_leaves_out_the_day_itself() -> None:
     assert known_before({ORIGIN: 1.0, ORIGIN - timedelta(days=1): 2.0}, ORIGIN) == {
         ORIGIN - timedelta(days=1): 2.0
@@ -88,7 +101,7 @@ def full_series(weeks: int = 8, value: float = 2.0) -> Series:
 
 
 def always(value: float):
-    return lambda _series, _origin, horizon: [value] * horizon
+    return one_by_one(lambda _series, _origin, horizon: [value] * horizon)
 
 
 def test_the_test_weeks_end_on_the_last_day_and_do_not_overlap() -> None:
@@ -144,6 +157,19 @@ def test_nothing_sold_gives_no_number() -> None:
     assert backtest({1: full_series(value=0.0)}, always(1.0), LAST_DAY).weekly_wape is None
 
 
+def test_a_sold_out_day_does_not_count_against_a_model() -> None:
+    series = full_series()
+    # Sales show 0 on the last day, but only because there was nothing left to sell.
+    series[LAST_DAY] = 0.0
+
+    counted = backtest({1: series}, always(2.0), LAST_DAY)
+    skipped = backtest({1: series}, always(2.0), LAST_DAY, {1: frozenset({LAST_DAY})})
+
+    assert counted.daily_wape > 0
+    assert skipped.daily_wape == 0
+    assert skipped.days == counted.days - 1
+
+
 def test_each_test_sees_only_what_was_known_then() -> None:
     seen: list[date] = []
 
@@ -151,5 +177,5 @@ def test_each_test_sees_only_what_was_known_then() -> None:
         seen.append(max(known_before(series, origin)))
         return [0.0] * horizon
 
-    backtest({1: full_series()}, spy, LAST_DAY)
+    backtest({1: full_series()}, one_by_one(spy), LAST_DAY)
     assert seen == [origin - timedelta(days=1) for origin in origins(LAST_DAY)]

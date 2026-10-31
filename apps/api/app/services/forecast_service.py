@@ -8,7 +8,17 @@ from sqlalchemy.orm import Session
 from app.core.money import to_cents
 from app.core.period import period_bounds
 from app.forecasting.backtest import MIN_HISTORY_DAYS, BacktestResult, backtest
-from app.forecasting.models import Model, Series, next_days, recent_average, seasonal_average
+from app.forecasting.learned import learned_forecast
+from app.forecasting.models import (
+    NEVER_SOLD_OUT,
+    Case,
+    Model,
+    Series,
+    next_days,
+    one_by_one,
+    recent_average,
+    seasonal_average,
+)
 from app.forecasting.ordering import StockBatch, plan_stock, round_order
 from app.repositories.forecast_repository import ForecastRepository
 from app.repositories.report_repository import ReportRepository
@@ -34,8 +44,9 @@ DEFAULT_BUFFER_SHARE = Decimal("0.25")
 
 # The first one is used when nothing can be measured yet, because weekdays usually do matter.
 MODELS: dict[str, Model] = {
-    "Same weekday, last 4 weeks": seasonal_average,
-    "Average of the last 7 days": recent_average,
+    "Same weekday, last 4 weeks": one_by_one(seasonal_average),
+    "Average of the last 7 days": one_by_one(recent_average),
+    "Machine learning": learned_forecast,
 }
 
 
@@ -47,30 +58,39 @@ class ForecastService:
     def forecast(self, store_id: int, horizon: int) -> ForecastReport:
         today = date.today()
         products = {product.id: product for product in self.forecasts.active_products(store_id)}
-        history = self._history(store_id, today - timedelta(days=1), set(products))
+        last_day = today - timedelta(days=1)
+        history = self._history(store_id, last_day, set(products))
+        sold_out = self._sold_out(store_id, last_day)
         stock = self.reports.sellable_stock(store_id, today)
-        measured = self._measure(history, today - timedelta(days=1))
+        measured = self._measure(history, last_day, sold_out)
         method = self._best(measured)
         model = MODELS[method]
 
-        items = []
+        ready = []
         not_enough_history = 0
         for product_id, product in products.items():
             series = history.get(product_id, {})
-            if len(series) < MIN_HISTORY_DAYS:
+            if len(series) >= MIN_HISTORY_DAYS:
+                ready.append(product)
+            elif series:
                 # Only products that have sold at all count as waiting for more history.
-                not_enough_history += 1 if series else 0
-                continue
+                not_enough_history += 1
 
-            quantities = [
-                Decimal(str(round(quantity, 2))) for quantity in model(series, today, horizon)
-            ]
+        cases = [
+            Case(history[product.id], today, sold_out.get(product.id, NEVER_SOLD_OUT))
+            for product in ready
+        ]
+        forecasts = model(cases, horizon) if cases else []
+
+        items = []
+        for product, forecast in zip(ready, forecasts, strict=True):
+            quantities = [Decimal(str(round(quantity, 2))) for quantity in forecast]
             total = sum(quantities, Decimal(0))
-            left = stock.get(product_id, Decimal(0))
+            left = stock.get(product.id, Decimal(0))
             items.append(
                 ProductForecast(
                     product=product,
-                    history_days=len(series),
+                    history_days=len(history[product.id]),
                     total=total,
                     stock=left,
                     shortage=max(total - left, Decimal(0)),
@@ -150,15 +170,20 @@ class ForecastService:
     def accuracy(self, store_id: int) -> AccuracyReport:
         last_day = date.today() - timedelta(days=1)
         ids = {product.id for product in self.forecasts.active_products(store_id)}
-        measured = self._measure(self._history(store_id, last_day, ids), last_day)
+        history = self._history(store_id, last_day, ids)
+        measured = self._measure(history, last_day, self._sold_out(store_id, last_day))
         return AccuracyReport(
             chosen=self._best(measured),
             models=[self._accuracy(name, result) for name, result in measured.items()],
         )
 
     @staticmethod
-    def _measure(history: dict[int, Series], last_day: date) -> dict[str, BacktestResult]:
-        return {name: backtest(history, model, last_day) for name, model in MODELS.items()}
+    def _measure(
+        history: dict[int, Series], last_day: date, sold_out: dict[int, frozenset[date]]
+    ) -> dict[str, BacktestResult]:
+        return {
+            name: backtest(history, model, last_day, sold_out) for name, model in MODELS.items()
+        }
 
     @staticmethod
     def _best(measured: dict[str, BacktestResult]) -> str:
@@ -169,6 +194,30 @@ class ForecastService:
                 measured[name].weekly_wape if measured[name].weekly_wape is not None else 0
             ),
         )
+
+    def _sold_out(self, store_id: int, last_day: date) -> dict[int, frozenset[date]]:
+        """The days each product ended with nothing left, from the stock history.
+
+        Days before a product's first stock movement are unknown, not sold out: imported old
+        sales have no stock history behind them.
+        """
+        _, end = period_bounds(None, last_day)
+        changes: dict[int, dict[date, Decimal]] = {}
+        for product_id, day, change in self.forecasts.stock_changes(store_id, end=end):
+            changes.setdefault(product_id, {})[day] = change
+
+        sold_out = {}
+        for product_id, by_day in changes.items():
+            stock = Decimal(0)
+            empty = set()
+            day = min(by_day)
+            while day <= last_day:
+                stock += by_day.get(day, Decimal(0))
+                if stock <= 0:
+                    empty.add(day)
+                day += timedelta(days=1)
+            sold_out[product_id] = frozenset(empty)
+        return sold_out
 
     def _history(self, store_id: int, last_day: date, products: set[int]) -> dict[int, Series]:
         """Every product's days, from its first known sale up to last_day, without gaps."""

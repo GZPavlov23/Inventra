@@ -6,13 +6,28 @@ would report an accuracy nobody can reach.
 """
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, timedelta
 from statistics import fmean
 
 # Quantity sold per day, from a product's first sale on. Days without sales are 0, and days before
 # the first sale are missing: the product simply wasn't on the shelf.
 Series = dict[date, float]
-Model = Callable[[Series, date, int], list[float]]
+NEVER_SOLD_OUT: frozenset[date] = frozenset()
+
+
+@dataclass(frozen=True)
+class Case:
+    """One forecast to make: a product's past, the first day to predict, and its sold-out days."""
+
+    series: Series
+    origin: date
+    sold_out: frozenset[date] = NEVER_SOLD_OUT
+
+
+# Models take many cases at once. For a learned model one call for a thousand products is about
+# as fast as one call for a single product, so going one by one would make a big shop wait.
+Model = Callable[[list[Case], int], list[list[float]]]
 
 SEASONAL_WEEKS = 4
 RECENT_DAYS = 7
@@ -53,3 +68,12 @@ def seasonal_average(series: Series, origin: date, horizon: int) -> list[float]:
         ][:SEASONAL_WEEKS]
         forecast.append(fmean(same_weekday) if same_weekday else fallback)
     return forecast
+
+
+def one_by_one(forecast: Callable[[Series, date, int], list[float]]) -> Model:
+    """Turns a plain model, which needs no batching, into one that takes many cases."""
+
+    def model(cases: list[Case], horizon: int) -> list[list[float]]:
+        return [forecast(case.series, case.origin, horizon) for case in cases]
+
+    return model

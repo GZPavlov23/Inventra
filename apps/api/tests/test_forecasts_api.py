@@ -5,9 +5,15 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Batch, Sale, Store, User
+from app.forecasting.models import Case
+from app.models import Batch, InventoryMovement, Product, ProductUnit, Sale, Store, User
+from app.schemas.inventory import ReceiptCreate
+from app.services import forecast_service as service_module
+from app.services.forecast_service import ForecastService
+from app.services.inventory_service import InventoryService
 
 URL = "/api/v1/forecasts"
 PRODUCTS_URL = "/api/v1/products"
@@ -68,7 +74,7 @@ def test_a_store_without_history_gets_an_empty_answer(client: TestClient) -> Non
 
     accuracy = client.get(f"{URL}/accuracy").json()
     assert accuracy["chosen"] == SEASONAL
-    assert [model["weekly_wape"] for model in accuracy["models"]] == [None, None]
+    assert [model["weekly_wape"] for model in accuracy["models"]] == [None, None, None]
 
 
 @pytest.mark.parametrize("horizon", [0, 15])
@@ -210,6 +216,97 @@ def test_a_trend_is_caught_better_by_the_recent_average(client: TestClient) -> N
     assert forecast(client)["method"] == RECENT
     assert Decimal(by_method[RECENT]["weekly_wape"]) < Decimal(by_method[SEASONAL]["weekly_wape"])
     assert Decimal(by_method[SEASONAL]["bias"]) < 0
+
+
+def stock_history(
+    client: TestClient, db: Session, product: dict, days_ago: int, delta: str
+) -> None:
+    """Adds a line to the stock history as if it had happened days_ago."""
+    batch = receive(client, product, delta)
+    stmt = select(InventoryMovement).where(InventoryMovement.batch_id == batch["id"])
+    db.scalars(stmt).one().occurred_at = datetime.now(UTC) - timedelta(days=days_ago)
+    db.flush()
+
+
+def test_a_day_that_ended_with_nothing_left_counts_as_sold_out(
+    client: TestClient, db: Session, store: Store
+) -> None:
+    milk = make_product(client)
+    stock_history(client, db, milk, 10, "5")
+    response = client.post(SALES_URL, json={"items": [{"product_id": milk["id"], "quantity": "5"}]})
+    assert response.status_code == 201
+    sale = db.get(Sale, response.json()["id"])
+    moment = datetime.now(UTC) - timedelta(days=4)
+    sale.sold_at = moment
+    for item in sale.items:
+        for movement in item.movements:
+            movement.occurred_at = moment
+    db.flush()
+    stock_history(client, db, milk, 1, "3")
+
+    out = ForecastService(db)._sold_out(store.id, ago(1))[milk["id"]]
+
+    assert out == frozenset(ago(days) for days in (4, 3, 2))
+
+
+def test_models_are_told_which_days_were_sold_out(
+    client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    milk = make_product(client)
+    history(client, milk, lambda _day: 2)
+    # One piece arrived five days ago and was thrown away the same day, leaving nothing.
+    batch = receive(client, milk, "1")
+    waste = {"quantity": "1", "reason": "damaged"}
+    assert client.post(f"{BATCHES_URL}/{batch['id']}/waste", json=waste).status_code == 200
+    stmt = select(InventoryMovement).where(InventoryMovement.batch_id == batch["id"])
+    for movement in db.scalars(stmt):
+        movement.occurred_at = datetime.now(UTC) - timedelta(days=5)
+    db.flush()
+    outs = []
+
+    def spy(cases: list[Case], horizon: int) -> list[list[float]]:
+        outs.extend(case.sold_out for case in cases)
+        return [[1.0] * horizon for _ in cases]
+
+    monkeypatch.setattr(service_module, "MODELS", {"Spy": spy})
+
+    forecast(client)
+
+    # Four test weeks, and the forecast itself.
+    assert len(outs) == 5
+    assert all(ago(5) in out for out in outs)
+
+
+def test_another_stores_stock_history_stays_out(
+    client: TestClient, db: Session, store: Store
+) -> None:
+    other = Store(name="Someone else's store")
+    db.add(other)
+    db.flush()
+    product = Product(
+        store_id=other.id,
+        name="Foreign milk",
+        unit=ProductUnit.PIECE,
+        purchase_price=Decimal("1"),
+        sale_price=Decimal("2"),
+    )
+    db.add(product)
+    db.flush()
+    InventoryService(db).receive(
+        other.id,
+        db.scalar(select(User.id)),
+        ReceiptCreate(product_id=product.id, quantity=Decimal("1")),
+    )
+
+    assert ForecastService(db)._sold_out(store.id, ago(-1)) == {}
+
+
+def test_imported_history_alone_is_never_sold_out(
+    client: TestClient, db: Session, store: Store
+) -> None:
+    milk = make_product(client)
+    history(client, milk, lambda _day: 2)
+    assert milk["id"] not in ForecastService(db)._sold_out(store.id, ago(1))
 
 
 def test_forecast_shows_only_this_store(client: TestClient, db: Session, owner: User) -> None:

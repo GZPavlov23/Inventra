@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.demand_day import DemandDay
+from app.models.inventory_movement import InventoryMovement
 from app.models.product import Product
 from app.models.sale import Sale, SaleItem
 from app.repositories.sale_repository import in_period
@@ -42,5 +43,16 @@ class ForecastRepository:
             DemandDay.store_id == store_id,
             DemandDay.day >= first_day,
             DemandDay.day <= last_day,
+        )
+        return [tuple(row) for row in self.session.execute(stmt)]
+
+    def stock_changes(self, store_id: int, *, end: datetime) -> list[tuple[int, date, Decimal]]:
+        """Product, day and how much its stock changed, oldest first, for every day it did."""
+        day = func.date(InventoryMovement.occurred_at)
+        stmt = (
+            select(InventoryMovement.product_id, day, func.sum(InventoryMovement.quantity_delta))
+            .where(InventoryMovement.store_id == store_id, InventoryMovement.occurred_at < end)
+            .group_by(InventoryMovement.product_id, day)
+            .order_by(day)
         )
         return [tuple(row) for row in self.session.execute(stmt)]

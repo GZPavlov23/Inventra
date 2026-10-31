@@ -13,8 +13,8 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 414 tests |
-| Automated browser tests (Playwright) | ✅ 85 scenarios: login, registration, password reset, dashboard, products, inventory, suppliers, sales, CSV import, forecast, orders |
+| Automated backend tests (pytest) | ✅ 458 tests |
+| Automated browser tests (Playwright) | ✅ 91 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -25,6 +25,7 @@ The project is under active development. This section lists only what actually w
 | Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working |
 | Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history; stock column on Products | ✅ working |
 | Suppliers: REST API and page with contacts, search, archiving; every product can have a supplier | ✅ working |
+| Deliveries: ordering from a supplier, receiving what really arrived into batches in one transaction, cancelling; a delivery can't be received twice | ✅ working |
 | Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working |
 | Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns are planned |
 | Dashboard page: revenue and profit chart, week over week comparison, stock value, expired and expiring stock, what needs attention | ✅ working (real data from the API) |

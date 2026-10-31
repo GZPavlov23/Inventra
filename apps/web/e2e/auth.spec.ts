@@ -74,6 +74,9 @@ test('a new owner registers, confirms the email and gets an empty store', async 
   await expect(page.getByText('No sales yet')).toBeVisible()
   await expect(page.getByText('No goods were written off')).toBeVisible()
 
+  await page.goto('/forecast')
+  await expect(page.getByText('Not enough sales yet')).toBeVisible()
+
   // Another store's products are not visible here.
   await page.goto('/products')
   await expect(page.getByText('No products yet')).toBeVisible()

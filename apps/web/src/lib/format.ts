@@ -12,6 +12,23 @@ export function formatQuantity(quantity: string | number, unit: ProductUnit): st
   return `${number} ${unit}`
 }
 
+// A forecast is an expectation, not a count: 30.75 pieces means "about 31".
+export function formatExpected(quantity: string | number, unit: ProductUnit): string {
+  const rounded = unit === 'pcs' ? Math.round(Number(quantity)) : Number(Number(quantity).toFixed(1))
+  return formatQuantity(rounded, unit)
+}
+
+// What has to be ordered: a piece can't be split, so a shortage of 0.2 still means one more.
+export function formatShortage(quantity: string | number, unit: ProductUnit): string {
+  const rounded = unit === 'pcs' ? Math.ceil(Number(quantity)) : Number(Number(quantity).toFixed(1))
+  return formatQuantity(rounded, unit)
+}
+
+// An error of 0.2419 is shown as 24.2%. Empty means there was nothing to measure yet.
+export function formatShare(share: string | null): string {
+  return share === null ? 'Not measured yet' : `${(Number(share) * 100).toFixed(1)}%`
+}
+
 // A sale line in whole cents, rounded like the server does (half up). Whole numbers keep it
 // exact: as a binary float 0.750 × 1.89 isn't quite 1.4175, and could round the other way.
 export function lineCents(quantity: string, unitPrice: string): number {
@@ -42,6 +59,10 @@ export function formatDay(day: string): string {
 
 export function formatMonthDay(day: string): string {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(parseDay(day))
+}
+
+export function formatWeekday(day: string): string {
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(parseDay(day))
 }
 
 // A day as "2026-10-30", the format date inputs and the API use.

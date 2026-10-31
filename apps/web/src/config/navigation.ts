@@ -6,7 +6,7 @@ import {
   Package,
   Settings,
   ShoppingCart,
-  Sparkles,
+  TrendingUp,
   Truck,
 } from 'lucide-react'
 
@@ -76,10 +76,10 @@ export const NAV_GROUPS: NavGroup[] = [
         description: 'Replenishment lists for suppliers, based on the recommendations.',
       },
       {
-        title: 'AI Insights',
-        path: '/ai-insights',
-        icon: Sparkles,
-        description: 'Demand forecasts and explainable order recommendations.',
+        title: 'Forecast',
+        path: '/forecast',
+        icon: TrendingUp,
+        description: 'Expected sales per product, what will run short, and how accurate the forecast is.',
       },
     ],
   },

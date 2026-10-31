@@ -59,7 +59,12 @@ test('columns sort the whole list in both directions', async ({ page }) => {
   await page.getByRole('button', { name: 'Sale price' }).click()
   await expect(page).toHaveURL(/order=desc/)
   await expect(page.getByRole('columnheader', { name: 'Sale price' })).toHaveAttribute('aria-sort', 'descending')
-  await expect.poll(() => prices(page)).toEqual([...ascending].reverse())
+  // Compared by order, not with the list above: with many products it is a different page.
+  await expect.poll(async () => {
+    const descending = await prices(page)
+    return descending[0] >= ascending[ascending.length - 1]
+      && descending.every((price, index) => index === 0 || price <= descending[index - 1])
+  }).toBe(true)
 })
 
 test('adding a product: validation errors, then it appears in the table', async ({ page }) => {

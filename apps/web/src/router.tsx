@@ -11,6 +11,7 @@ import { RegisterPage } from '@/pages/auth/register-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { VerifyEmailPage } from '@/pages/auth/verify-email-page'
 import { DashboardPage } from '@/pages/dashboard/dashboard-page'
+import { ForecastPage } from '@/pages/forecast/forecast-page'
 import { InventoryPage } from '@/pages/inventory/inventory-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { PlannedPage } from '@/pages/planned-page'
@@ -23,6 +24,7 @@ const BUILT_PAGES: Record<string, ReactNode> = {
   '/products': <ProductsPage />,
   '/inventory': <InventoryPage />,
   '/sales': <SalesPage />,
+  '/forecast': <ForecastPage />,
 }
 
 export const router = createBrowserRouter([

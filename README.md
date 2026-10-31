@@ -13,8 +13,8 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 325 tests |
-| Automated browser tests (Playwright) | ✅ 69 scenarios: login, registration, password reset, dashboard, products, inventory, sales, CSV import, forecast |
+| Automated backend tests (pytest) | ✅ 358 tests |
+| Automated browser tests (Playwright) | ✅ 78 scenarios: login, registration, password reset, dashboard, products, inventory, sales, CSV import, forecast, orders |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -30,6 +30,7 @@ The project is under active development. This section lists only what actually w
 | Reports on the dashboard: waste by reason, products running out, top products, sales by category | ✅ working |
 | CSV import of sales: current sales that take stock, and old history for the forecast, with a check before anything is written | ✅ working |
 | Forecast page and API: expected sales per product, shortages, two simple models measured on the store's own past | ✅ working. Not machine learning yet |
+| Orders page: what to order and why, counting only stock that will sell before it expires, with a safety buffer and CSV download | ✅ working. Suppliers and pack sizes are planned |
 | Demand forecasting with machine learning | ⏳ planned |
 | Mobile app (Expo) | ⏳ planned |
 

@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.delivery import Delivery, DeliveryItem, DeliveryStatus
 from app.models.demand_day import DemandDay
 from app.models.inventory_movement import InventoryMovement
 from app.models.product import Product
@@ -20,6 +21,16 @@ class ForecastRepository:
     def active_products(self, store_id: int) -> list[Product]:
         stmt = select(Product).where(Product.store_id == store_id, Product.active)
         return list(self.session.scalars(stmt))
+
+    def on_the_way(self, store_id: int) -> dict[int, Decimal]:
+        """How much of each product was ordered and hasn't arrived yet."""
+        stmt = (
+            select(DeliveryItem.product_id, func.sum(DeliveryItem.ordered_quantity))
+            .join(Delivery, DeliveryItem.delivery_id == Delivery.id)
+            .where(Delivery.store_id == store_id, Delivery.status == DeliveryStatus.ORDERED)
+            .group_by(DeliveryItem.product_id)
+        )
+        return {product_id: quantity for product_id, quantity in self.session.execute(stmt)}
 
     def sold_per_day(
         self, store_id: int, *, start: datetime, end: datetime

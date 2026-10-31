@@ -26,9 +26,7 @@ class DeliveryItemCreate(BaseModel):
     unit_cost: Price | None = None
 
 
-class DeliveryCreate(BaseModel):
-    supplier_id: int
-    expected_on: date | None = None
+class OrderedProducts(BaseModel):
     items: Annotated[list[DeliveryItemCreate], Field(min_length=1, max_length=MAX_DELIVERY_LINES)]
 
     @model_validator(mode="after")
@@ -37,6 +35,17 @@ class DeliveryCreate(BaseModel):
         if len(products) != len(set(products)):
             raise ValueError("A product can be on a delivery only once")
         return self
+
+
+class DeliveryCreate(OrderedProducts):
+    supplier_id: int
+    expected_on: date | None = None
+
+
+class OrderDeliveries(OrderedProducts):
+    """An order for many suppliers. Each product goes to the supplier set on it."""
+
+    expected_on: date | None = None
 
 
 class DeliveryItemReceipt(BaseModel):

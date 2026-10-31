@@ -5,9 +5,10 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.models import Batch, Store, User
+from app.models import Batch, Delivery, Store, User
 from app.schemas.forecast import AccuracyReport, ModelAccuracy
 from app.services.forecast_service import ForecastService
 
@@ -15,6 +16,14 @@ URL = "/api/v1/forecasts/orders"
 PRODUCTS_URL = "/api/v1/products"
 BATCHES_URL = "/api/v1/batches"
 IMPORT_URL = "/api/v1/imports/sales"
+DELIVERIES_URL = "/api/v1/deliveries"
+
+
+def _other_store(db: Session) -> int:
+    other = Store(name="Someone else's store")
+    db.add(other)
+    db.flush()
+    return other.id
 
 
 def ago(days: int) -> date:
@@ -47,6 +56,20 @@ def receive(client: TestClient, product: dict, quantity: str, **extra: object) -
 def orders(client: TestClient, **params: object) -> dict:
     response = client.get(URL, params=params)
     assert response.status_code == 200, response.text
+    return response.json()
+
+
+def supplier_named(client: TestClient, name: str = "Dairy") -> dict:
+    return client.post("/api/v1/suppliers", json={"name": name}).json()
+
+
+def ordered(client: TestClient, product: dict, quantity: str) -> dict:
+    body = {
+        "supplier_id": supplier_named(client, f"Supplier of {quantity}")["id"],
+        "items": [{"product_id": product["id"], "quantity": quantity}],
+    }
+    response = client.post(DELIVERIES_URL, json=body)
+    assert response.status_code == 201, response.text
     return response.json()
 
 
@@ -185,6 +208,83 @@ def test_the_buffer_follows_the_error_within_limits(error: str | None, share: st
     )
     accuracy = AccuracyReport(chosen="Model", models=[model])
     assert ForecastService._buffer_share(accuracy) == Decimal(share)
+
+
+def test_a_line_shows_who_supplies_the_product(client: TestClient) -> None:
+    dairy = supplier_named(client)
+    milk = make_product(client, supplier_id=dairy["id"])
+    bread = make_product(client, "Bread")
+    history(client, milk)
+    history(client, bread)
+
+    lines = {line["product"]["name"]: line for line in orders(client)["items"]}
+
+    assert lines["Milk"]["supplier"] == {"id": dairy["id"], "name": "Dairy", "active": True}
+    assert lines["Bread"]["supplier"] is None
+
+
+def test_goods_on_the_way_are_not_ordered_again(client: TestClient) -> None:
+    milk = make_product(client)
+    history(client, milk, 2)
+    before = Decimal(orders(client)["items"][0]["order"])
+
+    ordered(client, milk, "5")
+    ordered(client, milk, "3")
+    [line] = orders(client)["items"]
+
+    assert Decimal(line["on_the_way"]) == 8
+    assert Decimal(line["order"]) == before - 8
+    assert Decimal(line["cost"]) == (before - 8) * Decimal("1.50")
+
+
+def test_enough_on_the_way_means_no_order(client: TestClient) -> None:
+    milk = make_product(client)
+    history(client, milk, 2)
+    ordered(client, milk, "100")
+    assert orders(client)["items"] == []
+
+
+def test_received_goods_are_counted_once(client: TestClient) -> None:
+    milk = make_product(client)
+    history(client, milk, 2)
+    delivery = ordered(client, milk, "5")
+    with_delivery = orders(client)["items"][0]
+
+    item = delivery["items"][0]
+    response = client.post(
+        f"{DELIVERIES_URL}/{delivery['id']}/receive",
+        json={"items": [{"item_id": item["id"], "quantity": "5"}]},
+    )
+    assert response.status_code == 200, response.text
+    [line] = orders(client)["items"]
+
+    assert Decimal(line["on_the_way"]) == 0
+    assert Decimal(line["order"]) == Decimal(with_delivery["order"])
+
+
+def test_a_cancelled_delivery_is_needed_again(client: TestClient) -> None:
+    milk = make_product(client)
+    history(client, milk, 2)
+    before = orders(client)["items"][0]["order"]
+
+    delivery = ordered(client, milk, "5")
+    client.post(f"{DELIVERIES_URL}/{delivery['id']}/cancel")
+
+    assert orders(client)["items"][0]["order"] == before
+
+
+def test_another_stores_delivery_changes_nothing_here(
+    client: TestClient, db: Session, owner: User, store: Store
+) -> None:
+    milk = make_product(client)
+    history(client, milk, 2)
+    ordered(client, milk, "5")
+    with_delivery = orders(client)["items"][0]
+
+    db.execute(update(Delivery).values(store_id=_other_store(db)))
+    db.commit()
+
+    assert Decimal(orders(client)["items"][0]["order"]) == Decimal(with_delivery["order"]) + 5
 
 
 def test_orders_show_only_this_store(client: TestClient, db: Session, owner: User) -> None:

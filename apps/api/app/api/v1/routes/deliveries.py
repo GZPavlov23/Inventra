@@ -11,6 +11,7 @@ from app.schemas.delivery import (
     DeliveryPage,
     DeliveryRead,
     DeliveryReceipt,
+    OrderDeliveries,
 )
 
 router = APIRouter(prefix="/deliveries", tags=["deliveries"])
@@ -46,6 +47,20 @@ def list_deliveries(
 def create_delivery(data: DeliveryCreate, user: CurrentUser, service: DeliveryServiceDep):
     """Records an order. Stock changes only when the goods are received."""
     return service.create(user.store_id, user.id, data)
+
+
+# Declared before /{delivery_id}, like the other fixed paths.
+@router.post(
+    "/from-order",
+    response_model=list[DeliveryRead],
+    status_code=201,
+    responses={**NOT_FOUND, **CONFLICT},
+)
+def create_deliveries_from_order(
+    data: OrderDeliveries, user: CurrentUser, service: DeliveryServiceDep
+):
+    """Turns an order into one delivery per supplier. All of them are created, or none."""
+    return service.create_from_order(user.store_id, user.id, data)
 
 
 @router.get("/{delivery_id}", response_model=DeliveryRead, responses=NOT_FOUND)

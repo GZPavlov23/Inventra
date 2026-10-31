@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 from app.schemas.inventory import BatchProduct
+from app.schemas.supplier import SupplierRef
 
 
 class ForecastDay(BaseModel):
@@ -47,11 +48,14 @@ class AccuracyReport(BaseModel):
 
 class OrderLine(BaseModel):
     product: BatchProduct
+    supplier: SupplierRef | None
     # The arithmetic behind the order, so nobody has to trust a number they can't follow.
     expected: Decimal
     from_stock: Decimal
     expiring_unsold: Decimal
     left_over: Decimal
+    # Ordered already and not received yet, so it isn't ordered a second time.
+    on_the_way: Decimal
     buffer: Decimal
     order: Decimal
     unit_cost: Decimal

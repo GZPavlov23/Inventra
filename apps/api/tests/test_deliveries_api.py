@@ -199,6 +199,89 @@ def test_a_delivery_needs_lines_and_each_product_once(
     assert response.status_code == 422
 
 
+# Turning an order into deliveries
+
+
+def from_order(client: TestClient, *lines: dict, **extra: object):
+    return client.post(f"{URL}/from-order", json={"items": list(lines), **extra})
+
+
+def test_an_order_is_split_into_one_delivery_per_supplier(
+    client: TestClient, supplier: dict
+) -> None:
+    bakery = client.post(SUPPLIERS, json={"name": "Bakery"}).json()
+    milk = make_product(client, supplier_id=supplier["id"])
+    yogurt = make_product(client, "Yogurt", supplier_id=supplier["id"], purchase_price="0.60")
+    bread = make_product(client, "Bread", supplier_id=bakery["id"])
+
+    response = from_order(
+        client, line(milk, "2"), line(bread, "3"), line(yogurt, "5"), expected_on=in_days(1)
+    )
+
+    assert response.status_code == 201, response.text
+    deliveries = {d["supplier"]["name"]: d for d in response.json()}
+    assert deliveries.keys() == {"Dairy", "Bakery"}
+    assert [i["product"]["name"] for i in deliveries["Dairy"]["items"]] == ["Milk", "Yogurt"]
+    assert [i["product"]["name"] for i in deliveries["Bakery"]["items"]] == ["Bread"]
+    assert deliveries["Dairy"]["ordered_total"] == "5.20"
+    assert deliveries["Dairy"]["expected_on"] == in_days(1)
+    assert deliveries["Bakery"]["status"] == "ordered"
+    assert stock_of(client, milk) == 0
+
+
+@pytest.mark.parametrize("problem", ["no supplier", "archived", "half", "missing", "past date"])
+def test_one_problem_creates_no_delivery_at_all(
+    client: TestClient, db: Session, supplier: dict, problem: str
+) -> None:
+    other = client.post(SUPPLIERS, json={"name": "Other"}).json()
+    good = line(make_product(client, supplier_id=supplier["id"]))
+    bad = line(make_product(client, "Bad", supplier_id=other["id"]))
+    extra: dict = {}
+    if problem == "no supplier":
+        bad = line(make_product(client, "Lonely"))
+    elif problem == "archived":
+        client.patch(f"{SUPPLIERS}/{other['id']}", json={"active": False})
+    elif problem == "half":
+        bad["quantity"] = "1.5"
+    elif problem == "missing":
+        bad["product_id"] = 999999
+    else:
+        extra["expected_on"] = in_days(-1)
+
+    response = from_order(client, good, bad, **extra)
+
+    assert response.status_code in (404, 409, 422)
+    assert client.get(URL).json()["total"] == 0
+    assert db.scalar(select(func.count()).select_from(DeliveryItem)) == 0
+
+
+def test_the_message_names_the_product_without_a_supplier(client: TestClient) -> None:
+    response = from_order(client, line(make_product(client, "Lonely")))
+    assert response.status_code == 409
+    assert "Lonely" in response.json()["detail"]
+
+
+def test_an_order_cannot_use_another_stores_product(
+    client: TestClient, db: Session, other_store: Store
+) -> None:
+    foreign = Product(
+        store_id=other_store.id, name="Foreign", purchase_price=Decimal(1), sale_price=Decimal(2)
+    )
+    db.add(foreign)
+    db.flush()
+    assert from_order(client, line({"id": foreign.id})).status_code == 404
+
+
+def test_an_order_needs_lines_and_each_product_once(client: TestClient, supplier: dict) -> None:
+    milk = make_product(client, supplier_id=supplier["id"])
+    assert from_order(client).status_code == 422
+    assert from_order(client, line(milk), line(milk)).status_code == 422
+
+
+def test_turning_an_order_into_deliveries_requires_login(anon_client: TestClient) -> None:
+    assert anon_client.post(f"{URL}/from-order", json={"items": []}).status_code == 401
+
+
 # Reading
 
 

@@ -113,10 +113,8 @@ class ForecastService:
         today = date.today()
         forecast = self.forecast(store_id, days)
         share = self._buffer_share(self.accuracy(store_id))
-        prices = {
-            product.id: product.purchase_price
-            for product in self.forecasts.active_products(store_id)
-        }
+        products = {product.id: product for product in self.forecasts.active_products(store_id)}
+        on_the_way = self.forecasts.on_the_way(store_id)
 
         batches: dict[int, list[StockBatch]] = {}
         for batch in self.reports.sellable_batches(store_id, today):
@@ -129,20 +127,24 @@ class ForecastService:
             plan = plan_stock(batches.get(item.product.id, []), demand, today)
             expected = sum(demand)
             buffer = expected * float(share)
-            needed = expected + buffer - plan.served - plan.left_over
+            coming = float(on_the_way.get(item.product.id, 0))
+            needed = expected + buffer - plan.served - plan.left_over - coming
             order = round_order(needed, item.product.unit) if needed > 0 else 0.0
             if order == 0:
                 continue
 
-            unit_cost = prices[item.product.id]
+            product = products[item.product.id]
+            unit_cost = product.purchase_price
             amount = _decimal(order)
             items.append(
                 OrderLine(
                     product=item.product,
+                    supplier=product.supplier,
                     expected=_decimal(expected),
                     from_stock=_decimal(plan.served),
                     expiring_unsold=_decimal(plan.expiring_unsold),
                     left_over=_decimal(plan.left_over),
+                    on_the_way=_decimal(coming),
                     buffer=_decimal(buffer),
                     order=amount,
                     unit_cost=unit_cost,

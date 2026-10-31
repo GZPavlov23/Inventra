@@ -16,7 +16,12 @@ from app.models.delivery import Delivery, DeliveryItem, DeliveryStatus
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.supplier_repository import SupplierRepository
-from app.schemas.delivery import DeliveryCreate, DeliveryItemCreate, DeliveryReceipt
+from app.schemas.delivery import (
+    DeliveryCreate,
+    DeliveryItemCreate,
+    DeliveryReceipt,
+    OrderDeliveries,
+)
 from app.schemas.inventory import ReceiptCreate
 from app.services.inventory_service import InventoryService, ensure_whole_pieces
 
@@ -42,29 +47,71 @@ class DeliveryService:
 
     def create(self, store_id: int, actor_id: int, data: DeliveryCreate) -> Delivery:
         """Records what was ordered. Nothing is in the store yet, so stock doesn't change."""
-        supplier = self.suppliers.get(store_id, data.supplier_id)
+        try:
+            delivery = self._add_delivery(
+                store_id, actor_id, data.supplier_id, data.expected_on, data.items
+            )
+        except DomainError:
+            self.session.rollback()
+            raise
+        self.session.commit()
+        return self.get_delivery(store_id, delivery.id)
+
+    def create_from_order(
+        self, store_id: int, actor_id: int, data: OrderDeliveries
+    ) -> list[Delivery]:
+        """Splits an order by supplier: one delivery for each, all of them or none."""
+        try:
+            by_supplier = self._split_by_supplier(store_id, data.items)
+            deliveries = [
+                self._add_delivery(store_id, actor_id, supplier_id, data.expected_on, lines)
+                for supplier_id, lines in by_supplier.items()
+            ]
+        except DomainError:
+            self.session.rollback()
+            raise
+        self.session.commit()
+        return [self.get_delivery(store_id, delivery.id) for delivery in deliveries]
+
+    def _split_by_supplier(
+        self, store_id: int, lines: list[DeliveryItemCreate]
+    ) -> dict[int, list[DeliveryItemCreate]]:
+        by_supplier: dict[int, list[DeliveryItemCreate]] = {}
+        for line in lines:
+            product = self.products.get(store_id, line.product_id)
+            if product is None:
+                raise NotFoundError(f"Product {line.product_id} was not found")
+            if product.supplier_id is None:
+                raise ConflictError(f"'{product.name}' has no supplier")
+            by_supplier.setdefault(product.supplier_id, []).append(line)
+        return by_supplier
+
+    def _add_delivery(
+        self,
+        store_id: int,
+        actor_id: int,
+        supplier_id: int,
+        expected_on: date | None,
+        lines: list[DeliveryItemCreate],
+    ) -> Delivery:
+        supplier = self.suppliers.get(store_id, supplier_id)
         if supplier is None:
-            raise NotFoundError(f"Supplier {data.supplier_id} was not found")
+            raise NotFoundError(f"Supplier {supplier_id} was not found")
         if not supplier.active:
             raise SupplierArchivedError(f"'{supplier.name}' is archived")
-        if data.expected_on is not None and data.expected_on < date.today():
+        if expected_on is not None and expected_on < date.today():
             raise InvalidReceiptError("The expected date is in the past")
 
         delivery = Delivery(
             store_id=store_id,
             supplier_id=supplier.id,
             actor_id=actor_id,
-            expected_on=data.expected_on,
+            expected_on=expected_on,
         )
-        try:
-            self.deliveries.add(delivery)
-            for line in data.items:
-                self._add_line(delivery, line)
-        except DomainError:
-            self.session.rollback()
-            raise
-        self.session.commit()
-        return self.get_delivery(store_id, delivery.id)
+        self.deliveries.add(delivery)
+        for line in lines:
+            self._add_line(delivery, line)
+        return delivery
 
     def _add_line(self, delivery: Delivery, line: DeliveryItemCreate) -> None:
         product = self.products.get(delivery.store_id, line.product_id)

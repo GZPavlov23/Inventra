@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.models.store import Store
 from app.models.user import User
 from app.services.auth_service import AuthService
+from app.services.forecast_service import ForecastService
 from app.services.inventory_service import InventoryService
 from app.services.product_service import ProductService
 from app.services.report_service import ReportService
@@ -90,3 +91,10 @@ def get_sale_import_service(db: DbSession) -> SaleImportService:
 
 
 SaleImportServiceDep = Annotated[SaleImportService, Depends(get_sale_import_service)]
+
+
+def get_forecast_service(db: DbSession) -> ForecastService:
+    return ForecastService(db)
+
+
+ForecastServiceDep = Annotated[ForecastService, Depends(get_forecast_service)]

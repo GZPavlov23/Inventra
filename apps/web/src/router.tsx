@@ -11,6 +11,7 @@ import { RegisterPage } from '@/pages/auth/register-page'
 import { ResetPasswordPage } from '@/pages/auth/reset-password-page'
 import { VerifyEmailPage } from '@/pages/auth/verify-email-page'
 import { DashboardPage } from '@/pages/dashboard/dashboard-page'
+import { DeliveriesPage } from '@/pages/deliveries/deliveries-page'
 import { ForecastPage } from '@/pages/forecast/forecast-page'
 import { InventoryPage } from '@/pages/inventory/inventory-page'
 import { NotFoundPage } from '@/pages/not-found-page'
@@ -25,6 +26,7 @@ const BUILT_PAGES: Record<string, ReactNode> = {
   '/': <DashboardPage />,
   '/products': <ProductsPage />,
   '/inventory': <InventoryPage />,
+  '/deliveries': <DeliveriesPage />,
   '/suppliers': <SuppliersPage />,
   '/sales': <SalesPage />,
   '/forecast': <ForecastPage />,

@@ -57,7 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
         title: 'Deliveries',
         path: '/deliveries',
         icon: Truck,
-        description: 'Receiving deliveries from suppliers into new batches.',
+        description: 'What you ordered from suppliers and what really arrived.',
       },
       {
         title: 'Suppliers',

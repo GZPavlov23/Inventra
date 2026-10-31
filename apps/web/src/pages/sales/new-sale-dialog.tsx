@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useCurrentUser } from '@/auth/use-auth'
+import { type ProductLine, ProductLineRow } from '@/components/product-line-row'
 import { ProductPicker } from '@/components/product-picker'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -15,18 +15,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
 import { formatMoney, lineCents } from '@/lib/format'
 import type { Product } from '@/lib/products-api'
 import { salesApi } from '@/lib/sales-api'
-
-type CartLine = {
-  product: Product
-  quantity: string
-  unitPrice: string
-}
 
 export function NewSaleDialog({ open, onOpenChange }: {
   open: boolean
@@ -55,7 +48,7 @@ export function NewSaleDialog({ open, onOpenChange }: {
 function SaleForm({ onClose }: { onClose: () => void }) {
   const { store } = useCurrentUser()
   const queryClient = useQueryClient()
-  const [cart, setCart] = useState<CartLine[]>([])
+  const [cart, setCart] = useState<ProductLine[]>([])
 
   const refreshStock = () => {
     void queryClient.invalidateQueries({ queryKey: ['batches'] })
@@ -95,7 +88,7 @@ function SaleForm({ onClose }: { onClose: () => void }) {
     )
   }
 
-  const updateLine = (productId: number, changes: Partial<CartLine>) => {
+  const updateLine = (productId: number, changes: Partial<ProductLine>) => {
     if (record.isError) record.reset()
     setCart((current) =>
       current.map((line) => (line.product.id === productId ? { ...line, ...changes } : line)),
@@ -128,9 +121,10 @@ function SaleForm({ onClose }: { onClose: () => void }) {
       {cart.length > 0 && (
         <ul className="flex flex-col divide-y" aria-label="Products in this sale">
           {cart.map((line) => (
-            <CartRow
+            <ProductLineRow
               key={line.product.id}
               line={line}
+              priceLabel="Price"
               currency={store.currency}
               onChange={(changes) => updateLine(line.product.id, changes)}
               onRemove={() => removeLine(line.product.id)}
@@ -154,45 +148,5 @@ function SaleForm({ onClose }: { onClose: () => void }) {
         </Button>
       </DialogFooter>
     </form>
-  )
-}
-
-function CartRow({ line, currency, onChange, onRemove }: {
-  line: CartLine
-  currency: string
-  onChange: (changes: Partial<CartLine>) => void
-  onRemove: () => void
-}) {
-  const { product, quantity, unitPrice } = line
-  // The browser refuses half a piece before the form is even sent.
-  const smallestAmount = product.unit === 'pcs' ? '1' : '0.001'
-
-  return (
-    <li className="grid grid-cols-[1fr_auto] items-end gap-x-3 gap-y-2 py-2.5 sm:grid-cols-[1fr_6rem_6rem_5rem_auto]">
-      <div className="col-span-2 min-w-0 sm:col-span-1 sm:self-center">
-        <p className="truncate text-sm font-medium">{product.name}</p>
-        <p className="text-xs text-muted-foreground">{product.unit}</p>
-      </div>
-      <div className="col-span-2 grid grid-cols-[1fr_1fr_5rem_auto] items-end gap-3 sm:contents">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Quantity</span>
-          <Input type="number" inputMode="decimal" required aria-label={`Quantity of ${product.name}`}
-            min={smallestAmount} step={smallestAmount} max="100000"
-            value={quantity} onChange={(event) => onChange({ quantity: event.target.value })} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Price</span>
-          <Input type="number" inputMode="decimal" required aria-label={`Price of ${product.name}`}
-            min="0" step="0.01"
-            value={unitPrice} onChange={(event) => onChange({ unitPrice: event.target.value })} />
-        </label>
-        <span className="flex h-8 items-center justify-end text-sm font-medium tabular-nums">
-          {formatMoney(lineCents(quantity, unitPrice) / 100, currency)}
-        </span>
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${product.name}`} onClick={onRemove}>
-          <X />
-        </Button>
-      </div>
-    </li>
   )
 }

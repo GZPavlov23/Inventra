@@ -244,3 +244,53 @@ test('a scrolled page stays still when a shorter report opens', async ({ page })
   // The report's tabs are where they can be clicked again: the page ended at its real bottom.
   await expect(page.getByRole('tab', { name: 'Running out' })).toBeInViewport()
 })
+
+test('the briefing says what needs doing, the most money first', async ({ page }) => {
+  type Note = { kind: string; at_stake: string; supplier: { name: string; phone: string | null } | null }
+  const { notes } = (await (await page.request.get(`${API}/reports/briefing`)).json()) as { notes: Note[] }
+  const briefing = page.getByRole('region', { name: "Today's briefing" })
+  const items = briefing.getByRole('listitem')
+
+  await expect(items).toHaveCount(Math.min(notes.length, 5))
+  const amounts = notes.map((note) => Number(note.at_stake))
+  expect(amounts).toEqual([...amounts].sort((a, b) => b - a))
+
+  // The demo has a delivery that is a day late, and its supplier can be called from here.
+  const late = notes.find((note) => note.kind === 'late_delivery')
+  expect(late).toBeDefined()
+  // It may be further down, among the notes shown only on request.
+  const more = briefing.getByRole('button', { name: /Show \d+ more/ })
+  if (await more.count()) await more.click()
+  const lateItem = items.filter({ hasText: late?.supplier?.name ?? '' }).first()
+  await expect(lateItem).toContainText('day late')
+  await expect(lateItem.getByRole('link', { name: /^Call/ })).toHaveAttribute('href', `tel:${late?.supplier?.phone}`)
+
+  // The expired chicken waits to be written off.
+  const expired = items.filter({ hasText: /expired but still counts? as stock/ })
+  await expect(expired.getByRole('link', { name: 'Write off' })).toHaveAttribute('href', '/inventory?status=expired')
+  await expect(briefing).toContainText('The most money involved comes first')
+})
+
+test('the briefing opens up to every note and folds back to the first five', async ({ page }) => {
+  const { notes } = (await (await page.request.get(`${API}/reports/briefing`)).json()) as { notes: unknown[] }
+  test.skip(notes.length <= 5, 'The demo has five notes or fewer today')
+  const briefing = page.getByRole('region', { name: "Today's briefing" })
+  const items = briefing.getByRole('listitem')
+
+  await briefing.getByRole('button', { name: `Show ${notes.length - 5} more` }).click()
+  await expect(items).toHaveCount(notes.length)
+  await briefing.getByRole('button', { name: 'Show fewer' }).click()
+  await expect(items).toHaveCount(5)
+  await expect(briefing.getByRole('button', { name: `Show ${notes.length - 5} more` })).toBeVisible()
+})
+
+test('an open dashboard asks for a fresh briefing every minute', async ({ page }) => {
+  await page.clock.install()
+  await page.reload()
+  // The minute is counted from the first answer, so that has to arrive first.
+  await expect(page.getByRole('region', { name: "Today's briefing" }).getByRole('listitem').first()).toBeVisible()
+
+  const asked = page.waitForRequest((request) => request.url().endsWith(`${API}/reports/briefing`))
+  await page.clock.runFor(61_000)
+  await asked
+})

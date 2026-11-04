@@ -61,6 +61,10 @@ export function formatMonthDay(day: string): string {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(parseDay(day))
 }
 
+export function formatDayOfWeek(day: string): string {
+  return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(parseDay(day))
+}
+
 export function formatWeekday(day: string): string {
   return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(parseDay(day))
 }

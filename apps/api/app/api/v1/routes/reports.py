@@ -4,7 +4,8 @@ from datetime import date
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, ReportServiceDep
+from app.api.deps import BriefingServiceDep, CurrentStore, ReportServiceDep
+from app.schemas.briefing import Briefing
 from app.schemas.report import (
     CategorySales,
     RunningOutProduct,
@@ -14,6 +15,12 @@ from app.schemas.report import (
 )
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+@router.get("/briefing", response_model=Briefing)
+def briefing_report(store: CurrentStore, service: BriefingServiceDep) -> Briefing:
+    """The few things worth knowing today, the most money involved first."""
+    return service.briefing(store.id)
 
 
 @router.get("/sales-trend", response_model=list[SalesTrend])

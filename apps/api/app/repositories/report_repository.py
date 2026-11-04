@@ -62,6 +62,15 @@ class ReportRepository:
         )
         return {product_id: stock for product_id, stock in self.session.execute(stmt)}
 
+    def expired_batches(self, store_id: int, today: date) -> list[Batch]:
+        """Expired goods still counted in stock: what is waiting to be written off."""
+        stmt = select(Batch).where(
+            Batch.store_id == store_id,
+            Batch.remaining_quantity > 0,
+            Batch.expiry_date < today,
+        )
+        return list(self.session.scalars(stmt))
+
     def sellable_batches(self, store_id: int, today: date) -> list[Batch]:
         stmt = select(Batch).where(
             Batch.store_id == store_id,

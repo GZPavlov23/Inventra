@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.models.store import Store
 from app.models.user import User
 from app.services.auth_service import AuthService
+from app.services.briefing_service import BriefingService
 from app.services.delivery_service import DeliveryService
 from app.services.forecast_service import ForecastService
 from app.services.inventory_service import InventoryService
@@ -100,6 +101,13 @@ def get_report_service(db: DbSession) -> ReportService:
 
 
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
+
+
+def get_briefing_service(db: DbSession) -> BriefingService:
+    return BriefingService(db)
+
+
+BriefingServiceDep = Annotated[BriefingService, Depends(get_briefing_service)]
 
 
 def get_sale_import_service(db: DbSession) -> SaleImportService:

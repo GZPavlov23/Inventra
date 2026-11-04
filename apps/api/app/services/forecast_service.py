@@ -14,12 +14,14 @@ from app.forecasting.models import (
     Case,
     Model,
     Series,
+    known_before,
     next_days,
     one_by_one,
     recent_average,
     seasonal_average,
 )
 from app.forecasting.ordering import StockBatch, plan_stock, round_order
+from app.models.product import Product
 from app.repositories.forecast_repository import ForecastRepository
 from app.repositories.report_repository import ReportRepository
 from app.schemas.forecast import (
@@ -31,6 +33,8 @@ from app.schemas.forecast import (
     OrderReport,
     ProductForecast,
 )
+
+WEEK_DAYS = 7
 
 # Enough for the accuracy check: four weeks of tests, each with history behind it.
 HISTORY_DAYS = 120
@@ -161,6 +165,34 @@ class ForecastService:
             total_cost=sum((line.cost for line in items), Decimal(0)),
             products_checked=len(forecast.items),
         )
+
+    def last_week(self, store_id: int) -> list[tuple[Product, float, float]]:
+        """Each product's forecast for the last seven finished days, made as if it were a week
+        ago and so knowing nothing of them, next to what really sold.
+        """
+        today = date.today()
+        last_day = today - timedelta(days=1)
+        origin = today - timedelta(days=WEEK_DAYS)
+        products = {product.id: product for product in self.forecasts.active_products(store_id)}
+        history = self._history(store_id, last_day, set(products))
+        sold_out = self._sold_out(store_id, last_day)
+        model = MODELS[self._best(self._measure(history, last_day, sold_out))]
+
+        ready = [
+            product_id
+            for product_id, series in history.items()
+            if len(known_before(series, origin)) >= MIN_HISTORY_DAYS
+        ]
+        cases = [
+            Case(history[product_id], origin, sold_out.get(product_id, NEVER_SOLD_OUT))
+            for product_id in ready
+        ]
+        forecasts = model(cases, WEEK_DAYS) if cases else []
+        days = next_days(origin, WEEK_DAYS)
+        return [
+            (products[product_id], sum(forecast), sum(history[product_id][day] for day in days))
+            for product_id, forecast in zip(ready, forecasts, strict=True)
+        ]
 
     @staticmethod
     def _buffer_share(accuracy: AccuracyReport) -> Decimal:

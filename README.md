@@ -13,8 +13,8 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 483 tests |
-| Automated browser tests (Playwright) | ✅ 94 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders |
+| Automated backend tests (pytest) | ✅ 504 tests |
+| Automated browser tests (Playwright) | ✅ 97 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
@@ -29,6 +29,7 @@ The project is under active development. This section lists only what actually w
 | Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working |
 | Sales page: new sale with barcode search, list by period, revenue and profit totals, batches behind each sale | ✅ working. Returns are planned |
 | Dashboard page: revenue and profit chart, week over week comparison, stock value, expired and expiring stock, what needs attention | ✅ working (real data from the API) |
+| Today's briefing on the dashboard: expired stock, goods that will expire unsold, products that run out before a delivery, late deliveries and weeks far above the forecast, the most money first, each with its action | ✅ working. Found by rules over the forecast, not written by a language model |
 | Reports on the dashboard: waste by reason, products running out, top products, sales by category | ✅ working |
 | CSV import of sales: current sales that take stock, and old history for the forecast, with a check before anything is written | ✅ working |
 | Forecast page and API: expected sales per product, shortages, models measured on the store's own past | ✅ working |

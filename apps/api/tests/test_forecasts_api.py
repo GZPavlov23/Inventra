@@ -1,6 +1,6 @@
 """API tests for /api/v1/forecasts, with history brought in through the real CSV import."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -14,6 +14,7 @@ from app.schemas.inventory import ReceiptCreate
 from app.services import forecast_service as service_module
 from app.services.forecast_service import ForecastService
 from app.services.inventory_service import InventoryService
+from tests.clock import on_day
 
 URL = "/api/v1/forecasts"
 PRODUCTS_URL = "/api/v1/products"
@@ -170,7 +171,7 @@ def test_real_sales_beat_the_history_of_the_same_day(client: TestClient, db: Ses
     sale = client.post(
         SALES_URL, json={"items": [{"product_id": milk["id"], "quantity": "8"}]}
     ).json()
-    db.get(Sale, sale["id"]).sold_at = datetime.now(UTC) - timedelta(days=7)
+    db.get(Sale, sale["id"]).sold_at = on_day(7)
     db.flush()
 
     report = forecast(client, horizon=1)
@@ -224,7 +225,7 @@ def stock_history(
     """Adds a line to the stock history as if it had happened days_ago."""
     batch = receive(client, product, delta)
     stmt = select(InventoryMovement).where(InventoryMovement.batch_id == batch["id"])
-    db.scalars(stmt).one().occurred_at = datetime.now(UTC) - timedelta(days=days_ago)
+    db.scalars(stmt).one().occurred_at = on_day(days_ago)
     db.flush()
 
 
@@ -236,7 +237,7 @@ def test_a_day_that_ended_with_nothing_left_counts_as_sold_out(
     response = client.post(SALES_URL, json={"items": [{"product_id": milk["id"], "quantity": "5"}]})
     assert response.status_code == 201
     sale = db.get(Sale, response.json()["id"])
-    moment = datetime.now(UTC) - timedelta(days=4)
+    moment = on_day(4)
     sale.sold_at = moment
     for item in sale.items:
         for movement in item.movements:
@@ -260,7 +261,7 @@ def test_models_are_told_which_days_were_sold_out(
     assert client.post(f"{BATCHES_URL}/{batch['id']}/waste", json=waste).status_code == 200
     stmt = select(InventoryMovement).where(InventoryMovement.batch_id == batch["id"])
     for movement in db.scalars(stmt):
-        movement.occurred_at = datetime.now(UTC) - timedelta(days=5)
+        movement.occurred_at = on_day(5)
     db.flush()
     outs = []
 

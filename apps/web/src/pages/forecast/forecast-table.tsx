@@ -60,15 +60,15 @@ export function ForecastTable({ items, onOpen }: ForecastTableProps) {
                 </button>
               </TableCell>
               <TableCell className="hidden md:table-cell"><DayBars days={item.days} /></TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className="text-right figures">
                 {formatExpected(item.total, product.unit)}
               </TableCell>
-              <TableCell className="hidden text-right text-muted-foreground tabular-nums md:table-cell">
+              <TableCell className="hidden text-right text-muted-foreground figures md:table-cell">
                 {formatQuantity(item.stock, product.unit)}
               </TableCell>
               <TableCell className="text-right">
                 {short ? (
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-900">
+                  <Badge variant="secondary" className="bg-warning text-warning-foreground">
                     {formatShortage(item.shortage, product.unit)} short
                   </Badge>
                 ) : (

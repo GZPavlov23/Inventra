@@ -111,7 +111,7 @@ function CorrectionForm({ batch, onClose }: { batch: Batch; onClose: () => void 
       {difference !== null && (
         <p className="text-sm text-muted-foreground">
           {changed ? (
-            <>Difference: <span className="font-medium tabular-nums">{formatChange(difference, unit)}</span></>
+            <>Difference: <span className="font-medium figures">{formatChange(difference, unit)}</span></>
           ) : (
             'This is the same as the system shows, so there is nothing to correct.'
           )}

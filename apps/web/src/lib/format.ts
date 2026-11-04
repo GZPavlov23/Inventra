@@ -72,6 +72,11 @@ function toDayString(moment: Date): string {
   return `${moment.getFullYear()}-${month}-${date}`
 }
 
+// The calendar day of a moment such as received_at, in the browser's time zone.
+export function dayOf(moment: string): string {
+  return toDayString(new Date(moment))
+}
+
 export function today(): string {
   return toDayString(new Date())
 }

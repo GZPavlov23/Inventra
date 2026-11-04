@@ -1,13 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/ibm-plex-sans";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'IBM Plex Sans Variable', sans-serif;
+    /* Quantities, prices and dates: every digit the same width, so columns line up. */
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-paper: var(--paper);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,23 +56,30 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
+    /* A warm off-white, like paper, instead of screen white. Greys lean slightly towards it,
+       and text is a green-black ink that belongs with the logo. */
+    --background: oklch(0.982 0.006 85);
+    --foreground: oklch(0.21 0.014 170);
+    --card: oklch(0.997 0.002 85);
+    --card-foreground: oklch(0.21 0.014 170);
+    --popover: oklch(0.997 0.002 85);
+    --popover-foreground: oklch(0.21 0.014 170);
+    /* Receipts and delivery notes: a shade warmer than the cards around them. */
+    --paper: oklch(0.975 0.014 88);
     --primary: oklch(0.454 0.089 170.3); /* brand teal-green #01664f (from the logo) */
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.951 0.009 85);
+    --secondary-foreground: oklch(0.25 0.014 170);
+    --muted: oklch(0.951 0.009 85);
+    --muted-foreground: oklch(0.5 0.016 80);
+    --accent: oklch(0.951 0.009 85);
+    --accent-foreground: oklch(0.25 0.014 170);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
+    /* Amber means "soon": goods that expire or run out before long. */
+    --warning: oklch(0.94 0.06 85);
+    --warning-foreground: oklch(0.43 0.1 60);
+    --border: oklch(0.905 0.012 85);
+    --input: oklch(0.89 0.012 85);
     --ring: oklch(0.72 0.12 166);
     /* Series colors. Checked for color blindness and contrast on white with a validator. */
     --chart-1: #0d7f64;
@@ -74,13 +88,13 @@
     --chart-4: oklch(0.8 0.12 120);
     --chart-5: oklch(0.75 0.13 75);
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar: oklch(0.962 0.01 85);
+    --sidebar-foreground: oklch(0.21 0.014 170);
     --sidebar-primary: oklch(0.454 0.089 170.3);
     --sidebar-primary-foreground: oklch(0.985 0 0);
     --sidebar-accent: oklch(0.975 0.018 166.4); /* light mint: active menu item */
     --sidebar-accent-foreground: oklch(0.273 0.051 175.9); /* brand deep green #002f26 */
-    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-border: oklch(0.905 0.012 85);
     --sidebar-ring: oklch(0.72 0.12 166);
 }
 
@@ -116,6 +130,41 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+}
+
+@utility figures {
+    font-family: var(--font-mono);
+    font-variant-numeric: figures;
+    letter-spacing: -0.02em;
+}
+
+/* A receipt's torn top and bottom edges. */
+.torn-edges {
+    --tooth: 6px;
+    mask:
+        conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--tooth)) 51% repeat-x,
+        conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--tooth)) 51% repeat-x;
+}
+
+/* Motion only where it tells something, and only for people who don't ask for less. */
+@media (prefers-reduced-motion: no-preference) {
+    /* A row that was just added glows once, so it's easy to find in the list. */
+    [data-new="true"] {
+        animation: just-added 2s ease-out;
+    }
+    .stamp {
+        animation: stamp-down 0.25s ease-out;
+    }
+}
+
+@keyframes just-added {
+    from { background-color: color-mix(in oklch, var(--primary) 16%, transparent); }
+    to { background-color: transparent; }
+}
+
+@keyframes stamp-down {
+    from { scale: 1.25; opacity: 0; }
+    to { scale: 1; opacity: 1; }
 }
 
 @layer base {

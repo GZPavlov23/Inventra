@@ -83,7 +83,8 @@ test('a sale takes the batch that expires first and shows what was earned', asyn
   await expect(row).toContainText('€4.92')
 
   await row.getByRole('button').click()
-  await expect(dialog(page).getByRole('heading', { name: /Sale #/ })).toBeVisible()
+  // Laid out as a receipt: its number is printed on it.
+  await expect(dialog(page).getByText(/^Sale #\d+ ·/)).toBeVisible()
   const batches = dialog(page).getByRole('list', { name: 'Batches of Е2Е Продажба мляко' }).getByRole('listitem')
   await expect(batches).toHaveCount(2)
   await expect(batches.nth(0)).toContainText('1 pcs from the batch')

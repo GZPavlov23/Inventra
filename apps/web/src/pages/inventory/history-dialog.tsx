@@ -2,13 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { DetailsPanel } from '@/components/details-panel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { formatChange, formatDateTime, formatDay } from '@/lib/format'
@@ -42,19 +36,16 @@ type HistoryDialogProps = {
 
 export function HistoryDialog({ batch, open, onOpenChange }: HistoryDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Batch history</DialogTitle>
-          <DialogDescription>
-            {batch && (batch.expiry_date
-              ? `${batch.product.name}, expires ${formatDay(batch.expiry_date)}.`
-              : `${batch.product.name}.`)}
-          </DialogDescription>
-        </DialogHeader>
-        {batch && <HistoryList key={batch.id} batch={batch} />}
-      </DialogContent>
-    </Dialog>
+    <DetailsPanel
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Batch history"
+      description={batch && (batch.expiry_date
+        ? `${batch.product.name}, expires ${formatDay(batch.expiry_date)}.`
+        : `${batch.product.name}.`)}
+    >
+      {batch && <HistoryList key={batch.id} batch={batch} />}
+    </DetailsPanel>
   )
 }
 
@@ -106,7 +97,7 @@ function HistoryList({ batch }: { batch: Batch }) {
                   {formatDateTime(movement.occurred_at)} · {movement.actor.full_name}
                 </p>
               </div>
-              <span className="shrink-0 text-sm font-medium tabular-nums">
+              <span className="shrink-0 text-sm font-medium figures">
                 {formatChange(movement.quantity_delta, batch.product.unit)}
               </span>
             </li>

@@ -52,6 +52,8 @@ export function InventoryPage() {
   // Kept separately from `dialogOpen`, so a dialog keeps its content during the closing animation.
   const [selected, setSelected] = useState<{ action: BatchAction; batch: Batch } | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
+  // The batch just received, so its row can be pointed out.
+  const [justAdded, setJustAdded] = useState<number | undefined>()
   const openDialog = (action: BatchAction, batch: Batch) => {
     setSelected({ action, batch })
     setDialogOpen(true)
@@ -73,7 +75,7 @@ export function InventoryPage() {
             Your batches, in the order they should leave the shelf.
           </p>
         </div>
-        <ReceiveGoodsButton />
+        <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -112,12 +114,12 @@ export function InventoryPage() {
           </AlertDescription>
         </Alert>
       ) : batches.isPending ? (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border bg-card">
           <BatchesTableSkeleton />
         </div>
       ) : batches.data.total === 0 ? (
         search || status !== 'in_stock' ? (
-          <Empty className="rounded-lg border">
+          <Empty className="rounded-lg border bg-card">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
               <EmptyTitle>No batches found</EmptyTitle>
@@ -130,14 +132,14 @@ export function InventoryPage() {
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="rounded-lg border">
+          <Empty className="rounded-lg border bg-card">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Boxes /></EmptyMedia>
               <EmptyTitle>No stock yet</EmptyTitle>
               <EmptyDescription>Receive your first delivery to see it here.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <ReceiveGoodsButton />
+              <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
             </EmptyContent>
           </Empty>
         )
@@ -145,10 +147,11 @@ export function InventoryPage() {
         <>
           {/* Slightly faded while a new page or search result is loading. */}
           <div
-            className={`rounded-lg border transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-lg border bg-card transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={batches.isFetching}
           >
-            <BatchesTable batches={batches.data.items} currency={store.currency} onAction={openDialog} />
+            <BatchesTable batches={batches.data.items} currency={store.currency} onAction={openDialog}
+              justAdded={justAdded} />
           </div>
           <Pagination
             page={page}
@@ -165,7 +168,7 @@ export function InventoryPage() {
   )
 }
 
-function ReceiveGoodsButton() {
+function ReceiveGoodsButton({ onReceived }: { onReceived: (batch: Batch) => void }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -173,7 +176,7 @@ function ReceiveGoodsButton() {
         <PackagePlus />
         Receive goods
       </Button>
-      <ReceiveDialog open={open} onOpenChange={setOpen} />
+      <ReceiveDialog open={open} onOpenChange={setOpen} onReceived={onReceived} />
     </>
   )
 }

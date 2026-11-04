@@ -42,7 +42,7 @@ export function ProductLineRow({ line, priceLabel, currency, onChange, onRemove 
             min="0" step="0.01"
             value={unitPrice} onChange={(event) => onChange({ unitPrice: event.target.value })} />
         </label>
-        <span className="flex h-8 items-center justify-end text-sm font-medium tabular-nums">
+        <span className="flex h-8 items-center justify-end text-sm font-medium figures">
           {formatMoney(lineCents(quantity, unitPrice) / 100, currency)}
         </span>
         <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${product.name}`} onClick={onRemove}>

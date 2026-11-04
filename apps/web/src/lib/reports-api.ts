@@ -6,6 +6,12 @@ import type { ProductUnit } from '@/lib/products-api'
 
 type ReportProduct = { id: number; name: string; barcode: string | null; unit: ProductUnit }
 
+export type SalesTrend = {
+  product_id: number
+  quantities: string[]
+  total: string
+}
+
 export type WasteReport = {
   total: string
   reasons: { reason: WasteReason; value: string; write_offs: number }[]
@@ -38,6 +44,11 @@ export const reportsApi = {
   waste: (dateFrom: string, dateTo: string) =>
     api<WasteReport>(`/reports/waste?${periodQuery(dateFrom, dateTo)}`),
   runningOut: () => api<RunningOutProduct[]>('/reports/running-out'),
+  salesTrend: (productIds: number[], days: number) => {
+    const query = new URLSearchParams({ days: String(days) })
+    for (const id of productIds) query.append('product_id', String(id))
+    return api<SalesTrend[]>(`/reports/sales-trend?${query}`)
+  },
   topProducts: (dateFrom: string, dateTo: string) =>
     api<TopProduct[]>(`/reports/top-products?${periodQuery(dateFrom, dateTo)}`),
   categories: (dateFrom: string, dateTo: string) =>

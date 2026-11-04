@@ -23,7 +23,7 @@ export function AccuracyCard({ accuracy }: { accuracy: AccuracyReport }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="rounded-lg border">
+        <div className="rounded-lg border bg-card">
           <Table>
             <TableCaption className="sr-only">Error of each forecasting model</TableCaption>
             <TableHeader>
@@ -42,8 +42,8 @@ export function AccuracyCard({ accuracy }: { accuracy: AccuracyReport }) {
                       {model.method === accuracy.chosen && <Badge variant="secondary">Used</Badge>}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatShare(model.daily_wape)}</TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">{formatShare(model.weekly_wape)}</TableCell>
+                  <TableCell className="text-right figures">{formatShare(model.daily_wape)}</TableCell>
+                  <TableCell className="text-right font-medium figures">{formatShare(model.weekly_wape)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -8,7 +8,7 @@ export function StatTile({ label, value, note }: { label: string; value?: string
       {value === undefined ? (
         <Skeleton className="my-1 h-7 w-24" />
       ) : (
-        <p className="text-2xl font-semibold tracking-tight">{value}</p>
+        <p className="figures text-2xl font-medium">{value}</p>
       )}
       {/* Keeps all the tiles of a row the same height. */}
       <p className="min-h-4 text-xs text-muted-foreground">{note}</p>

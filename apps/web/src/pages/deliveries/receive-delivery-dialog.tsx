@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { toApiError } from '@/lib/api'
 import { deliveriesApi, type Delivery, type DeliveryLine } from '@/lib/deliveries-api'
-import { formatMoney, formatQuantity, lineCents, today } from '@/lib/format'
+import { formatDay, formatMoney, formatQuantity, lineCents, today } from '@/lib/format'
 
 type ArrivedLine = {
   quantity: string
@@ -123,17 +123,32 @@ function ReceiveForm({ delivery, currency, onClose }: {
         </Alert>
       )}
 
-      <div className="sm:max-w-56">
-        <FormField id="invoice_number" label="Invoice number">
-          <Input id="invoice_number" maxLength={64} autoComplete="off"
-            value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} />
-        </FormField>
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-dashed border-foreground/25 pb-4">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
+          <dt className="text-muted-foreground">From</dt>
+          <dd className="font-medium">{delivery.supplier.name}</dd>
+          <dt className="text-muted-foreground">Ordered</dt>
+          <dd className="figures">{formatDay(delivery.created_at.slice(0, 10))}</dd>
+          {delivery.expected_on && (
+            <>
+              <dt className="text-muted-foreground">Expected</dt>
+              <dd className="figures">{formatDay(delivery.expected_on)}</dd>
+            </>
+          )}
+        </dl>
+        <div className="w-full sm:w-56">
+          <FormField id="invoice_number" label="Invoice number">
+            <Input id="invoice_number" maxLength={64} autoComplete="off" className="figures"
+              value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} />
+          </FormField>
+        </div>
       </div>
 
-      <ul className="flex flex-col divide-y" aria-label="Products in this delivery">
-        {delivery.items.map((line) => (
+      <ul className="flex flex-col divide-y divide-dashed" aria-label="Products in this delivery">
+        {delivery.items.map((line, index) => (
           <ArrivedRow
             key={line.id}
+            number={index + 1}
             line={line}
             arrived={arrived[line.id]}
             onChange={(changes) => updateLine(line.id, changes)}
@@ -165,7 +180,8 @@ function ReceiveForm({ delivery, currency, onClose }: {
   )
 }
 
-function ArrivedRow({ line, arrived, onChange }: {
+function ArrivedRow({ number, line, arrived, onChange }: {
+  number: number
   line: DeliveryLine
   arrived: ArrivedLine
   onChange: (changes: Partial<ArrivedLine>) => void
@@ -178,8 +194,11 @@ function ArrivedRow({ line, arrived, onChange }: {
   return (
     <li className="flex flex-col gap-2 py-3 first:pt-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <p className="text-sm font-medium">{product.name}</p>
-        <p className="text-xs text-muted-foreground tabular-nums">
+        <p className="text-sm font-medium">
+          <span className="figures mr-2 text-muted-foreground" aria-hidden>{String(number).padStart(2, '0')}</span>
+          {product.name}
+        </p>
+        <p className="text-xs text-muted-foreground figures">
           Ordered {formatQuantity(line.ordered_quantity, product.unit)}
         </p>
       </div>

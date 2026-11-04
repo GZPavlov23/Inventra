@@ -45,7 +45,7 @@ function ChartTooltip({ active, payload, label, currency }: TooltipContentProps 
         return (
           <p key={series.key} className="flex items-center gap-2">
             <LineKey color={series.color} />
-            <span className="font-medium tabular-nums">{formatMoney(row[series.key], currency)}</span>
+            <span className="font-medium figures">{formatMoney(row[series.key], currency)}</span>
             <span className="text-muted-foreground">{series.label}</span>
           </p>
         )
@@ -141,7 +141,7 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
       </Button>
 
       {showTable && (
-        <div className="max-h-64 overflow-y-auto rounded-lg border">
+        <div className="max-h-64 overflow-y-auto rounded-lg border bg-card">
           <Table>
             <TableCaption className="sr-only">Revenue and profit per day</TableCaption>
             <TableHeader>
@@ -156,9 +156,9 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
               {[...days].reverse().map(({ day, sales, revenue, profit }) => (
                 <TableRow key={day}>
                   <TableCell>{formatDay(day)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{sales}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMoney(revenue, currency)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatMoney(profit, currency)}</TableCell>
+                  <TableCell className="text-right figures">{sales}</TableCell>
+                  <TableCell className="text-right figures">{formatMoney(revenue, currency)}</TableCell>
+                  <TableCell className="text-right figures">{formatMoney(profit, currency)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

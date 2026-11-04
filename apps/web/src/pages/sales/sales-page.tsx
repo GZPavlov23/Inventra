@@ -111,11 +111,11 @@ export function SalesPage() {
           </AlertDescription>
         </Alert>
       ) : sales.isPending ? (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border bg-card">
           <SalesTableSkeleton />
         </div>
       ) : sales.data.total === 0 ? (
-        <Empty className="rounded-lg border">
+        <Empty className="rounded-lg border bg-card">
           <EmptyHeader>
             <EmptyMedia variant="icon"><ReceiptText /></EmptyMedia>
             <EmptyTitle>No sales in this period</EmptyTitle>
@@ -129,7 +129,7 @@ export function SalesPage() {
         <>
           {/* Slightly faded while a new page or period is loading. */}
           <div
-            className={`rounded-lg border transition-opacity ${sales.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-lg border bg-card transition-opacity ${sales.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={sales.isFetching}
           >
             <SalesTable sales={sales.data.items} currency={store.currency} onOpen={openDetails} />

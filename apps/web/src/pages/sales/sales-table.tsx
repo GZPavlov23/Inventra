@@ -49,7 +49,7 @@ export function SalesTable({ sales, currency, onOpen }: SalesTableProps) {
       <TableBody>
         {sales.map((sale) => (
           <TableRow key={sale.id} className="cursor-pointer" onClick={() => onOpen(sale)}>
-            <TableCell className="text-muted-foreground tabular-nums">
+            <TableCell className="text-muted-foreground figures">
               {/* A real button, so keyboard users can open the row too. Its click
                   bubbles up to the row's onClick. */}
               <button type="button" className="cursor-pointer text-left outline-offset-2">
@@ -58,11 +58,11 @@ export function SalesTable({ sales, currency, onOpen }: SalesTableProps) {
             </TableCell>
             <TableCell className="max-w-md truncate font-medium">{linesText(sale)}</TableCell>
             <TableCell className="text-muted-foreground">{sale.actor.full_name}</TableCell>
-            <TableCell className="text-right font-medium tabular-nums">
+            <TableCell className="text-right font-medium figures">
               {formatMoney(sale.total, currency)}
             </TableCell>
             <TableCell
-              className={`text-right tabular-nums ${Number(sale.profit) < 0 ? 'text-destructive' : ''}`}
+              className={`text-right figures ${Number(sale.profit) < 0 ? 'text-destructive' : ''}`}
             >
               {formatMoney(sale.profit, currency)}
             </TableCell>

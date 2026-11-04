@@ -22,6 +22,7 @@ import { salesApi } from '@/lib/sales-api'
 import { AttentionList } from '@/pages/dashboard/attention-list'
 import { ReportsCard } from '@/pages/dashboard/reports-card'
 import { SalesChart } from '@/pages/dashboard/sales-chart'
+import { TodayLine } from '@/pages/dashboard/today-line'
 
 const CHART_DAYS = 30
 const ATTENTION_ROWS = 6
@@ -78,9 +79,12 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">{store.name}: how the store is doing today.</p>
+      <div className="flex flex-col gap-2">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+          <p className="text-sm text-muted-foreground">{store.name}: how the store is doing today.</p>
+        </div>
+        <TodayLine />
       </div>
 
       {failed && (

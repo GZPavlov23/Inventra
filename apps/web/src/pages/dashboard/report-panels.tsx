@@ -134,14 +134,14 @@ export function RunningOutPanel() {
                   >
                     {product.name}
                   </Link>
-                  <p className="text-xs text-muted-foreground tabular-nums">
+                  <p className="text-xs text-muted-foreground figures">
                     {formatQuantity(stock, product.unit)} left to sell,{' '}
                     {formatQuantity(Number(average).toFixed(1), product.unit)} a day on average
                   </p>
                 </div>
                 <Badge
                   variant={Number(days) === 0 ? 'destructive' : 'secondary'}
-                  className={Number(days) === 0 ? '' : 'bg-amber-100 text-amber-900'}
+                  className={Number(days) === 0 ? '' : 'bg-warning text-warning-foreground'}
                 >
                   {daysLeftText(Number(days))}
                 </Badge>

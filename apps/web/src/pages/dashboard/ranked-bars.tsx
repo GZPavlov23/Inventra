@@ -19,7 +19,7 @@ export function RankedBars({ rows, label }: { rows: RankedRow[]; label: string }
           <div className="flex items-baseline gap-3 text-sm">
             <span className="min-w-0 flex-1 truncate">{row.label}</span>
             {row.detail && <span className="shrink-0 text-xs text-muted-foreground">{row.detail}</span>}
-            <span className="shrink-0 font-medium tabular-nums">{row.value}</span>
+            <span className="shrink-0 font-medium figures">{row.value}</span>
           </div>
           {/* Every bar has the full width to itself, so the lengths compare honestly. */}
           <div className="h-2">

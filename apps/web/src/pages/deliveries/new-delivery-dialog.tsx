@@ -21,14 +21,15 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
-import { deliveriesApi } from '@/lib/deliveries-api'
+import { deliveriesApi, type Delivery } from '@/lib/deliveries-api'
 import { formatMoney, lineCents, today } from '@/lib/format'
 import type { Product } from '@/lib/products-api'
 import { suppliersApi } from '@/lib/suppliers-api'
 
-export function NewDeliveryDialog({ open, onOpenChange }: {
+export function NewDeliveryDialog({ open, onOpenChange, onCreated }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreated?: (delivery: Delivery) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,13 +45,16 @@ export function NewDeliveryDialog({ open, onOpenChange }: {
             What you ordered from a supplier. Stock changes only when the goods arrive.
           </DialogDescription>
         </DialogHeader>
-        <DeliveryForm onClose={() => onOpenChange(false)} />
+        <DeliveryForm onCreated={onCreated} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
 }
 
-function DeliveryForm({ onClose }: { onClose: () => void }) {
+function DeliveryForm({ onCreated, onClose }: {
+  onCreated?: (delivery: Delivery) => void
+  onClose: () => void
+}) {
   const { store } = useCurrentUser()
   const queryClient = useQueryClient()
   const [supplierId, setSupplierId] = useState('')
@@ -73,6 +77,7 @@ function DeliveryForm({ onClose }: { onClose: () => void }) {
     onSuccess: (delivery) => {
       void queryClient.invalidateQueries({ queryKey: ['deliveries'] })
       toast.success(`Delivery #${delivery.id} from ${delivery.supplier.name} was added`)
+      onCreated?.(delivery)
       onClose()
     },
   })

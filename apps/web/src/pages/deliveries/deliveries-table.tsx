@@ -58,25 +58,27 @@ type DeliveriesTableProps = {
   currency: string
   onOpen: (delivery: Delivery) => void
   onReceive: (delivery: Delivery) => void
+  justAdded?: number
 }
 
-export function DeliveriesTable({ deliveries, currency, onOpen, onReceive }: DeliveriesTableProps) {
+export function DeliveriesTable({ deliveries, currency, onOpen, onReceive, justAdded }: DeliveriesTableProps) {
   return (
     <Table>
       <TableCaption className="sr-only">Deliveries of your store, newest first</TableCaption>
       <TableHeadings />
       <TableBody>
         {deliveries.map((delivery) => (
-          <TableRow key={delivery.id} className="cursor-pointer" onClick={() => onOpen(delivery)}>
-            <TableCell className="font-medium tabular-nums">
+          <TableRow key={delivery.id} className="cursor-pointer" data-new={delivery.id === justAdded}
+            onClick={() => onOpen(delivery)}>
+            <TableCell className="font-medium figures">
               {/* A real button, so keyboard users can open the row too. */}
               <button type="button" className="cursor-pointer outline-offset-2">#{delivery.id}</button>
             </TableCell>
             <TableCell className="font-medium">{delivery.supplier.name}</TableCell>
             <TableCell className="max-w-xs truncate text-muted-foreground">{linesText(delivery)}</TableCell>
-            <TableCell className="text-muted-foreground tabular-nums">{dateText(delivery)}</TableCell>
+            <TableCell className="text-muted-foreground figures">{dateText(delivery)}</TableCell>
             <TableCell><DeliveryStatusBadge delivery={delivery} /></TableCell>
-            <TableCell className="text-right font-medium tabular-nums">
+            <TableCell className="text-right font-medium figures">
               {formatMoney(delivery.received_total ?? delivery.ordered_total, currency)}
             </TableCell>
             <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>

@@ -16,7 +16,7 @@ const column = (page: Page, index: number) =>
   page.locator('tbody tr').locator(`td:nth-child(${index + 1})`).allInnerTexts()
 
 const prices = async (page: Page) =>
-  (await column(page, 5)).map((text) => Number(text.replace(/[^\d.]/g, '')))
+  (await column(page, 3)).map((text) => Number(text.replace(/[^\d.]/g, '')))
 
 async function addProduct(page: Page, name: string, barcode = '') {
   await page.getByRole('button', { name: 'Add product' }).click()

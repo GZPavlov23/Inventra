@@ -2,20 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { DetailsPanel } from '@/components/details-panel'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { toApiError } from '@/lib/api'
 import { deliveriesApi, type Delivery, type DeliveryLine } from '@/lib/deliveries-api'
-import { formatDateTime, formatDay, formatMoney, formatQuantity } from '@/lib/format'
+import { dayOf, formatDateTime, formatDay, formatMoney, formatQuantity } from '@/lib/format'
 import { DeliveryStatusBadge } from '@/pages/deliveries/deliveries-table'
 
 type DeliveryDetailsDialogProps = {
@@ -28,26 +21,40 @@ type DeliveryDetailsDialogProps = {
 
 export function DeliveryDetailsDialog({ delivery, currency, open, onOpenChange, onReceive }: DeliveryDetailsDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Delivery #{delivery?.id}
-            {delivery && <DeliveryStatusBadge delivery={delivery} />}
-          </DialogTitle>
-          <DialogDescription>{delivery && summaryText(delivery)}</DialogDescription>
-        </DialogHeader>
-        {delivery && (
-          <Details
-            key={delivery.id}
-            delivery={delivery}
-            currency={currency}
-            onClose={() => onOpenChange(false)}
-            onReceive={() => onReceive(delivery)}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+    <DetailsPanel
+      open={open}
+      onOpenChange={onOpenChange}
+      title={
+        <>
+          Delivery #{delivery?.id}
+          {delivery && delivery.status !== 'received' && <DeliveryStatusBadge delivery={delivery} />}
+        </>
+      }
+      description={delivery && summaryText(delivery)}
+      aside={delivery?.received_at && <ReceivedStamp day={dayOf(delivery.received_at)} />}
+    >
+      {delivery && (
+        <Details
+          key={delivery.id}
+          delivery={delivery}
+          currency={currency}
+          onClose={() => onOpenChange(false)}
+          onReceive={() => onReceive(delivery)}
+        />
+      )}
+    </DetailsPanel>
+  )
+}
+
+function ReceivedStamp({ day }: { day: string }) {
+  return (
+    <div
+      className="stamp mt-1 flex shrink-0 -rotate-4 flex-col items-center rounded-sm border-2 border-primary/70 px-2.5 py-1 text-primary/80"
+      aria-hidden
+    >
+      <span className="text-xs font-semibold tracking-widest uppercase">Received</span>
+      <span className="figures text-xs">{formatDay(day)}</span>
+    </div>
   )
 }
 
@@ -104,7 +111,7 @@ function Details({ delivery, currency, onClose, onReceive }: {
       </dl>
 
       {delivery.status === 'ordered' && (
-        <DialogFooter>
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
           {confirming ? (
             <>
               <Button variant="outline" onClick={() => setConfirming(false)}>Keep it</Button>
@@ -119,7 +126,7 @@ function Details({ delivery, currency, onClose, onReceive }: {
               <Button onClick={onReceive}>Receive goods</Button>
             </>
           )}
-        </DialogFooter>
+        </div>
       )}
     </>
   )
@@ -137,11 +144,11 @@ function LineRow({ line, delivery, currency }: { line: DeliveryLine; delivery: D
       <div className="min-w-0">
         <p className="text-sm font-medium">{product.name}</p>
         {delivery.status === 'received' && received !== null ? (
-          <p className={`text-sm tabular-nums ${short ? 'text-destructive' : 'text-muted-foreground'}`}>
+          <p className={`text-sm figures ${short ? 'text-destructive' : 'text-muted-foreground'}`}>
             {received === 0 ? 'Never arrived' : `${formatQuantity(received, product.unit)} arrived`}, ordered {ordered}
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground tabular-nums">{ordered}</p>
+          <p className="text-sm text-muted-foreground figures">{ordered}</p>
         )}
         {batch && (
           <p className="text-xs text-muted-foreground">
@@ -150,7 +157,7 @@ function LineRow({ line, delivery, currency }: { line: DeliveryLine; delivery: D
           </p>
         )}
       </div>
-      <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+      <span className="shrink-0 text-sm text-muted-foreground figures">
         {formatMoney(price, currency)} / {product.unit}
       </span>
     </li>
@@ -161,7 +168,7 @@ function TotalRow({ label, value, strong }: { label: string; value: string; stro
   return (
     <div className={`flex justify-between gap-4 ${strong ? 'font-medium' : 'text-muted-foreground'}`}>
       <dt>{label}</dt>
-      <dd className="tabular-nums">{value}</dd>
+      <dd className="figures">{value}</dd>
     </div>
   )
 }

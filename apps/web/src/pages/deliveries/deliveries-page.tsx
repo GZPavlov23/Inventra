@@ -50,6 +50,8 @@ export function DeliveriesPage() {
   const [opened, setOpened] = useState<Delivery | undefined>()
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [receiveOpen, setReceiveOpen] = useState(false)
+  // The delivery just added, so its row can be pointed out.
+  const [justAdded, setJustAdded] = useState<number | undefined>()
   const openDetails = (delivery: Delivery) => {
     setOpened(delivery)
     setDetailsOpen(true)
@@ -67,7 +69,7 @@ export function DeliveriesPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Deliveries</h2>
           <p className="text-sm text-muted-foreground">What you ordered and what really arrived.</p>
         </div>
-        <NewDeliveryButton />
+        <NewDeliveryButton onCreated={(delivery) => setJustAdded(delivery.id)} />
       </div>
 
       <Tabs
@@ -93,11 +95,11 @@ export function DeliveriesPage() {
           </AlertDescription>
         </Alert>
       ) : deliveries.isPending ? (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border bg-card">
           <DeliveriesTableSkeleton />
         </div>
       ) : deliveries.data.total === 0 ? (
-        <Empty className="rounded-lg border">
+        <Empty className="rounded-lg border bg-card">
           <EmptyHeader>
             <EmptyMedia variant="icon"><Truck /></EmptyMedia>
             <EmptyTitle>{status === 'ordered' ? 'Nothing on the way' : 'No deliveries here'}</EmptyTitle>
@@ -109,14 +111,14 @@ export function DeliveriesPage() {
           </EmptyHeader>
           {status === 'ordered' && (
             <EmptyContent>
-              <NewDeliveryButton />
+              <NewDeliveryButton onCreated={(delivery) => setJustAdded(delivery.id)} />
             </EmptyContent>
           )}
         </Empty>
       ) : (
         <>
           <div
-            className={`rounded-lg border transition-opacity ${deliveries.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-lg border bg-card transition-opacity ${deliveries.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={deliveries.isFetching}
           >
             <DeliveriesTable
@@ -124,6 +126,7 @@ export function DeliveriesPage() {
               currency={store.currency}
               onOpen={openDetails}
               onReceive={openReceive}
+              justAdded={justAdded}
             />
           </div>
           <Pagination
@@ -151,7 +154,7 @@ export function DeliveriesPage() {
   )
 }
 
-function NewDeliveryButton() {
+function NewDeliveryButton({ onCreated }: { onCreated: (delivery: Delivery) => void }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -159,7 +162,7 @@ function NewDeliveryButton() {
         <Plus />
         New delivery
       </Button>
-      <NewDeliveryDialog open={open} onOpenChange={setOpen} />
+      <NewDeliveryDialog open={open} onOpenChange={setOpen} onCreated={onCreated} />
     </>
   )
 }

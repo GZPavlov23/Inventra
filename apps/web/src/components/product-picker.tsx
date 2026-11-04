@@ -97,7 +97,7 @@ export function ProductPicker({ id, value, onChange, placeholder = 'Choose a pro
                   onSelect={() => choose(product)}
                 >
                   <span className="truncate">{product.name}</span>
-                  <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                  <span className="ml-auto shrink-0 text-xs text-muted-foreground figures">
                     {formatQuantity(product.stock, product.unit)}
                   </span>
                 </CommandItem>

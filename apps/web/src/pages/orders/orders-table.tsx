@@ -51,7 +51,7 @@ export function OrdersTable({ lines, quantities, currency, onChange }: OrdersTab
                 </p>
                 <p className="text-xs text-muted-foreground">{explanation(line)}</p>
                 {Number(line.expiring_unsold) > 0 && (
-                  <p className="text-xs text-amber-900">
+                  <p className="text-xs text-warning-foreground">
                     {formatExpected(line.expiring_unsold, product.unit)} of your stock will expire before it sells
                   </p>
                 )}
@@ -70,7 +70,7 @@ export function OrdersTable({ lines, quantities, currency, onChange }: OrdersTab
                   <span className="text-xs text-muted-foreground">{product.unit}</span>
                 </div>
               </TableCell>
-              <TableCell className="text-right font-medium tabular-nums">
+              <TableCell className="text-right font-medium figures">
                 {formatMoney(lineCents(quantity, line.unit_cost) / 100, currency)}
               </TableCell>
             </TableRow>

@@ -70,7 +70,7 @@ export function SuppliersTable({ suppliers, onEdit, onSetActive }: SuppliersTabl
             <TableCell>
               {supplier.email ? <ContactLink href={`mailto:${supplier.email}`}>{supplier.email}</ContactLink> : <Dash />}
             </TableCell>
-            <TableCell className="text-right tabular-nums">{supplier.product_count}</TableCell>
+            <TableCell className="text-right figures">{supplier.product_count}</TableCell>
             <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -128,7 +128,7 @@ export function SuppliersTableSkeleton({ rows = 4 }: { rows?: number }) {
 // A click on a phone or email calls or writes, it doesn't also open the form behind it.
 function ContactLink({ href, children }: { href: string; children: string }) {
   return (
-    <a className="tabular-nums hover:underline" href={href} onClick={(event) => event.stopPropagation()}>
+    <a className="figures hover:underline" href={href} onClick={(event) => event.stopPropagation()}>
       {children}
     </a>
   )

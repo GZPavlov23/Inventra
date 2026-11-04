@@ -243,7 +243,7 @@ function ErrorList({ report }: { report: SalesImportReport }) {
       <ul aria-label="Problems in the file" className="flex max-h-48 flex-col gap-1 overflow-y-auto text-sm">
         {errors.map(({ row, message }) => (
           <li key={`${row}-${message}`}>
-            <span className="font-medium tabular-nums">Row {row}:</span>{' '}
+            <span className="font-medium figures">Row {row}:</span>{' '}
             <span className="text-muted-foreground">{message}</span>
           </li>
         ))}

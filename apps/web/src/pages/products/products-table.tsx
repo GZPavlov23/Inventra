@@ -18,10 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatMoney, formatQuantity, marginPercent } from '@/lib/format'
+import { Sparkline } from '@/components/sparkline'
+import { formatExpected, formatMoney, formatQuantity, marginPercent } from '@/lib/format'
 import type { Product, ProductSort, SortOrder } from '@/lib/products-api'
-
-const UNIT_LABELS = { pcs: 'pcs', kg: 'kg', l: 'l' } as const
+import type { SalesTrend } from '@/lib/reports-api'
 
 export type SortState = {
   sort: ProductSort
@@ -49,7 +49,7 @@ function SortableHead({ column, label, numeric, sorting }: {
       <button
         type="button"
         onClick={() => sorting.onSort(column)}
-        className={`inline-flex cursor-pointer items-center gap-1 outline-offset-2 hover:text-foreground ${
+        className={`inline-flex cursor-pointer items-center gap-1 tracking-wide uppercase outline-offset-2 hover:text-foreground ${
           numeric ? 'flex-row-reverse' : ''
         }`}
       >
@@ -66,12 +66,11 @@ function TableHeadings({ sorting }: { sorting?: SortState }) {
       <TableRow>
         <SortableHead column="name" label="Name" sorting={sorting} />
         <SortableHead column="category" label="Category" sorting={sorting} />
-        <TableHead>Barcode</TableHead>
-        <TableHead>Unit</TableHead>
         <SortableHead column="purchase_price" label="Purchase price" numeric sorting={sorting} />
         <SortableHead column="sale_price" label="Sale price" numeric sorting={sorting} />
         <SortableHead column="margin" label="Margin" numeric sorting={sorting} />
         <SortableHead column="stock" label="Stock" numeric sorting={sorting} />
+        <TableHead className="text-right">Last 14 days</TableHead>
         <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
       </TableRow>
     </TableHeader>
@@ -84,9 +83,14 @@ type ProductsTableProps = {
   onEdit: (product: Product) => void
   onSetActive: (product: Product, active: boolean) => void
   sorting: SortState
+  justSaved?: number
+  // Missing while it loads: the column then stays empty instead of showing zeros.
+  trends?: Map<number, SalesTrend>
 }
 
-export function ProductsTable({ products, currency, onEdit, onSetActive, sorting }: ProductsTableProps) {
+export function ProductsTable({
+  products, currency, onEdit, onSetActive, sorting, justSaved, trends,
+}: ProductsTableProps) {
   return (
     <Table>
       <TableCaption className="sr-only">Products of your store</TableCaption>
@@ -95,7 +99,8 @@ export function ProductsTable({ products, currency, onEdit, onSetActive, sorting
         {products.map((product) => {
           const margin = marginPercent(product.purchase_price, product.sale_price)
           return (
-            <TableRow key={product.id} className="cursor-pointer" onClick={() => onEdit(product)}>
+            <TableRow key={product.id} className="cursor-pointer" data-new={product.id === justSaved}
+              onClick={() => onEdit(product)}>
               <TableCell>
                 <div className="flex items-center gap-2 font-medium">
                   {/* A real button, so keyboard users can open the row too. Its click
@@ -105,30 +110,35 @@ export function ProductsTable({ products, currency, onEdit, onSetActive, sorting
                   </button>
                   {!product.active && <Badge variant="outline">Archived</Badge>}
                 </div>
-                {product.brand && <div className="text-xs text-muted-foreground">{product.brand}</div>}
+                {(product.brand || product.barcode) && (
+                  <div className="text-xs text-muted-foreground">
+                    {product.brand}
+                    {product.brand && product.barcode && ' · '}
+                    {product.barcode && <span className="figures">{product.barcode}</span>}
+                  </div>
+                )}
               </TableCell>
               <TableCell>
                 {product.category ? <Badge variant="secondary">{product.category}</Badge> : <Dash />}
               </TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">
-                {product.barcode ?? <Dash />}
-              </TableCell>
-              <TableCell className="text-muted-foreground">{UNIT_LABELS[product.unit]}</TableCell>
-              <TableCell className="text-right text-muted-foreground tabular-nums">
+              <TableCell className="text-right text-muted-foreground figures">
                 {formatMoney(product.purchase_price, currency)}
               </TableCell>
-              <TableCell className="text-right font-medium tabular-nums">
+              <TableCell className="text-right font-medium figures">
                 {formatMoney(product.sale_price, currency)}
               </TableCell>
               <TableCell
-                className={`text-right tabular-nums ${margin !== null && margin < 0 ? 'text-destructive' : ''}`}
+                className={`text-right figures ${margin !== null && margin < 0 ? 'text-destructive' : ''}`}
               >
                 {margin === null ? <Dash /> : `${margin.toFixed(1)}%`}
               </TableCell>
               <TableCell
-                className={`text-right tabular-nums ${Number(product.stock) === 0 ? 'text-muted-foreground' : ''}`}
+                className={`text-right figures ${Number(product.stock) === 0 ? 'text-muted-foreground' : ''}`}
               >
                 {formatQuantity(product.stock, product.unit)}
+              </TableCell>
+              <TableCell className="text-right">
+                <TrendCell product={product} trend={trends?.get(product.id)} />
               </TableCell>
               {/* Clicks here (including inside the menu) must not also open the row. */}
               <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>
@@ -176,17 +186,28 @@ export function ProductsTableSkeleton({ rows = 6 }: { rows?: number }) {
           <TableRow key={index}>
             <TableCell><Skeleton className="h-4 w-44" /></TableCell>
             <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-            <TableCell><Skeleton className="h-4 w-8" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
+            <TableCell><Skeleton className="ml-auto h-4 w-20" /></TableCell>
             <TableCell />
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  )
+}
+
+function TrendCell({ product, trend }: { product: Product; trend?: SalesTrend }) {
+  if (!trend) return null
+  // Rounded like a forecast: 22.787 kg of bananas reads better as 22.8 kg in a narrow column.
+  const sold = formatExpected(trend.total, product.unit)
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <Sparkline values={trend.quantities.map(Number)} label={`${sold} sold in the last 14 days`} />
+      <span className="figures min-w-12 text-xs text-muted-foreground">{sold}</span>
+    </div>
   )
 }
 

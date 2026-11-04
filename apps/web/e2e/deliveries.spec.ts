@@ -60,7 +60,7 @@ test('ordering changes nothing, and receiving brings the real goods into stock',
   await expect(page.getByText('was added')).toBeVisible()
 
   await page.goto(`/products?q=${PRODUCT}`)
-  await expect(row(page, PRODUCT).getByRole('cell').nth(7)).toHaveText('0 pcs')
+  await expect(row(page, PRODUCT).getByRole('cell').nth(5)).toHaveText('0 pcs')
 
   await page.goto('/deliveries')
   await row(page, PRODUCT).getByRole('button', { name: /Receive delivery/ }).click()
@@ -126,5 +126,5 @@ test('someone else receiving it first stops the second person with a clear messa
 
   // 8 from the first delivery and 3 from this one, not 3 twice.
   await page.goto(`/products?q=${PRODUCT}`)
-  await expect(row(page, PRODUCT).getByRole('cell').nth(7)).toHaveText('11 pcs')
+  await expect(row(page, PRODUCT).getByRole('cell').nth(5)).toHaveText('11 pcs')
 })

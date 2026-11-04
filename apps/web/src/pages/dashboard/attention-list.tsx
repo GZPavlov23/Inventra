@@ -26,7 +26,7 @@ export function AttentionList({ batches }: { batches: Batch[] }) {
             >
               {batch.product.name}
             </Link>
-            <p className="text-xs text-muted-foreground tabular-nums">
+            <p className="text-xs text-muted-foreground figures">
               {formatQuantity(batch.remaining_quantity, batch.product.unit)}
             </p>
           </div>

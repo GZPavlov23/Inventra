@@ -138,7 +138,7 @@ export function ProductPreview() {
                     </span>
                   </td>
                   <td className="py-3 font-mono text-xs text-muted-foreground">{product.barcode}</td>
-                  <td className="py-3 text-right tabular-nums">{product.price}</td>
+                  <td className="py-3 text-right figures">{product.price}</td>
                 </tr>
               ))}
             </tbody>

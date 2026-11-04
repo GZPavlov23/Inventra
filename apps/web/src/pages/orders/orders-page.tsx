@@ -94,7 +94,7 @@ export function OrdersPage() {
           </AlertDescription>
         </Alert>
       ) : orders.data?.products_checked === 0 ? (
-        <Empty className="rounded-lg border">
+        <Empty className="rounded-lg border bg-card">
           <EmptyHeader>
             <EmptyMedia variant="icon"><TrendingUp /></EmptyMedia>
             <EmptyTitle>Not enough sales yet</EmptyTitle>
@@ -146,13 +146,13 @@ export function OrdersPage() {
           {!lines ? (
             <Skeleton className="h-64 w-full" />
           ) : lines.length === 0 ? (
-            <p className="flex items-center gap-2 rounded-lg border p-4 text-sm text-muted-foreground">
+            <p className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
               <CircleCheck className="size-4 text-primary" />
               Your stock covers the next {days} days. There is nothing to order.
             </p>
           ) : (
             <div
-              className={`rounded-lg border transition-opacity ${orders.isPlaceholderData ? 'opacity-60' : ''}`}
+              className={`rounded-lg border bg-card transition-opacity ${orders.isPlaceholderData ? 'opacity-60' : ''}`}
               aria-busy={orders.isFetching}
             >
               <OrdersTable

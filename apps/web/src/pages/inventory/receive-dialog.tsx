@@ -20,11 +20,13 @@ import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
 import { formatQuantity, today } from '@/lib/format'
 import { inventoryApi } from '@/lib/inventory-api'
+import type { Batch } from '@/lib/inventory-api'
 import type { Product } from '@/lib/products-api'
 
-export function ReceiveDialog({ open, onOpenChange }: {
+export function ReceiveDialog({ open, onOpenChange, onReceived }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onReceived?: (batch: Batch) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -38,13 +40,16 @@ export function ReceiveDialog({ open, onOpenChange }: {
           <DialogTitle>Receive goods</DialogTitle>
           <DialogDescription>Every delivery becomes a new batch with its own expiry date.</DialogDescription>
         </DialogHeader>
-        <ReceiveForm onClose={() => onOpenChange(false)} />
+        <ReceiveForm onReceived={onReceived} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
 }
 
-function ReceiveForm({ onClose }: { onClose: () => void }) {
+function ReceiveForm({ onReceived, onClose }: {
+  onReceived?: (batch: Batch) => void
+  onClose: () => void
+}) {
   const { store } = useCurrentUser()
   const queryClient = useQueryClient()
   const [product, setProduct] = useState<Product | null>(null)
@@ -68,6 +73,7 @@ function ReceiveForm({ onClose }: { onClose: () => void }) {
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       const amount = formatQuantity(batch.received_quantity, batch.product.unit)
       toast.success(`${amount} of ${batch.product.name} received`)
+      onReceived?.(batch)
       onClose()
     },
   })

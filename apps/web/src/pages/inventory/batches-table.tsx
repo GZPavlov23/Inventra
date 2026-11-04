@@ -20,6 +20,7 @@ import {
 import { formatDay, formatMoney, formatQuantity } from '@/lib/format'
 import type { Batch } from '@/lib/inventory-api'
 import { ExpiryBadge } from '@/pages/inventory/expiry-badge'
+import { ShelfLifeBar } from '@/pages/inventory/shelf-life-bar'
 
 export type BatchAction = 'write-off' | 'correct' | 'history'
 
@@ -41,9 +42,12 @@ function TableHeadings() {
 function ExpiryCell({ batch }: { batch: Batch }) {
   if (!batch.expiry_date) return <Dash />
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="tabular-nums">{formatDay(batch.expiry_date)}</span>
-      <ExpiryBadge batch={batch} />
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="figures">{formatDay(batch.expiry_date)}</span>
+        <ExpiryBadge batch={batch} />
+      </div>
+      <ShelfLifeBar batch={batch} />
     </div>
   )
 }
@@ -52,9 +56,11 @@ type BatchesTableProps = {
   batches: Batch[]
   currency: string
   onAction: (action: BatchAction, batch: Batch) => void
+  // The batch that was just received, so it can be pointed out.
+  justAdded?: number
 }
 
-export function BatchesTable({ batches, currency, onAction }: BatchesTableProps) {
+export function BatchesTable({ batches, currency, onAction, justAdded }: BatchesTableProps) {
   return (
     <Table>
       <TableCaption className="sr-only">Batches of your store, the earliest expiry date first</TableCaption>
@@ -64,7 +70,7 @@ export function BatchesTable({ batches, currency, onAction }: BatchesTableProps)
           const { product } = batch
           const used = Number(batch.remaining_quantity) === 0
           return (
-            <TableRow key={batch.id}>
+            <TableRow key={batch.id} data-new={batch.id === justAdded}>
               <TableCell>
                 <div className="font-medium">{product.name}</div>
                 {product.barcode && (
@@ -73,7 +79,7 @@ export function BatchesTable({ batches, currency, onAction }: BatchesTableProps)
               </TableCell>
               <TableCell className="text-muted-foreground">{batch.lot_code ?? <Dash />}</TableCell>
               <TableCell><ExpiryCell batch={batch} /></TableCell>
-              <TableCell className="text-right tabular-nums">
+              <TableCell className="text-right figures">
                 <span className={used ? 'text-muted-foreground' : 'font-medium'}>
                   {formatQuantity(batch.remaining_quantity, product.unit)}
                 </span>
@@ -81,7 +87,7 @@ export function BatchesTable({ batches, currency, onAction }: BatchesTableProps)
                   of {formatQuantity(batch.received_quantity, product.unit)}
                 </div>
               </TableCell>
-              <TableCell className="text-right text-muted-foreground tabular-nums">
+              <TableCell className="text-right text-muted-foreground figures">
                 {formatMoney(batch.purchase_price, currency)}
               </TableCell>
               <TableCell className="py-0 text-right">

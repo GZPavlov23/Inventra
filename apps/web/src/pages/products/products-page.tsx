@@ -26,6 +26,7 @@ import {
   type ProductStatus,
   type SortOrder,
 } from '@/lib/products-api'
+import { reportsApi } from '@/lib/reports-api'
 import { ProductFormDialog } from '@/pages/products/product-form-dialog'
 import { ProductsTable, ProductsTableSkeleton } from '@/pages/products/products-table'
 
@@ -34,6 +35,8 @@ const STATUSES: { value: ProductStatus; label: string }[] = [
   { value: 'archived', label: 'Archived' },
   { value: 'all', label: 'All' },
 ]
+
+const TREND_DAYS = 14
 
 const SORT_COLUMNS: ProductSort[] = ['name', 'category', 'purchase_price', 'sale_price', 'margin', 'stock']
 
@@ -69,6 +72,16 @@ export function ProductsPage() {
 
   useReturnToLastPage(products.data, updateParams)
 
+  // Only for the products on this page, asked for once the page has arrived. The key starts
+  // with 'sales', so a new sale refreshes it.
+  const shownIds = products.data?.items.map((product) => product.id) ?? []
+  const trends = useQuery({
+    queryKey: ['sales', 'trend', TREND_DAYS, shownIds],
+    queryFn: () => reportsApi.salesTrend(shownIds, TREND_DAYS),
+    enabled: shownIds.length > 0,
+    select: (lines) => new Map(lines.map((line) => [line.product_id, line])),
+  })
+
   const queryClient = useQueryClient()
   const setActive = useMutation({
     mutationFn: ({ product, active }: { product: Product; active: boolean }) =>
@@ -86,6 +99,9 @@ export function ProductsPage() {
     },
     onError: (error) => toast.error(toApiError(error).message),
   })
+
+  // The product just added or edited, so its row can be pointed out.
+  const [justSaved, setJustSaved] = useState<number | undefined>()
 
   // Kept separately from `editing`, so the form doesn't change during the closing animation.
   const [editing, setEditing] = useState<Product | undefined>()
@@ -119,7 +135,7 @@ export function ProductsPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
           <p className="text-sm text-muted-foreground">Your product catalog: names, barcodes and prices.</p>
         </div>
-        <AddProductButton />
+        <AddProductButton onAdded={(product) => setJustSaved(product.id)} />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -158,12 +174,12 @@ export function ProductsPage() {
           </AlertDescription>
         </Alert>
       ) : products.isPending ? (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border bg-card">
           <ProductsTableSkeleton />
         </div>
       ) : products.data.total === 0 ? (
         search || status !== 'active' ? (
-          <Empty className="rounded-lg border">
+          <Empty className="rounded-lg border bg-card">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
               <EmptyTitle>No products found</EmptyTitle>
@@ -176,14 +192,14 @@ export function ProductsPage() {
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="rounded-lg border">
+          <Empty className="rounded-lg border bg-card">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Package /></EmptyMedia>
               <EmptyTitle>No products yet</EmptyTitle>
               <EmptyDescription>Add your first product to start building your catalog.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <AddProductButton />
+              <AddProductButton onAdded={(product) => setJustSaved(product.id)} />
             </EmptyContent>
           </Empty>
         )
@@ -191,7 +207,7 @@ export function ProductsPage() {
         <>
           {/* Slightly faded while a new page or search result is loading. */}
           <div
-            className={`rounded-lg border transition-opacity ${products.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-lg border bg-card transition-opacity ${products.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={products.isFetching}
           >
             <ProductsTable
@@ -200,6 +216,8 @@ export function ProductsPage() {
               onEdit={openEdit}
               onSetActive={(product, active) => setActive.mutate({ product, active })}
               sorting={{ sort, order, onSort: handleSort }}
+              justSaved={justSaved}
+              trends={trends.data}
             />
           </div>
           <Pagination
@@ -210,12 +228,13 @@ export function ProductsPage() {
         </>
       )}
 
-      <ProductFormDialog product={editing} open={editOpen} onOpenChange={setEditOpen} />
+      <ProductFormDialog product={editing} open={editOpen} onOpenChange={setEditOpen}
+        onSaved={(product) => setJustSaved(product.id)} />
     </div>
   )
 }
 
-function AddProductButton() {
+function AddProductButton({ onAdded }: { onAdded?: (product: Product) => void }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -223,7 +242,7 @@ function AddProductButton() {
         <Plus />
         Add product
       </Button>
-      <ProductFormDialog open={open} onOpenChange={setOpen} />
+      <ProductFormDialog open={open} onOpenChange={setOpen} onSaved={onAdded} />
     </>
   )
 }

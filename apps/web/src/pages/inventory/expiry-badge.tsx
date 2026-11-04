@@ -18,7 +18,7 @@ export function ExpiryBadge({ batch }: { batch: Batch }) {
   }
   if (batch.expiry_status === 'expiring') {
     return (
-      <Badge variant="secondary" className="bg-amber-100 text-amber-900">
+      <Badge variant="secondary" className="bg-warning text-warning-foreground">
         {expiryText(daysUntil(batch.expiry_date))}
       </Badge>
     )

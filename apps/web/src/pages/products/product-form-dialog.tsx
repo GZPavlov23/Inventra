@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
-import { marginPercent } from '@/lib/format'
+import { formatMoney, marginPercent } from '@/lib/format'
 import { type Product, productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
 import { suppliersApi } from '@/lib/suppliers-api'
 import { CategoryCombobox } from '@/pages/products/category-combobox'
@@ -61,9 +61,10 @@ type ProductFormDialogProps = {
   product?: Product
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSaved?: (product: Product) => void
 }
 
-export function ProductFormDialog({ product, open, onOpenChange }: ProductFormDialogProps) {
+export function ProductFormDialog({ product, open, onOpenChange, onSaved }: ProductFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A click outside doesn't close it, so a filled-in form isn't lost by accident.
@@ -81,13 +82,17 @@ export function ProductFormDialog({ product, open, onOpenChange }: ProductFormDi
           </DialogDescription>
         </DialogHeader>
         {/* The form only exists while the dialog is open, so it always starts from fresh values. */}
-        <ProductForm key={product?.id} product={product} onClose={() => onOpenChange(false)} />
+        <ProductForm key={product?.id} product={product} onSaved={onSaved} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
 }
 
-function ProductForm({ product, onClose }: { product?: Product; onClose: () => void }) {
+function ProductForm({ product, onSaved, onClose }: {
+  product?: Product
+  onSaved?: (product: Product) => void
+  onClose: () => void
+}) {
   const { store } = useCurrentUser()
   const queryClient = useQueryClient()
   const initialValues = product ? toFormValues(product) : EMPTY_PRODUCT
@@ -107,6 +112,7 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
       // Marks every product list as out of date, so the table refetches and shows the change.
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       toast.success(product ? `${saved.name} was saved` : `${saved.name} was added`)
+      onSaved?.(saved)
       onClose()
     },
   })
@@ -219,10 +225,15 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
         </FormField>
       </div>
 
+      {form.sale_price && (
+        <ShelfLabel name={form.name} barcode={form.barcode} price={form.sale_price} unit={form.unit}
+          currency={store.currency} />
+      )}
+
       {margin !== null && (
         <p className={`text-sm ${margin < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
           {margin < 0 ? 'The sale price is below the purchase price. ' : ''}
-          Margin: <span className="font-medium tabular-nums">{margin.toFixed(1)}%</span>
+          Margin: <span className="font-medium figures">{margin.toFixed(1)}%</span>
         </p>
       )}
 
@@ -234,5 +245,31 @@ function ProductForm({ product, onClose }: { product?: Product; onClose: () => v
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+// How the price will read on the shelf, so a typo like 15.90 instead of 1.59 is caught here.
+function ShelfLabel({ name, barcode, price, unit, currency }: {
+  name: string
+  barcode: string
+  price: string
+  unit: ProductUnit
+  currency: string
+}) {
+  return (
+    <figure aria-label="Shelf label preview"
+      className="flex items-stretch overflow-hidden rounded-md border bg-card shadow-xs">
+      <div className="w-1.5 shrink-0 bg-primary" />
+      <div className="flex min-w-0 flex-1 items-end justify-between gap-4 px-3 py-2">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{name || 'Product name'}</p>
+          <p className="figures text-xs text-muted-foreground">{barcode || '—'}</p>
+        </div>
+        <p className="figures shrink-0 text-xl font-medium">
+          {formatMoney(price, currency)}
+          <span className="ml-1 text-xs text-muted-foreground">/ {unit}</span>
+        </p>
+      </div>
+    </figure>
   )
 }

@@ -118,7 +118,7 @@ function DeliveriesForm({ lines, quantityOf, currency, onClose, onCreated }: {
                   {group.lines.map((line) => line.product.name).join(', ')}
                 </p>
               </div>
-              <span className="shrink-0 text-sm font-medium tabular-nums">
+              <span className="shrink-0 text-sm font-medium figures">
                 {formatMoney(costOf(group) / 100, currency)}
               </span>
             </li>
@@ -127,7 +127,7 @@ function DeliveriesForm({ lines, quantityOf, currency, onClose, onCreated }: {
       )}
 
       {leftOut.length > 0 && (
-        <p className="text-sm text-amber-900" role="status">
+        <p className="text-sm text-warning-foreground" role="status">
           Left out, without an active supplier: {leftOut.map((line) => line.product.name).join(', ')}.
           Set a supplier on the Products page to include them.
         </p>

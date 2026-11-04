@@ -5,9 +5,26 @@ from datetime import date
 from fastapi import APIRouter, Query
 
 from app.api.deps import CurrentStore, ReportServiceDep
-from app.schemas.report import CategorySales, RunningOutProduct, TopProduct, WasteReport
+from app.schemas.report import (
+    CategorySales,
+    RunningOutProduct,
+    SalesTrend,
+    TopProduct,
+    WasteReport,
+)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+@router.get("/sales-trend", response_model=list[SalesTrend])
+def sales_trend_report(
+    store: CurrentStore,
+    service: ReportServiceDep,
+    product_id: list[int] = Query(min_length=1, max_length=200, description="One or more"),
+    days: int = Query(14, ge=7, le=60),
+) -> list[SalesTrend]:
+    """Sold per day over the last finished days, today left out because it isn't over."""
+    return service.sales_trend(store.id, set(product_id), days)
 
 
 @router.get("/waste", response_model=WasteReport)

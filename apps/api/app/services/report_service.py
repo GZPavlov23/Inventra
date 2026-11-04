@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.core.money import to_cents
 from app.core.period import period_bounds, period_length
+from app.repositories.forecast_repository import ForecastRepository
 from app.repositories.report_repository import ReportRepository
 from app.schemas.report import (
     CategorySales,
     RunningOutProduct,
+    SalesTrend,
     TopProduct,
     WasteByReason,
     WasteReport,
@@ -26,6 +28,42 @@ RUNNING_OUT_DAYS = 7
 class ReportService:
     def __init__(self, session: Session) -> None:
         self.reports = ReportRepository(session)
+        self.forecasts = ForecastRepository(session)
+
+    def sales_trend(self, store_id: int, product_ids: set[int], days: int) -> list[SalesTrend]:
+        """Sold per day over the last finished days, for small charts next to each product.
+
+        The same history the forecast learns from: real sales, and imported old ones where
+        there are no real sales for that day.
+        """
+        last_day = date.today() - timedelta(days=1)
+        first_day = last_day - timedelta(days=days - 1)
+        start, end = period_bounds(first_day, last_day)
+
+        sold: dict[int, dict[date, Decimal]] = {}
+        for product_id, day, quantity in self.forecasts.imported_per_day(
+            store_id, first_day=first_day, last_day=last_day
+        ):
+            sold.setdefault(product_id, {})[day] = quantity
+        for product_id, day, quantity in self.forecasts.sold_per_day(
+            store_id, start=start, end=end
+        ):
+            sold.setdefault(product_id, {})[day] = quantity
+
+        trends = []
+        for product_id in sorted(product_ids):
+            series = sold.get(product_id, {})
+            quantities = [
+                series.get(first_day + timedelta(days=offset), Decimal(0)) for offset in range(days)
+            ]
+            trends.append(
+                SalesTrend(
+                    product_id=product_id,
+                    quantities=quantities,
+                    total=sum(quantities, Decimal(0)),
+                )
+            )
+        return trends
 
     def waste(self, store_id: int, *, date_from: date, date_to: date) -> WasteReport:
         period_length(date_from, date_to)

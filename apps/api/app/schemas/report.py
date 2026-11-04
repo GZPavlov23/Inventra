@@ -5,6 +5,13 @@ from pydantic import BaseModel
 from app.schemas.inventory import BatchProduct, WasteReason
 
 
+class SalesTrend(BaseModel):
+    product_id: int
+    # One number per finished day, the oldest first.
+    quantities: list[Decimal]
+    total: Decimal
+
+
 class WasteByReason(BaseModel):
     reason: WasteReason
     value: Decimal

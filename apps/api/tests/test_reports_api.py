@@ -1,6 +1,6 @@
 """API tests for /api/v1/reports."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Batch, InventoryMovement, MovementType, Sale, Store, User
+from tests.clock import on_day
 
 URL = "/api/v1/reports"
 PRODUCTS_URL = "/api/v1/products"
@@ -44,7 +45,7 @@ def sell(client: TestClient, db: Session, product: dict, quantity: str, days_ago
     )
     assert response.status_code == 201, response.text
     sale = response.json()
-    db.get(Sale, sale["id"]).sold_at = datetime.now(UTC) - timedelta(days=days_ago)
+    db.get(Sale, sale["id"]).sold_at = on_day(days_ago)
     db.flush()
     return sale
 
@@ -128,7 +129,7 @@ def test_waste_counts_only_its_period_and_only_write_offs(client: TestClient, db
     write_off(client, batch, "2")
 
     stmt = select(InventoryMovement).where(InventoryMovement.type == MovementType.WASTE)
-    db.scalars(stmt).one().occurred_at = datetime.now(UTC) - timedelta(days=3)
+    db.scalars(stmt).one().occurred_at = on_day(3)
     db.flush()
 
     assert client.get(f"{URL}/waste", params=period(-5, 0)).json()["total"] == "2.00"
@@ -277,3 +278,83 @@ def test_categories_count_only_their_period(client: TestClient, db: Session) -> 
     receive(client, dairy, "10")
     sell(client, db, dairy, "1", days_ago=40)
     assert client.get(f"{URL}/categories", params=period()).json() == []
+
+
+# Sales trend
+
+
+def trend(client: TestClient, *products: dict, days: int = 14) -> dict[int, dict]:
+    params = {"product_id": [product["id"] for product in products], "days": days}
+    response = client.get(f"{URL}/sales-trend", params=params)
+    assert response.status_code == 200, response.text
+    return {line["product_id"]: line for line in response.json()}
+
+
+def test_the_trend_has_one_number_per_finished_day(client: TestClient, db: Session) -> None:
+    milk = make_product(client)
+    receive(client, milk, "50")
+    sell(client, db, milk, "3", days_ago=1)
+    sell(client, db, milk, "2", days_ago=1)
+    sell(client, db, milk, "4", days_ago=14)
+
+    line = trend(client, milk)[milk["id"]]
+
+    assert len(line["quantities"]) == 14
+    assert Decimal(line["quantities"][-1]) == 5  # yesterday, the newest day, comes last
+    assert Decimal(line["quantities"][0]) == 4
+    assert Decimal(line["total"]) == 9
+
+
+def test_today_and_older_days_are_left_out(client: TestClient, db: Session) -> None:
+    milk = make_product(client)
+    receive(client, milk, "50")
+    sell(client, db, milk, "3", days_ago=0)
+    sell(client, db, milk, "7", days_ago=15)
+
+    assert Decimal(trend(client, milk)[milk["id"]]["total"]) == 0
+
+
+def test_imported_history_fills_days_without_real_sales(client: TestClient, db: Session) -> None:
+    milk = make_product(client)
+    receive(client, milk, "50")
+    days = [in_days(-2), in_days(-1)]
+    rows = ["date;product;quantity"] + [f"{day.isoformat()};Milk;6" for day in days]
+    client.post(
+        "/api/v1/imports/sales",
+        json={"mode": "history", "content": "\n".join(rows), "dry_run": False},
+    )
+    sell(client, db, milk, "2", days_ago=1)
+
+    quantities = trend(client, milk)[milk["id"]]["quantities"]
+
+    assert Decimal(quantities[-2]) == 6
+    assert Decimal(quantities[-1]) == 2  # a real sale replaces the imported number
+
+
+def test_a_product_that_never_sold_gets_zeros(client: TestClient) -> None:
+    line = trend(client, make_product(client), days=7)
+    [only] = line.values()
+    assert [Decimal(quantity) for quantity in only["quantities"]] == [0] * 7
+
+
+def test_the_trend_shows_only_this_store(
+    client: TestClient, db: Session, owner: User, other_store: Store
+) -> None:
+    milk = make_product(client)
+    receive(client, milk, "50")
+    sell(client, db, milk, "3")
+    owner.store_id = other_store.id
+    db.commit()
+
+    assert Decimal(trend(client, milk)[milk["id"]]["total"]) == 0
+
+
+@pytest.mark.parametrize(
+    "params", [{}, {"product_id": 1, "days": 6}, {"product_id": 1, "days": 61}]
+)
+def test_the_trend_needs_products_and_a_sensible_period(client: TestClient, params: dict) -> None:
+    assert client.get(f"{URL}/sales-trend", params=params).status_code == 422
+
+
+def test_the_trend_requires_login(anon_client: TestClient) -> None:
+    assert anon_client.get(f"{URL}/sales-trend", params={"product_id": 1}).status_code == 401

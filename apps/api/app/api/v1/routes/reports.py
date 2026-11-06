@@ -4,7 +4,8 @@ from datetime import date
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import BriefingServiceDep, CurrentStore, ReportServiceDep
+from app.api.deps import BriefingServiceDep, CurrentStore, ReportServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.briefing import Briefing
 from app.schemas.report import (
     CategorySales,
@@ -17,7 +18,9 @@ from app.schemas.report import (
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.get("/briefing", response_model=Briefing)
+@router.get(
+    "/briefing", response_model=Briefing, dependencies=[allowed_to(Permission.SEE_FINANCES)]
+)
 def briefing_report(store: CurrentStore, service: BriefingServiceDep) -> Briefing:
     """The few things worth knowing today, the most money involved first."""
     return service.briefing(store.id)
@@ -34,7 +37,9 @@ def sales_trend_report(
     return service.sales_trend(store.id, set(product_id), days)
 
 
-@router.get("/waste", response_model=WasteReport)
+@router.get(
+    "/waste", response_model=WasteReport, dependencies=[allowed_to(Permission.SEE_FINANCES)]
+)
 def waste_report(
     store: CurrentStore,
     service: ReportServiceDep,
@@ -45,13 +50,21 @@ def waste_report(
     return service.waste(store.id, date_from=date_from, date_to=date_to)
 
 
-@router.get("/running-out", response_model=list[RunningOutProduct])
+@router.get(
+    "/running-out",
+    response_model=list[RunningOutProduct],
+    dependencies=[allowed_to(Permission.SEE_FINANCES)],
+)
 def running_out_report(store: CurrentStore, service: ReportServiceDep) -> list[RunningOutProduct]:
     """Products whose stock lasts a week or less at their recent average sales."""
     return service.running_out(store.id)
 
 
-@router.get("/top-products", response_model=list[TopProduct])
+@router.get(
+    "/top-products",
+    response_model=list[TopProduct],
+    dependencies=[allowed_to(Permission.SEE_FINANCES)],
+)
 def top_products_report(
     store: CurrentStore,
     service: ReportServiceDep,
@@ -63,7 +76,11 @@ def top_products_report(
     return service.top_products(store.id, date_from=date_from, date_to=date_to, limit=limit)
 
 
-@router.get("/categories", response_model=list[CategorySales])
+@router.get(
+    "/categories",
+    response_model=list[CategorySales],
+    dependencies=[allowed_to(Permission.SEE_FINANCES)],
+)
 def categories_report(
     store: CurrentStore,
     service: ReportServiceDep,

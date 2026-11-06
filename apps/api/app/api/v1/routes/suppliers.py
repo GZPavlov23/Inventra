@@ -4,7 +4,8 @@ from typing import Literal
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, SupplierServiceDep
+from app.api.deps import CurrentStore, SupplierServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.common import ErrorResponse
 from app.schemas.supplier import SupplierCreate, SupplierPage, SupplierRead, SupplierUpdate
 
@@ -36,7 +37,13 @@ def list_suppliers(
     )
 
 
-@router.post("", response_model=SupplierRead, status_code=201, responses=CONFLICT)
+@router.post(
+    "",
+    response_model=SupplierRead,
+    status_code=201,
+    responses=CONFLICT,
+    dependencies=[allowed_to(Permission.MANAGE_CATALOG)],
+)
 def create_supplier(data: SupplierCreate, store: CurrentStore, service: SupplierServiceDep):
     return service.create_supplier(store.id, data)
 
@@ -46,7 +53,12 @@ def get_supplier(supplier_id: int, store: CurrentStore, service: SupplierService
     return service.get_supplier(store.id, supplier_id)
 
 
-@router.patch("/{supplier_id}", response_model=SupplierRead, responses={**NOT_FOUND, **CONFLICT})
+@router.patch(
+    "/{supplier_id}",
+    response_model=SupplierRead,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.MANAGE_CATALOG)],
+)
 def update_supplier(
     supplier_id: int, data: SupplierUpdate, store: CurrentStore, service: SupplierServiceDep
 ):

@@ -2,10 +2,13 @@
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, ForecastServiceDep
+from app.api.deps import CurrentStore, ForecastServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.forecast import AccuracyReport, ForecastReport, OrderReport
 
-router = APIRouter(prefix="/forecasts", tags=["forecasts"])
+router = APIRouter(
+    prefix="/forecasts", tags=["forecasts"], dependencies=[allowed_to(Permission.PLAN)]
+)
 
 
 @router.get("", response_model=ForecastReport)

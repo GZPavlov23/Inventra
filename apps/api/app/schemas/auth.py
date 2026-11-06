@@ -1,7 +1,16 @@
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    StringConstraints,
+    computed_field,
+)
 
+from app.core.permissions import ROLE_PERMISSIONS, Permission
 from app.models.user import UserRole
 
 # Emails are compared case-insensitively, so they are always lowercased before use.
@@ -64,3 +73,9 @@ class CurrentUserRead(BaseModel):
     full_name: str
     role: UserRole
     store: StoreRead
+
+    # So clients can hide what the role can't do. The API checks every request regardless.
+    @computed_field
+    @property
+    def permissions(self) -> list[Permission]:
+        return sorted(ROLE_PERMISSIONS[self.role])

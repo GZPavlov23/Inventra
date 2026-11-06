@@ -4,7 +4,8 @@ from typing import Literal
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, ProductServiceDep
+from app.api.deps import CurrentStore, ProductServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.common import ErrorResponse
 from app.schemas.product import (
     ProductCreate,
@@ -59,7 +60,13 @@ def list_categories(store: CurrentStore, service: ProductServiceDep) -> list[str
     return service.list_categories(store.id)
 
 
-@router.post("", response_model=ProductRead, status_code=201, responses=CONFLICT)
+@router.post(
+    "",
+    response_model=ProductRead,
+    status_code=201,
+    responses=CONFLICT,
+    dependencies=[allowed_to(Permission.MANAGE_CATALOG)],
+)
 def create_product(data: ProductCreate, store: CurrentStore, service: ProductServiceDep):
     return service.create_product(store.id, data)
 
@@ -74,7 +81,12 @@ def get_product(product_id: int, store: CurrentStore, service: ProductServiceDep
     return service.get_product(store.id, product_id)
 
 
-@router.patch("/{product_id}", response_model=ProductRead, responses={**NOT_FOUND, **CONFLICT})
+@router.patch(
+    "/{product_id}",
+    response_model=ProductRead,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.MANAGE_CATALOG)],
+)
 def update_product(
     product_id: int, data: ProductUpdate, store: CurrentStore, service: ProductServiceDep
 ):

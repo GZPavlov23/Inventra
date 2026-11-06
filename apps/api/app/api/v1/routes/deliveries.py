@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, CurrentUser, DeliveryServiceDep
+from app.api.deps import CurrentStore, CurrentUser, DeliveryServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.models.delivery import DeliveryStatus
 from app.schemas.common import ErrorResponse
 from app.schemas.delivery import (
@@ -43,7 +44,13 @@ def list_deliveries(
     )
 
 
-@router.post("", response_model=DeliveryRead, status_code=201, responses={**NOT_FOUND, **CONFLICT})
+@router.post(
+    "",
+    response_model=DeliveryRead,
+    status_code=201,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.PLAN)],
+)
 def create_delivery(data: DeliveryCreate, user: CurrentUser, service: DeliveryServiceDep):
     """Records an order. Stock changes only when the goods are received."""
     return service.create(user.store_id, user.id, data)
@@ -55,6 +62,7 @@ def create_delivery(data: DeliveryCreate, user: CurrentUser, service: DeliverySe
     response_model=list[DeliveryRead],
     status_code=201,
     responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.PLAN)],
 )
 def create_deliveries_from_order(
     data: OrderDeliveries, user: CurrentUser, service: DeliveryServiceDep
@@ -69,7 +77,10 @@ def get_delivery(delivery_id: int, store: CurrentStore, service: DeliveryService
 
 
 @router.post(
-    "/{delivery_id}/receive", response_model=DeliveryRead, responses={**NOT_FOUND, **CONFLICT}
+    "/{delivery_id}/receive",
+    response_model=DeliveryRead,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.HANDLE_STOCK)],
 )
 def receive_delivery(
     delivery_id: int, data: DeliveryReceipt, user: CurrentUser, service: DeliveryServiceDep
@@ -79,7 +90,10 @@ def receive_delivery(
 
 
 @router.post(
-    "/{delivery_id}/cancel", response_model=DeliveryRead, responses={**NOT_FOUND, **CONFLICT}
+    "/{delivery_id}/cancel",
+    response_model=DeliveryRead,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.PLAN)],
 )
 def cancel_delivery(delivery_id: int, store: CurrentStore, service: DeliveryServiceDep):
     return service.cancel(store.id, delivery_id)

@@ -4,7 +4,8 @@ from datetime import date
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, CurrentUser, SaleServiceDep
+from app.api.deps import CurrentStore, CurrentUser, SaleServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.common import ErrorResponse
 from app.schemas.sale import DailySales, SaleCreate, SalePage, SaleRead, SaleSummary
 
@@ -14,7 +15,7 @@ NOT_FOUND = {404: {"model": ErrorResponse}}
 CONFLICT = {409: {"model": ErrorResponse}}
 
 
-@router.get("", response_model=SalePage)
+@router.get("", response_model=SalePage, dependencies=[allowed_to(Permission.SEE_FINANCES)])
 def list_sales(
     store: CurrentStore,
     service: SaleServiceDep,
@@ -36,7 +37,9 @@ def list_sales(
 
 
 # Declared before /{sale_id}, otherwise "summary" and "daily" would be read as sale ids.
-@router.get("/summary", response_model=SaleSummary)
+@router.get(
+    "/summary", response_model=SaleSummary, dependencies=[allowed_to(Permission.SEE_FINANCES)]
+)
 def summarize_sales(
     store: CurrentStore,
     service: SaleServiceDep,
@@ -47,7 +50,9 @@ def summarize_sales(
     return service.summarize(store.id, date_from=date_from, date_to=date_to)
 
 
-@router.get("/daily", response_model=list[DailySales])
+@router.get(
+    "/daily", response_model=list[DailySales], dependencies=[allowed_to(Permission.SEE_FINANCES)]
+)
 def daily_sales(
     store: CurrentStore,
     service: SaleServiceDep,
@@ -58,12 +63,23 @@ def daily_sales(
     return service.daily(store.id, date_from=date_from, date_to=date_to)
 
 
-@router.post("", response_model=SaleRead, status_code=201, responses={**NOT_FOUND, **CONFLICT})
+@router.post(
+    "",
+    response_model=SaleRead,
+    status_code=201,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.SELL)],
+)
 def record_sale(data: SaleCreate, user: CurrentUser, service: SaleServiceDep):
     """Records a sale. Stock leaves from the batches that expire first."""
     return service.record(user.store_id, user.id, data)
 
 
-@router.get("/{sale_id}", response_model=SaleRead, responses=NOT_FOUND)
+@router.get(
+    "/{sale_id}",
+    response_model=SaleRead,
+    responses=NOT_FOUND,
+    dependencies=[allowed_to(Permission.SEE_FINANCES)],
+)
 def get_sale(sale_id: int, store: CurrentStore, service: SaleServiceDep):
     return service.get_sale(store.id, sale_id)

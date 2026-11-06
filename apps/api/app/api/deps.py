@@ -1,13 +1,14 @@
 """Shared FastAPI dependencies (injected into route functions with Depends)."""
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.email import EmailSender, get_email_sender
-from app.core.exceptions import NotAuthenticatedError
+from app.core.exceptions import ForbiddenError, NotAuthenticatedError
+from app.core.permissions import Permission, can
 from app.db.session import get_db
 from app.models.store import Store
 from app.models.user import User
@@ -50,6 +51,19 @@ def get_current_user(request: Request, auth: AuthServiceDep) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def allowed_to(permission: Permission) -> Any:
+    """For a route's dependencies=[...]: refuses anyone whose role lacks this permission.
+
+    Checked before the request body, so a refused request learns nothing about what it sent.
+    """
+
+    def check(user: CurrentUser) -> None:
+        if not can(user.role, permission):
+            raise ForbiddenError("Your role doesn't allow this. Ask the store's owner")
+
+    return Depends(check)
 
 
 def get_current_store(user: CurrentUser) -> Store:

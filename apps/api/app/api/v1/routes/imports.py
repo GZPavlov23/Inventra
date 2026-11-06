@@ -2,10 +2,11 @@
 
 from fastapi import APIRouter
 
-from app.api.deps import CurrentUser, SaleImportServiceDep
+from app.api.deps import CurrentUser, SaleImportServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.sale_import import SalesImportReport, SalesImportRequest
 
-router = APIRouter(prefix="/imports", tags=["imports"])
+router = APIRouter(prefix="/imports", tags=["imports"], dependencies=[allowed_to(Permission.PLAN)])
 
 
 @router.post("/sales", response_model=SalesImportReport)

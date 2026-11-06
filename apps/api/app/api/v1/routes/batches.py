@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, CurrentUser, InventoryServiceDep
+from app.api.deps import CurrentStore, CurrentUser, InventoryServiceDep, allowed_to
+from app.core.permissions import Permission
 from app.schemas.common import ErrorResponse
 from app.schemas.inventory import (
     AdjustmentCreate,
@@ -51,26 +52,42 @@ def list_batches(
     )
 
 
-@router.get("/summary", response_model=InventorySummary)
+@router.get(
+    "/summary", response_model=InventorySummary, dependencies=[allowed_to(Permission.SEE_FINANCES)]
+)
 def summarize_stock(store: CurrentStore, service: InventoryServiceDep) -> InventorySummary:
     """What the stock is worth at purchase prices, and how much of it needs attention."""
     return service.summarize(store.id)
 
 
-@router.post("", response_model=BatchRead, status_code=201, responses={**NOT_FOUND, **CONFLICT})
+@router.post(
+    "",
+    response_model=BatchRead,
+    status_code=201,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.HANDLE_STOCK)],
+)
 def receive_goods(data: ReceiptCreate, user: CurrentUser, service: InventoryServiceDep):
     """Goods arrived in the store: creates a new batch and its history line."""
     return service.receive(user.store_id, user.id, data)
 
 
-@router.post("/{batch_id}/waste", response_model=BatchRead, responses={**NOT_FOUND, **CONFLICT})
+@router.post(
+    "/{batch_id}/waste",
+    response_model=BatchRead,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.HANDLE_STOCK)],
+)
 def write_off(batch_id: int, data: WasteCreate, user: CurrentUser, service: InventoryServiceDep):
     """Goods were thrown away: expired, damaged or another reason."""
     return service.write_off(user.store_id, user.id, batch_id, data)
 
 
 @router.post(
-    "/{batch_id}/adjustments", response_model=BatchRead, responses={**NOT_FOUND, **CONFLICT}
+    "/{batch_id}/adjustments",
+    response_model=BatchRead,
+    responses={**NOT_FOUND, **CONFLICT},
+    dependencies=[allowed_to(Permission.HANDLE_STOCK)],
 )
 def adjust(batch_id: int, data: AdjustmentCreate, user: CurrentUser, service: InventoryServiceDep):
     """A correction after counting the shelf. A positive number adds stock, a negative removes."""

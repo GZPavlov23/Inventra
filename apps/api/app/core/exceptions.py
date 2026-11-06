@@ -34,6 +34,11 @@ class InvalidCredentialsError(DomainError):
     code = "invalid_credentials"
 
 
+class ForbiddenError(DomainError):
+    status_code = 403
+    code = "forbidden"
+
+
 class EmailNotVerifiedError(DomainError):
     status_code = 403
     code = "email_not_verified"

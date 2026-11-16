@@ -13,12 +13,13 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 513 tests |
+| Automated backend tests (pytest) | ✅ 543 tests |
 | Automated browser tests (Playwright) | ✅ 97 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders |
 | Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
 | Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
-| Roles (owner, manager, staff) and what each may do, checked by the API on every request | ✅ working. Inviting employees and the Settings page are next |
+| Roles (owner, manager, staff) and what each may do, checked by the API on every request | ✅ working |
+| Team API: inviting employees by email, changing roles, stopping access; a store always keeps an active owner | ✅ working. The Settings page is next |
 | Products page: table with search, Active/Archived/All filter, sorting, pagination | ✅ working (real data from the API) |
 | Adding products in the web platform, with a category picker | ✅ working |
 | Editing, archiving and restoring products in the web platform | ✅ working |
@@ -225,15 +226,17 @@ Check code style:
 ruff check .
 ```
 
-## Test account
+## Test accounts
 
-After running the seed script you can log in with:
+After running the seed script you can log in as each role of the demo store:
 
 | Role | Email | Password |
 |---|---|---|
 | Owner | `owner@inventra.example` | `Inventra-demo-2026` |
+| Manager | `manager@inventra.example` | `Inventra-demo-2026` |
+| Staff | `staff@inventra.example` | `Inventra-demo-2026` |
 
-`.example` is a domain reserved for examples, so this address can never belong to a real person.
+`.example` is a domain reserved for examples, so these addresses can never belong to a real person.
 
 ## Security
 

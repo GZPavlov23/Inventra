@@ -8,6 +8,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.main import app
 from app.models import AuthToken, Store, User, UserSession
 from tests.conftest import OWNER_EMAIL, OWNER_PASSWORD, FakeEmailSender
 
@@ -223,3 +224,56 @@ def test_new_owner_does_not_see_other_stores_products(
     register_and_verify(anon_client, outbox)
     login(anon_client, NEW_OWNER["email"], NEW_OWNER["password"])
     assert anon_client.get(f"{API}/products").json()["total"] == 0
+
+
+# Changing the password while logged in
+
+
+def test_changing_the_password_keeps_this_device_and_logs_out_the_others(
+    client: TestClient, outbox: FakeEmailSender
+) -> None:
+    with TestClient(app) as other_device:
+        other_device.post(
+            "/api/v1/auth/login", json={"email": OWNER_EMAIL, "password": OWNER_PASSWORD}
+        )
+        response = client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": OWNER_PASSWORD, "new_password": "a-brand-new-password"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert client.get("/api/v1/me").status_code == 200
+        assert other_device.get("/api/v1/me").status_code == 401
+    assert outbox.sent[-1].subject == "Your Inventra password was changed"
+    client.post("/api/v1/auth/logout")
+    old = client.post("/api/v1/auth/login", json={"email": OWNER_EMAIL, "password": OWNER_PASSWORD})
+    assert old.status_code == 401
+    new = client.post(
+        "/api/v1/auth/login", json={"email": OWNER_EMAIL, "password": "a-brand-new-password"}
+    )
+    assert new.status_code == 200
+
+
+def test_a_wrong_current_password_changes_nothing_and_keeps_the_session(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "not-it", "new_password": "a-brand-new-password"},
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "wrong_password"
+    assert client.get("/api/v1/me").status_code == 200
+
+
+def test_the_new_password_must_be_long_enough(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": OWNER_PASSWORD, "new_password": "short"},
+    )
+    assert response.status_code == 422
+
+
+def test_changing_the_password_requires_login(anon_client: TestClient) -> None:
+    body = {"current_password": "x", "new_password": "a-brand-new-password"}
+    assert anon_client.post("/api/v1/auth/change-password", json=body).status_code == 401

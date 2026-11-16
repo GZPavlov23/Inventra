@@ -10,6 +10,7 @@ from app.api.v1.routes import (
     products,
     reports,
     sales,
+    store,
     suppliers,
     team,
 )
@@ -20,6 +21,7 @@ api_router.include_router(auth.router)
 api_router.include_router(products.router)
 api_router.include_router(suppliers.router)
 api_router.include_router(team.router)
+api_router.include_router(store.router)
 api_router.include_router(batches.router)
 api_router.include_router(deliveries.router)
 api_router.include_router(sales.router)

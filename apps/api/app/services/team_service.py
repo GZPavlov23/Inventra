@@ -10,8 +10,10 @@ from app.core.email import EmailSender
 from app.core.exceptions import ConflictError, LastOwnerError, NotFoundError
 from app.core.security import generate_token, hash_password
 from app.models.auth_token import AuthTokenPurpose
+from app.models.store import Store
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
+from app.schemas.auth import StoreUpdate
 from app.schemas.team import InvitationCreate, MemberUpdate
 from app.services.auth_service import AuthService
 
@@ -25,6 +27,11 @@ class TeamService:
         self.auth = AuthService(session, email_sender)
         self.email_sender = email_sender
         self.settings = get_settings()
+
+    def rename_store(self, store: Store, data: StoreUpdate) -> Store:
+        store.name = data.name
+        self.session.commit()
+        return store
 
     def list_members(self, store_id: int) -> list[User]:
         return self.users.members(store_id)

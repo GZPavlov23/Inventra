@@ -23,6 +23,7 @@ from app.core.exceptions import (
     EmailNotVerifiedError,
     InvalidCredentialsError,
     InvalidTokenError,
+    WrongPasswordError,
 )
 from app.core.security import generate_token, hash_password, hash_token, verify_password
 from app.models.auth_token import AuthToken, AuthTokenPurpose
@@ -32,6 +33,7 @@ from app.models.user_session import UserSession
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     AcceptInvitationRequest,
+    ChangePasswordRequest,
     LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
@@ -178,6 +180,23 @@ class AuthService:
             )
         )
         return token
+
+    def change_password(self, user: User, session_token: str, data: ChangePasswordRequest) -> None:
+        """For someone who is logged in and still knows the old password."""
+        if not verify_password(data.current_password, user.password_hash):
+            raise WrongPasswordError("The current password is not right")
+        user.password_hash = hash_password(data.new_password)
+        # Anyone who learned the old password is thrown out, but not the person changing it.
+        self.users.delete_other_sessions(user.id, hash_token(session_token))
+        self.users.invalidate_tokens(user.id, AuthTokenPurpose.PASSWORD_RESET, _now())
+        self.email_sender.send(
+            user.email,
+            "Your Inventra password was changed",
+            f"Hello {user.full_name},\n\nThe password of your account was just changed and you "
+            "were logged out on your other devices. If this wasn't you, reset your password "
+            "right away.",
+        )
+        self.session.commit()
 
     # Invitations
 

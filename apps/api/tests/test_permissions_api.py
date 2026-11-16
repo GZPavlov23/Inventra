@@ -68,6 +68,7 @@ ROUTES = [
     ("POST", "/team/invitations", Permission.MANAGE_TEAM),
     ("POST", "/team/999999/resend-invitation", Permission.MANAGE_TEAM),
     ("PATCH", "/team/999999", Permission.MANAGE_TEAM),
+    ("PATCH", "/store", Permission.MANAGE_TEAM),
 ]
 
 

@@ -361,3 +361,21 @@ def test_another_stores_people_are_out_of_reach(client: TestClient, db: Session)
 
 def test_the_team_requires_login(anon_client: TestClient) -> None:
     assert anon_client.get(URL).status_code == 401
+
+
+# The store's name
+
+
+def test_the_owner_can_rename_the_store(client: TestClient) -> None:
+    response = client.patch("/api/v1/store", json={"name": "  Corner Shop  "})
+    assert response.status_code == 200
+    assert response.json() == {**response.json(), "name": "Corner Shop"}
+    assert client.get("/api/v1/me").json()["store"]["name"] == "Corner Shop"
+
+
+@pytest.mark.parametrize("body", [{"name": ""}, {"name": "x" * 121}, {"currency": "USD"}])
+def test_a_bad_name_is_refused_and_the_currency_cannot_change(
+    client: TestClient, body: dict
+) -> None:
+    assert client.patch("/api/v1/store", json=body).status_code == 422
+    assert client.get("/api/v1/me").json()["store"]["currency"] == "EUR"

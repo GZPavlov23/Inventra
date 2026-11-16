@@ -6,6 +6,7 @@ from app.api.deps import AuthServiceDep, CurrentUser, get_session_token
 from app.core.config import get_settings
 from app.schemas.auth import (
     AcceptInvitationRequest,
+    ChangePasswordRequest,
     CurrentUserRead,
     ForgotPasswordRequest,
     LoginRequest,
@@ -58,6 +59,18 @@ def forgot_password(data: ForgotPasswordRequest, auth: AuthServiceDep) -> Messag
 def reset_password(data: ResetPasswordRequest, auth: AuthServiceDep) -> MessageResponse:
     auth.reset_password(data)
     return MessageResponse(detail="Your password was changed. Log in with the new password")
+
+
+@router.post(
+    "/auth/change-password",
+    response_model=MessageResponse,
+    responses={400: {"model": ErrorResponse}, 401: {"model": ErrorResponse}},
+)
+def change_password(
+    data: ChangePasswordRequest, request: Request, user: CurrentUser, auth: AuthServiceDep
+) -> MessageResponse:
+    auth.change_password(user, get_session_token(request) or "", data)
+    return MessageResponse(detail="Your password was changed. Your other devices were logged out")
 
 
 @router.post(

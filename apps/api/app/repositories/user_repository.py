@@ -57,6 +57,14 @@ class UserRepository:
     def delete_session(self, token_hash: str) -> None:
         self.session.execute(delete(UserSession).where(UserSession.token_hash == token_hash))
 
+    def delete_other_sessions(self, user_id: int, keep_token_hash: str) -> None:
+        """Logs the user out everywhere except on the device they are using now."""
+        self.session.execute(
+            delete(UserSession).where(
+                UserSession.user_id == user_id, UserSession.token_hash != keep_token_hash
+            )
+        )
+
     def delete_all_sessions(self, user_id: int) -> None:
         """Logs the user out on every device."""
         self.session.execute(delete(UserSession).where(UserSession.user_id == user_id))

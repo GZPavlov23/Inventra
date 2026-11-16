@@ -69,6 +69,12 @@ class DeliveryClosedError(DomainError):
     code = "delivery_closed"
 
 
+class WrongPasswordError(DomainError):
+    # 400, not 401: a 401 means "your session ended" and would log the user out.
+    status_code = 400
+    code = "wrong_password"
+
+
 class LastOwnerError(DomainError):
     status_code = 409
     code = "last_owner"

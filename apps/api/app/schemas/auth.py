@@ -56,6 +56,11 @@ class AcceptInvitationRequest(BaseModel):
     password: NewPassword
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: Annotated[str, Field(max_length=128)]
+    new_password: NewPassword
+
+
 class MessageResponse(BaseModel):
     detail: str
 
@@ -66,6 +71,10 @@ class StoreRead(BaseModel):
     id: int
     name: str
     currency: str
+
+
+class StoreUpdate(BaseModel):
+    name: Name
 
 
 class CurrentUserRead(BaseModel):

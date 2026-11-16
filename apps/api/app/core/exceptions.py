@@ -69,6 +69,11 @@ class DeliveryClosedError(DomainError):
     code = "delivery_closed"
 
 
+class LastOwnerError(DomainError):
+    status_code = 409
+    code = "last_owner"
+
+
 class InsufficientStockError(DomainError):
     status_code = 409
     code = "insufficient_stock"

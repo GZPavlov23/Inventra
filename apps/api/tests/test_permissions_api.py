@@ -64,6 +64,10 @@ ROUTES = [
     ("GET", "/reports/categories?date_from=2026-11-01&date_to=2026-11-02", Permission.SEE_FINANCES),
     # Quantities only, for the small charts on Products.
     ("GET", "/reports/sales-trend?product_id=1", None),
+    ("GET", "/team", Permission.MANAGE_TEAM),
+    ("POST", "/team/invitations", Permission.MANAGE_TEAM),
+    ("POST", "/team/999999/resend-invitation", Permission.MANAGE_TEAM),
+    ("PATCH", "/team/999999", Permission.MANAGE_TEAM),
 ]
 
 

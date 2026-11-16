@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     email_verification_lifetime_hours: int = 24
     # Short on purpose: a reset link is as powerful as the password itself.
     password_reset_lifetime_minutes: int = 60
+    # Long enough for someone who checks email once a week, still not forever.
+    invitation_lifetime_days: int = 7
     # After this many wrong passwords in a row, the account is locked for lockout_minutes.
     max_failed_logins: int = 5
     lockout_minutes: int = 15

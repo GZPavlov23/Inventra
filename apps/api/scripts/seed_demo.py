@@ -51,6 +51,11 @@ DEMO_STORE_NAME = "Демо магазин (демо данни)"
 # belong to a real person.
 DEMO_OWNER_EMAIL = "owner@inventra.example"
 DEMO_OWNER_PASSWORD = "Inventra-demo-2026"
+# The rest of the demo team, with the same public password, to show what each role sees.
+DEMO_TEAM = [
+    ("manager@inventra.example", "Demo Manager", UserRole.MANAGER),
+    ("staff@inventra.example", "Demo Staff", UserRole.STAFF),
+]
 
 PCS, KG = ProductUnit.PIECE, ProductUnit.KILOGRAM
 
@@ -190,6 +195,26 @@ def get_or_create_owner(session: Session, store: Store) -> User:
     session.commit()
     print(f"Created demo owner: {DEMO_OWNER_EMAIL}")
     return owner
+
+
+def seed_team(session: Session, store: Store) -> None:
+    created = 0
+    for email, full_name, role in DEMO_TEAM:
+        if session.scalars(select(User).where(User.email == email)).first() is not None:
+            continue
+        session.add(
+            User(
+                store_id=store.id,
+                email=email,
+                password_hash=hash_password(DEMO_OWNER_PASSWORD),
+                full_name=full_name,
+                role=role,
+                email_verified_at=datetime.now(UTC),
+            )
+        )
+        created += 1
+    session.commit()
+    print(f"Demo team: {created} created")
 
 
 def seed_products(session: Session, store_id: int) -> None:
@@ -543,6 +568,7 @@ def main() -> None:
     with SessionLocal() as session:
         store = get_or_create_store(session)
         owner = get_or_create_owner(session, store)
+        seed_team(session, store)
         seed_products(session, store.id)
         seed_suppliers(session, store.id)
         if "--fresh-demo" in sys.argv:
@@ -553,6 +579,7 @@ def main() -> None:
         seed_deliveries(session, store.id, owner.id)
 
     print(f"\nLog in with: {DEMO_OWNER_EMAIL} / {DEMO_OWNER_PASSWORD}")
+    print(f"Or as {', '.join(email for email, _, _ in DEMO_TEAM)}, with the same password")
 
 
 if __name__ == "__main__":

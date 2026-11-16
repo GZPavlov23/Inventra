@@ -1,7 +1,7 @@
 """Two requests at the same moment. Needs real commits, so it doesn't use the rollback session."""
 
 from collections.abc import Callable, Iterator
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from threading import Barrier, Thread
 
@@ -11,7 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.exceptions import DeliveryClosedError, InsufficientStockError
+from app.core.exceptions import DeliveryClosedError, InsufficientStockError, LastOwnerError
 from app.core.security import hash_password
 from app.models import Batch, Delivery, Product, ProductUnit, Store, Supplier, User, UserRole
 from app.schemas.delivery import (
@@ -23,10 +23,16 @@ from app.schemas.delivery import (
 from app.schemas.inventory import ReceiptCreate, WasteCreate, WasteReason
 from app.schemas.sale import SaleCreate, SaleItemCreate
 from app.schemas.sale_import import SalesImportRequest
+from app.schemas.team import MemberUpdate
 from app.services.delivery_service import DeliveryService
 from app.services.inventory_service import InventoryService
 from app.services.sale_import_service import SaleImportService
 from app.services.sale_service import SaleService
+from app.services.team_service import TeamService
+from tests.conftest import FakeEmailSender
+
+# Nothing in these tests reads the emails.
+NO_EMAIL = FakeEmailSender()
 
 
 @pytest.fixture
@@ -355,3 +361,54 @@ def test_a_receipt_and_a_cancellation_cannot_both_win(
         status = session.get(Delivery, delivery_id).status
     assert status in outcomes
     assert stock_batches(engine, store_id) == (2 if status == "received" else 1)
+
+
+@pytest.fixture
+def two_owners(engine: Engine, stock: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Commits a second owner next to the fixture's user; returns the store and both ids."""
+    store_id, first_id, _ = stock
+    with Session(engine) as session:
+        session.get(User, first_id).email_verified_at = datetime.now(UTC)
+        second = User(
+            store_id=store_id,
+            email="second-owner@test-store.example",
+            password_hash=hash_password("not-used-here"),
+            full_name="Second Owner",
+            role=UserRole.OWNER,
+            email_verified_at=datetime.now(UTC),
+        )
+        session.add(second)
+        session.commit()
+        return store_id, first_id, second.id
+
+
+def test_two_owners_demoting_each_other_at_once_leave_one_owner(
+    engine: Engine, two_owners: tuple[int, int, int]
+) -> None:
+    store_id, first_id, second_id = two_owners
+    outcomes: list[str] = []
+
+    def second_demotes_first() -> None:
+        with Session(engine) as session:
+            try:
+                TeamService(session, NO_EMAIL).update(
+                    store_id, first_id, MemberUpdate(role=UserRole.MANAGER)
+                )
+                outcomes.append("demoted")
+            except LastOwnerError:
+                outcomes.append("refused")
+
+    other = Thread(target=second_demotes_first)
+    with Session(engine) as session:
+        service = TeamService(session, NO_EMAIL)
+        service.users.lock_active_owners(store_id)
+        other.start()
+        other.join(timeout=0.5)
+        assert other.is_alive(), "the second change didn't wait for the lock"
+
+        service.update(store_id, second_id, MemberUpdate(role=UserRole.MANAGER))
+
+    other.join()
+    assert outcomes == ["refused"]
+    with Session(engine) as session:
+        assert session.get(User, first_id).role == UserRole.OWNER

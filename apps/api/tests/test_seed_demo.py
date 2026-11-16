@@ -31,6 +31,7 @@ from scripts.seed_demo import (
     seed_products,
     seed_sales,
     seed_suppliers,
+    seed_team,
     seed_waste,
 )
 
@@ -93,6 +94,17 @@ def test_a_fresh_demo_can_delete_stock_that_deliveries_point_at(
 
     assert count(db, Batch) == 0
     assert count(db, DeliveryItem) == 0
+
+
+def test_the_demo_team_has_one_person_per_role_and_a_second_run_adds_nobody(
+    db: Session, store: Store, owner: User
+) -> None:
+    seed_team(db, store)
+    seed_team(db, store)
+
+    roles = sorted(user.role.value for user in db.scalars(select(User)))
+    assert roles == ["manager", "owner", "staff"]
+    assert all(user.email_verified_at is not None for user in db.scalars(select(User)))
 
 
 def test_every_batch_matches_its_history(db: Session, seeded: Store) -> None:

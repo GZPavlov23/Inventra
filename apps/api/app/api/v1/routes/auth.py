@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, Response, status
 from app.api.deps import AuthServiceDep, CurrentUser, get_session_token
 from app.core.config import get_settings
 from app.schemas.auth import (
+    AcceptInvitationRequest,
     CurrentUserRead,
     ForgotPasswordRequest,
     LoginRequest,
@@ -57,6 +58,16 @@ def forgot_password(data: ForgotPasswordRequest, auth: AuthServiceDep) -> Messag
 def reset_password(data: ResetPasswordRequest, auth: AuthServiceDep) -> MessageResponse:
     auth.reset_password(data)
     return MessageResponse(detail="Your password was changed. Log in with the new password")
+
+
+@router.post(
+    "/auth/accept-invitation",
+    response_model=MessageResponse,
+    responses={400: {"model": ErrorResponse}},
+)
+def accept_invitation(data: AcceptInvitationRequest, auth: AuthServiceDep) -> MessageResponse:
+    auth.accept_invitation(data)
+    return MessageResponse(detail="You have joined the store. Log in with your new password")
 
 
 @router.post(

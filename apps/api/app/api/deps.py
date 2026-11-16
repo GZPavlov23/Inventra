@@ -22,6 +22,7 @@ from app.services.report_service import ReportService
 from app.services.sale_import_service import SaleImportService
 from app.services.sale_service import SaleService
 from app.services.supplier_service import SupplierService
+from app.services.team_service import TeamService
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -73,6 +74,15 @@ def get_current_store(user: CurrentUser) -> Store:
 
 
 CurrentStore = Annotated[Store, Depends(get_current_store)]
+
+
+def get_team_service(
+    db: DbSession, email_sender: Annotated[EmailSender, Depends(get_email_sender)]
+) -> TeamService:
+    return TeamService(db, email_sender)
+
+
+TeamServiceDep = Annotated[TeamService, Depends(get_team_service)]
 
 
 def get_product_service(db: DbSession) -> ProductService:

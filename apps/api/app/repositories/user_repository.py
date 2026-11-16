@@ -2,12 +2,13 @@
 
 from datetime import datetime
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import case, delete, select, update
 from sqlalchemy.orm import Session
 
 from app.models.auth_token import AuthToken, AuthTokenPurpose
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.user_session import UserSession
+from app.repositories.product_repository import ALPHABETICAL
 
 
 class UserRepository:
@@ -16,6 +17,30 @@ class UserRepository:
 
     def get_by_email(self, email: str) -> User | None:
         return self.session.scalars(select(User).where(User.email == email)).first()
+
+    def members(self, store_id: int) -> list[User]:
+        """Everyone in a store: owners first, then by name."""
+        role_order = case(
+            (User.role == UserRole.OWNER, 0), (User.role == UserRole.MANAGER, 1), else_=2
+        )
+        stmt = (
+            select(User)
+            .where(User.store_id == store_id)
+            .order_by(role_order, User.full_name.collate(ALPHABETICAL), User.id)
+        )
+        return list(self.session.scalars(stmt))
+
+    def get_member(self, store_id: int, user_id: int) -> User | None:
+        stmt = select(User).where(User.store_id == store_id, User.id == user_id)
+        return self.session.scalars(stmt).first()
+
+    def lock_active_owners(self, store_id: int) -> list[User]:
+        stmt = (
+            select(User)
+            .where(User.store_id == store_id, User.role == UserRole.OWNER, User.is_active)
+            .with_for_update()
+        )
+        return list(self.session.scalars(stmt))
 
     def add(self, entity: User | UserSession | AuthToken) -> None:
         self.session.add(entity)

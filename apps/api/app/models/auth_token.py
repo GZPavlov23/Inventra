@@ -10,6 +10,8 @@ from app.db.base import Base, TimestampMixin
 class AuthTokenPurpose(StrEnum):
     EMAIL_VERIFICATION = "email_verification"
     PASSWORD_RESET = "password_reset"
+    # The link a new employee gets to choose a password and join the store.
+    INVITATION = "invitation"
 
 
 class AuthToken(TimestampMixin, Base):

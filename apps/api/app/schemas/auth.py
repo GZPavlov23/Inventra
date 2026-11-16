@@ -51,6 +51,11 @@ class ResetPasswordRequest(BaseModel):
     new_password: NewPassword
 
 
+class AcceptInvitationRequest(BaseModel):
+    token: Annotated[str, Field(min_length=1, max_length=128)]
+    password: NewPassword
+
+
 class MessageResponse(BaseModel):
     detail: str
 

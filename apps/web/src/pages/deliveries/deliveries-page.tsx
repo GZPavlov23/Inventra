@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Plus, Truck } from 'lucide-react'
 import { useState } from 'react'
 
-import { useCurrentUser } from '@/auth/use-auth'
+import { useCan, useCurrentUser } from '@/auth/use-auth'
 import { Pagination } from '@/components/pagination'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ function readStatus(value: string | null): DeliveryFilter {
 
 export function DeliveriesPage() {
   const { store } = useCurrentUser()
+  const can = useCan()
   const { searchParams, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
 
@@ -69,7 +70,7 @@ export function DeliveriesPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Deliveries</h2>
           <p className="text-sm text-muted-foreground">What you ordered and what really arrived.</p>
         </div>
-        <NewDeliveryButton onCreated={(delivery) => setJustAdded(delivery.id)} />
+        {can('plan') && <NewDeliveryButton onCreated={(delivery) => setJustAdded(delivery.id)} />}
       </div>
 
       <Tabs
@@ -104,12 +105,14 @@ export function DeliveriesPage() {
             <EmptyMedia variant="icon"><Truck /></EmptyMedia>
             <EmptyTitle>{status === 'ordered' ? 'Nothing on the way' : 'No deliveries here'}</EmptyTitle>
             <EmptyDescription>
-              {status === 'ordered'
-                ? 'Add a delivery when you order goods from a supplier.'
-                : 'There are no deliveries in this list.'}
+              {status !== 'ordered'
+                ? 'There are no deliveries in this list.'
+                : can('plan')
+                  ? 'Add a delivery when you order goods from a supplier.'
+                  : 'Deliveries the store orders show up here, ready to receive.'}
             </EmptyDescription>
           </EmptyHeader>
-          {status === 'ordered' && (
+          {status === 'ordered' && can('plan') && (
             <EmptyContent>
               <NewDeliveryButton onCreated={(delivery) => setJustAdded(delivery.id)} />
             </EmptyContent>

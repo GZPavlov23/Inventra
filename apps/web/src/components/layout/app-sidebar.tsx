@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation } from 'react-router'
 
 import logoMark from '@/assets/logo-mark.png'
-import { useCurrentUser } from '@/auth/use-auth'
+import { useCan, useCurrentUser } from '@/auth/use-auth'
 import { UserMenu } from '@/components/layout/user-menu'
 import {
   Sidebar,
@@ -22,6 +22,12 @@ import { isActivePath, NAV_GROUPS, type NavItem, SETTINGS_ITEM } from '@/config/
 
 export function AppSidebar() {
   const user = useCurrentUser()
+  const can = useCan()
+  // Only what this role can use; a group left empty disappears with its heading.
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.requires || can(item.requires)),
+  })).filter((group) => group.items.length > 0)
 
   return (
     <Sidebar collapsible="icon">
@@ -43,7 +49,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarGroupContent>

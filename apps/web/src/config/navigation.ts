@@ -11,6 +11,8 @@ import {
   Truck,
 } from 'lucide-react'
 
+import type { Permission } from '@/lib/auth-api'
+
 // One list drives the sidebar, the routes and the page titles,
 // so adding a module means adding one entry here.
 
@@ -19,6 +21,8 @@ export type NavItem = {
   path: string
   icon: LucideIcon
   description: string
+  // Left out of the menu for roles without it. Pages without one are for everyone.
+  requires?: Permission
 }
 
 export type NavGroup = {
@@ -35,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
         path: '/',
         icon: LayoutDashboard,
         description: 'Stock levels, expiring batches, alerts and forecasts at a glance.',
+        requires: 'see_finances',
       },
     ],
   },
@@ -81,12 +86,14 @@ export const NAV_GROUPS: NavGroup[] = [
         path: '/orders',
         icon: ClipboardList,
         description: 'What to order, how much and why, based on the forecast and your stock.',
+        requires: 'plan',
       },
       {
         title: 'Forecast',
         path: '/forecast',
         icon: TrendingUp,
         description: 'Expected sales per product, what will run short, and how accurate the forecast is.',
+        requires: 'plan',
       },
     ],
   },
@@ -96,7 +103,7 @@ export const SETTINGS_ITEM: NavItem = {
   title: 'Settings',
   path: '/settings',
   icon: Settings,
-  description: 'Store details, users and roles.',
+  description: 'Your account, the store and the people who work there.',
 }
 
 export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), SETTINGS_ITEM]

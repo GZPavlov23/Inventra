@@ -13,6 +13,8 @@ export type AuthContextValue = {
   state: AuthState
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  // Asks the server again who is logged in, after something about them or their store changed.
+  refresh: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

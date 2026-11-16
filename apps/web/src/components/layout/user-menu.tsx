@@ -11,8 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
-
-const ROLE_LABELS = { owner: 'Owner', manager: 'Manager', staff: 'Staff' } as const
+import { ROLE_LABELS } from '@/lib/auth-api'
 
 function initials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/)

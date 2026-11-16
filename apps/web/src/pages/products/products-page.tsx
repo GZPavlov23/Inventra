@@ -3,7 +3,7 @@ import { Package, Plus, Search, SearchX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import { useCurrentUser } from '@/auth/use-auth'
+import { useCan, useCurrentUser } from '@/auth/use-auth'
 import { Pagination } from '@/components/pagination'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,8 @@ function readStatus(value: string | null): ProductStatus {
 
 export function ProductsPage() {
   const { store } = useCurrentUser()
+  const can = useCan()
+  const editable = can('manage_catalog')
   const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
   const sort = readSort(searchParams.get('sort'))
@@ -135,7 +137,7 @@ export function ProductsPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
           <p className="text-sm text-muted-foreground">Your product catalog: names, barcodes and prices.</p>
         </div>
-        <AddProductButton onAdded={(product) => setJustSaved(product.id)} />
+        {editable && <AddProductButton onAdded={(product) => setJustSaved(product.id)} />}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -196,11 +198,17 @@ export function ProductsPage() {
             <EmptyHeader>
               <EmptyMedia variant="icon"><Package /></EmptyMedia>
               <EmptyTitle>No products yet</EmptyTitle>
-              <EmptyDescription>Add your first product to start building your catalog.</EmptyDescription>
+              <EmptyDescription>
+                {editable
+                  ? 'Add your first product to start building your catalog.'
+                  : "The store's owner or a manager adds products here."}
+              </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
-              <AddProductButton onAdded={(product) => setJustSaved(product.id)} />
-            </EmptyContent>
+            {editable && (
+              <EmptyContent>
+                <AddProductButton onAdded={(product) => setJustSaved(product.id)} />
+              </EmptyContent>
+            )}
           </Empty>
         )
       ) : (
@@ -213,8 +221,10 @@ export function ProductsPage() {
             <ProductsTable
               products={products.data.items}
               currency={store.currency}
-              onEdit={openEdit}
-              onSetActive={(product, active) => setActive.mutate({ product, active })}
+              actions={editable ? {
+                onEdit: openEdit,
+                onSetActive: (product, active) => setActive.mutate({ product, active }),
+              } : undefined}
               sorting={{ sort, order, onSort: handleSort }}
               justSaved={justSaved}
               trends={trends.data}

@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router'
 
 import { GuestOnly, RequireAuth } from '@/auth/route-guards'
+import { RoleGate } from '@/auth/role-gate'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AuthLayout } from '@/components/layout/auth-layout'
 import { ALL_NAV_ITEMS } from '@/config/navigation'
+import { AcceptInvitationPage } from '@/pages/auth/accept-invitation-page'
 import { ForgotPasswordPage } from '@/pages/auth/forgot-password-page'
 import { LoginPage } from '@/pages/auth/login-page'
 import { RegisterPage } from '@/pages/auth/register-page'
@@ -19,6 +21,7 @@ import { OrdersPage } from '@/pages/orders/orders-page'
 import { PlannedPage } from '@/pages/planned-page'
 import { ProductsPage } from '@/pages/products/products-page'
 import { SalesPage } from '@/pages/sales/sales-page'
+import { SettingsPage } from '@/pages/settings/settings-page'
 import { SuppliersPage } from '@/pages/suppliers/suppliers-page'
 
 // Modules that are already built. Every other menu item shows a "Planned" placeholder.
@@ -31,6 +34,7 @@ const BUILT_PAGES: Record<string, ReactNode> = {
   '/sales': <SalesPage />,
   '/forecast': <ForecastPage />,
   '/orders': <OrdersPage />,
+  '/settings': <SettingsPage />,
 }
 
 export const router = createBrowserRouter([
@@ -49,6 +53,7 @@ export const router = createBrowserRouter([
       // Opened from email links, whether or not someone is logged in.
       { path: '/verify-email', element: <VerifyEmailPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      { path: '/accept-invitation', element: <AcceptInvitationPage /> },
     ],
   },
   {
@@ -60,7 +65,7 @@ export const router = createBrowserRouter([
         children: [
           ...ALL_NAV_ITEMS.map((item) => ({
             path: item.path,
-            element: BUILT_PAGES[item.path] ?? <PlannedPage item={item} />,
+            element: <RoleGate item={item}>{BUILT_PAGES[item.path] ?? <PlannedPage item={item} />}</RoleGate>,
           })),
           { path: '*', element: <NotFoundPage /> },
         ],

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { useCan } from '@/auth/use-auth'
 import { DetailsPanel } from '@/components/details-panel'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -73,6 +74,7 @@ function Details({ delivery, currency, onClose, onReceive }: {
   onReceive: () => void
 }) {
   const queryClient = useQueryClient()
+  const can = useCan()
   // Cancelling can't be undone, so the button asks once more before it does anything.
   const [confirming, setConfirming] = useState(false)
 
@@ -122,7 +124,10 @@ function Details({ delivery, currency, onClose, onReceive }: {
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setConfirming(true)}>Cancel delivery</Button>
+              {/* Cancelling is planning, receiving is shelf work: staff only receive. */}
+              {can('plan') && (
+                <Button variant="outline" onClick={() => setConfirming(true)}>Cancel delivery</Button>
+              )}
               <Button onClick={onReceive}>Receive goods</Button>
             </>
           )}

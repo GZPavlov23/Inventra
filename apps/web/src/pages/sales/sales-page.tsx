@@ -1,8 +1,8 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { FileUp, Plus, ReceiptText } from 'lucide-react'
+import { FileUp, Plus, ReceiptText, ShoppingCart } from 'lucide-react'
 import { useState } from 'react'
 
-import { useCurrentUser } from '@/auth/use-auth'
+import { useCan, useCurrentUser } from '@/auth/use-auth'
 import { Pagination } from '@/components/pagination'
 import { StatTile } from '@/components/stat-tile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -36,6 +36,36 @@ function readPeriod(value: string | null) {
 }
 
 export function SalesPage() {
+  const can = useCan()
+  return can('see_finances') ? <SalesOverview canImport={can('plan')} /> : <TillOnly />
+}
+
+// For staff: sales go straight into the stock, but the list with its money isn't theirs to see.
+function TillOnly() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Sales</h2>
+          <p className="text-sm text-muted-foreground">Record what a customer buys.</p>
+        </div>
+        <NewSaleButton />
+      </div>
+      <Empty className="rounded-lg border bg-card">
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><ShoppingCart /></EmptyMedia>
+          <EmptyTitle>Ready for the next customer</EmptyTitle>
+          <EmptyDescription>
+            Every sale leaves the stock from the batch that expires first. The list of sales, with
+            revenue and profit, is for the store's owner and managers.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </div>
+  )
+}
+
+function SalesOverview({ canImport }: { canImport: boolean }) {
   const { store } = useCurrentUser()
   const { searchParams, page, updateParams } = useListParams()
   const selected = readPeriod(searchParams.get('period'))
@@ -70,7 +100,7 @@ export function SalesPage() {
           <p className="text-sm text-muted-foreground">What you sold, and what you earned from it.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ImportButton />
+          {canImport && <ImportButton />}
           <NewSaleButton />
         </div>
       </div>

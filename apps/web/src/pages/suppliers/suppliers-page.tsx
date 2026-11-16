@@ -3,6 +3,7 @@ import { Building2, Plus, Search, SearchX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
+import { useCan } from '@/auth/use-auth'
 import { Pagination } from '@/components/pagination'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,8 @@ function readStatus(value: string | null): SupplierStatus {
 }
 
 export function SuppliersPage() {
+  const can = useCan()
+  const editable = can('manage_catalog')
   const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
 
@@ -83,7 +86,7 @@ export function SuppliersPage() {
           <h2 className="text-2xl font-semibold tracking-tight">Suppliers</h2>
           <p className="text-sm text-muted-foreground">The companies you buy from.</p>
         </div>
-        <AddSupplierButton />
+        {editable && <AddSupplierButton />}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -144,11 +147,17 @@ export function SuppliersPage() {
             <EmptyHeader>
               <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
               <EmptyTitle>No suppliers yet</EmptyTitle>
-              <EmptyDescription>Add the companies you buy from, then link your products to them.</EmptyDescription>
+              <EmptyDescription>
+                {editable
+                  ? 'Add the companies you buy from, then link your products to them.'
+                  : "The store's owner or a manager adds suppliers here."}
+              </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
-              <AddSupplierButton />
-            </EmptyContent>
+            {editable && (
+              <EmptyContent>
+                <AddSupplierButton />
+              </EmptyContent>
+            )}
           </Empty>
         )
       ) : (
@@ -159,8 +168,10 @@ export function SuppliersPage() {
           >
             <SuppliersTable
               suppliers={suppliers.data.items}
-              onEdit={openEdit}
-              onSetActive={(supplier, active) => setActive.mutate({ supplier, active })}
+              actions={editable ? {
+                onEdit: openEdit,
+                onSetActive: (supplier, active) => setActive.mutate({ supplier, active }),
+              } : undefined}
             />
           </div>
           <Pagination

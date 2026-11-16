@@ -80,8 +80,11 @@ function TableHeadings({ sorting }: { sorting?: SortState }) {
 type ProductsTableProps = {
   products: Product[]
   currency: string
-  onEdit: (product: Product) => void
-  onSetActive: (product: Product, active: boolean) => void
+  // Left out for roles that can't change it: the table is then only for looking things up.
+  actions?: {
+    onEdit: (product: Product) => void
+    onSetActive: (product: Product, active: boolean) => void
+  }
   sorting: SortState
   justSaved?: number
   // Missing while it loads: the column then stays empty instead of showing zeros.
@@ -89,7 +92,7 @@ type ProductsTableProps = {
 }
 
 export function ProductsTable({
-  products, currency, onEdit, onSetActive, sorting, justSaved, trends,
+  products, currency, actions, sorting, justSaved, trends,
 }: ProductsTableProps) {
   return (
     <Table>
@@ -99,15 +102,17 @@ export function ProductsTable({
         {products.map((product) => {
           const margin = marginPercent(product.purchase_price, product.sale_price)
           return (
-            <TableRow key={product.id} className="cursor-pointer" data-new={product.id === justSaved}
-              onClick={() => onEdit(product)}>
+            <TableRow key={product.id} className={actions && 'cursor-pointer'} data-new={product.id === justSaved}
+              onClick={actions && (() => actions.onEdit(product))}>
               <TableCell>
                 <div className="flex items-center gap-2 font-medium">
                   {/* A real button, so keyboard users can open the row too. Its click
                       bubbles up to the row's onClick. */}
-                  <button type="button" className="cursor-pointer text-left outline-offset-2">
-                    {product.name}
-                  </button>
+                  {actions ? (
+                    <button type="button" className="cursor-pointer text-left outline-offset-2">
+                      {product.name}
+                    </button>
+                  ) : product.name}
                   {!product.active && <Badge variant="outline">Archived</Badge>}
                 </div>
                 {(product.brand || product.barcode) && (
@@ -142,30 +147,32 @@ export function ProductsTable({
               </TableCell>
               {/* Clicks here (including inside the menu) must not also open the row. */}
               <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${product.name}`}>
-                      <Ellipsis />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => onEdit(product)}>
-                      <Pencil />
-                      Edit
-                    </DropdownMenuItem>
-                    {product.active ? (
-                      <DropdownMenuItem onSelect={() => onSetActive(product, false)}>
-                        <Archive />
-                        Archive
+                {actions && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${product.name}`}>
+                        <Ellipsis />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => actions.onEdit(product)}>
+                        <Pencil />
+                        Edit
                       </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem onSelect={() => onSetActive(product, true)}>
-                        <ArchiveRestore />
-                        Restore
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      {product.active ? (
+                        <DropdownMenuItem onSelect={() => actions.onSetActive(product, false)}>
+                          <Archive />
+                          Archive
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onSelect={() => actions.onSetActive(product, true)}>
+                          <ArchiveRestore />
+                          Restore
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </TableCell>
             </TableRow>
           )

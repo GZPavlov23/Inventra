@@ -37,24 +37,30 @@ function TableHeadings() {
 
 type SuppliersTableProps = {
   suppliers: Supplier[]
-  onEdit: (supplier: Supplier) => void
-  onSetActive: (supplier: Supplier, active: boolean) => void
+  // Left out for roles that can't change it: the table is then only for looking things up.
+  actions?: {
+    onEdit: (supplier: Supplier) => void
+    onSetActive: (supplier: Supplier, active: boolean) => void
+  }
 }
 
-export function SuppliersTable({ suppliers, onEdit, onSetActive }: SuppliersTableProps) {
+export function SuppliersTable({ suppliers, actions }: SuppliersTableProps) {
   return (
     <Table>
       <TableCaption className="sr-only">Suppliers of your store</TableCaption>
       <TableHeadings />
       <TableBody>
         {suppliers.map((supplier) => (
-          <TableRow key={supplier.id} className="cursor-pointer" onClick={() => onEdit(supplier)}>
+          <TableRow key={supplier.id} className={actions && 'cursor-pointer'}
+            onClick={actions && (() => actions.onEdit(supplier))}>
             <TableCell>
               <div className="flex items-center gap-2 font-medium">
                 {/* A real button, so keyboard users can open the row too. */}
-                <button type="button" className="cursor-pointer text-left outline-offset-2">
-                  {supplier.name}
-                </button>
+                {actions ? (
+                  <button type="button" className="cursor-pointer text-left outline-offset-2">
+                    {supplier.name}
+                  </button>
+                ) : supplier.name}
                 {!supplier.active && <Badge variant="outline">Archived</Badge>}
               </div>
               {supplier.notes && (
@@ -72,30 +78,32 @@ export function SuppliersTable({ suppliers, onEdit, onSetActive }: SuppliersTabl
             </TableCell>
             <TableCell className="text-right figures">{supplier.product_count}</TableCell>
             <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${supplier.name}`}>
-                    <Ellipsis />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => onEdit(supplier)}>
-                    <Pencil />
-                    Edit
-                  </DropdownMenuItem>
-                  {supplier.active ? (
-                    <DropdownMenuItem onSelect={() => onSetActive(supplier, false)}>
-                      <Archive />
-                      Archive
+              {actions && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${supplier.name}`}>
+                      <Ellipsis />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => actions.onEdit(supplier)}>
+                      <Pencil />
+                      Edit
                     </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onSelect={() => onSetActive(supplier, true)}>
-                      <ArchiveRestore />
-                      Restore
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {supplier.active ? (
+                      <DropdownMenuItem onSelect={() => actions.onSetActive(supplier, false)}>
+                        <Archive />
+                        Archive
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onSelect={() => actions.onSetActive(supplier, true)}>
+                        <ArchiveRestore />
+                        Restore
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </TableCell>
           </TableRow>
         ))}

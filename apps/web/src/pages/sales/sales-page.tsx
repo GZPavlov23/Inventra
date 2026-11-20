@@ -3,8 +3,9 @@ import { FileUp, Plus, ReceiptText, ShoppingCart } from 'lucide-react'
 import { useState } from 'react'
 
 import { useCan, useCurrentUser } from '@/auth/use-auth'
+import { useOpenNewSale } from '@/components/new-sale/new-sale-context'
 import { Pagination } from '@/components/pagination'
-import { StatTile } from '@/components/stat-tile'
+import { StatPanel, StatTile } from '@/components/stat-tile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,7 +21,6 @@ import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-
 import { daysAgo, formatMoney, today } from '@/lib/format'
 import { type Sale, type SalePeriod, salesApi } from '@/lib/sales-api'
 import { ImportDialog } from '@/pages/sales/import-dialog'
-import { NewSaleDialog } from '@/pages/sales/new-sale-dialog'
 import { SaleDetailsDialog } from '@/pages/sales/sale-details-dialog'
 import { SalesTable, SalesTableSkeleton } from '@/pages/sales/sales-table'
 
@@ -51,7 +51,7 @@ function TillOnly() {
         </div>
         <NewSaleButton />
       </div>
-      <Empty className="rounded-lg border bg-card">
+      <Empty className="rounded-2xl bg-card shadow-soft">
         <EmptyHeader>
           <EmptyMedia variant="icon"><ShoppingCart /></EmptyMedia>
           <EmptyTitle>Ready for the next customer</EmptyTitle>
@@ -118,7 +118,7 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
         </TabsList>
       </Tabs>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <StatPanel className="sm:grid-cols-3">
         <StatTile label="Sales" value={summary.data?.sales.toLocaleString()} />
         <StatTile
           label="Revenue"
@@ -129,7 +129,7 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
           value={summary.data && formatMoney(summary.data.profit, store.currency)}
           note={marginNote(summary.data?.revenue, summary.data?.profit)}
         />
-      </div>
+      </StatPanel>
 
       {sales.isError ? (
         <Alert variant="destructive">
@@ -141,11 +141,11 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
           </AlertDescription>
         </Alert>
       ) : sales.isPending ? (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-2xl bg-card shadow-soft">
           <SalesTableSkeleton />
         </div>
       ) : sales.data.total === 0 ? (
-        <Empty className="rounded-lg border bg-card">
+        <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><ReceiptText /></EmptyMedia>
             <EmptyTitle>No sales in this period</EmptyTitle>
@@ -159,7 +159,7 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
         <>
           {/* Slightly faded while a new page or period is loading. */}
           <div
-            className={`rounded-lg border bg-card transition-opacity ${sales.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-2xl bg-card shadow-soft transition-opacity ${sales.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={sales.isFetching}
           >
             <SalesTable sales={sales.data.items} currency={store.currency} onOpen={openDetails} />
@@ -201,14 +201,11 @@ function ImportButton() {
 }
 
 function NewSaleButton() {
-  const [open, setOpen] = useState(false)
+  const openNewSale = useOpenNewSale()
   return (
-    <>
-      <Button onClick={() => setOpen(true)}>
-        <Plus />
-        New sale
-      </Button>
-      <NewSaleDialog open={open} onOpenChange={setOpen} />
-    </>
+    <Button onClick={openNewSale}>
+      <Plus />
+      New sale
+    </Button>
   )
 }

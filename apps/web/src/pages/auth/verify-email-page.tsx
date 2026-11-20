@@ -50,7 +50,7 @@ export function VerifyEmailPage() {
     return (
       <AuthCard animationKey="success">
         <CardHeader>
-          <CircleCheck data-pop className="mb-2 size-9 text-primary" />
+          <CircleCheck data-pop className="mb-2 size-9 text-good" />
           <CardTitle className="text-3xl font-semibold tracking-tight">Email confirmed</CardTitle>
           <CardDescription className="text-base">Your account is active. You can log in now.</CardDescription>
         </CardHeader>

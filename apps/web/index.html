@@ -5,6 +5,16 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Inventra</title>
+    <!-- Before anything is drawn, so a dark screen doesn't flash white first. Same rule as
+         src/theme/theme.ts: a saved choice, otherwise whatever the computer is set to. -->
+    <script>
+      try {
+        var saved = localStorage.getItem('inventra-theme')
+        if (saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (error) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

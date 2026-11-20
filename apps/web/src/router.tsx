@@ -16,6 +16,7 @@ import { DashboardPage } from '@/pages/dashboard/dashboard-page'
 import { DeliveriesPage } from '@/pages/deliveries/deliveries-page'
 import { ForecastPage } from '@/pages/forecast/forecast-page'
 import { InventoryPage } from '@/pages/inventory/inventory-page'
+import { MonthPage } from '@/pages/month/month-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { OrdersPage } from '@/pages/orders/orders-page'
 import { PlannedPage } from '@/pages/planned-page'
@@ -34,6 +35,7 @@ const BUILT_PAGES: Record<string, ReactNode> = {
   '/sales': <SalesPage />,
   '/forecast': <ForecastPage />,
   '/orders': <OrdersPage />,
+  '/month': <MonthPage />,
   '/settings': <SettingsPage />,
 }
 

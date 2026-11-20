@@ -4,7 +4,7 @@ import { DEMO_MANAGER, DEMO_STAFF, logInAs } from './helpers.ts'
 
 
 async function menuTitles(page: Page): Promise<string[]> {
-  const links = page.locator('[data-sidebar="content"] a, [data-sidebar="footer"] a')
+  const links = page.getByRole('navigation', { name: 'Main' }).getByRole('link')
   return (await links.allInnerTexts()).map((text) => text.trim()).filter(Boolean)
 }
 
@@ -15,9 +15,14 @@ test.describe('staff', () => {
 
   test('the menu holds only the till and shelf work, and the day starts on Inventory', async ({ page }) => {
     await expect(page).toHaveURL('/inventory')
-    expect(await menuTitles(page)).toEqual(['Products', 'Inventory', 'Deliveries', 'Suppliers', 'Sales', 'Settings'])
+    expect(await menuTitles(page)).toEqual(['Products', 'Inventory', 'Deliveries', 'Suppliers', 'Sales'])
     await page.goto('/')
     await expect(page).toHaveURL('/inventory')
+
+    // Settings is not a pill any more: it lives in the person's menu.
+    await page.getByRole('button', { name: 'Account: Demo Staff' }).click()
+    await page.getByRole('menuitem', { name: 'Settings' }).click()
+    await expect(page).toHaveURL('/settings')
   })
 
   test('a page outside the role explains itself instead of failing', async ({ page }) => {
@@ -68,7 +73,7 @@ test.describe('staff', () => {
     await expect(page.getByText('People', { exact: true })).toHaveCount(0)
     // The store's name is shown, but not as a field to change.
     await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveCount(0)
-    await expect(page.getByText('Демо магазин (демо данни)').first()).toBeVisible()
+    await expect(page.getByRole('main').getByText('Демо магазин (демо данни)')).toBeVisible()
   })
 })
 
@@ -77,7 +82,7 @@ test.describe('manager', () => {
     await logInAs(page, DEMO_MANAGER)
     await expect(page).toHaveURL('/')
     expect(await menuTitles(page)).toEqual([
-      'Dashboard', 'Products', 'Inventory', 'Deliveries', 'Suppliers', 'Sales', 'Orders', 'Forecast', 'Settings',
+      'Dashboard', 'Products', 'Inventory', 'Deliveries', 'Suppliers', 'Sales', 'Orders', 'Forecast',
     ])
     await page.goto('/products')
     await expect(page.getByRole('button', { name: 'Add product' })).toBeVisible()

@@ -15,7 +15,7 @@ import type { NavItem } from '@/config/navigation'
 // For an address opened directly, by someone whose role doesn't include that page.
 export function NoAccessPage({ item, startPath }: { item: NavItem; startPath: string }) {
   return (
-    <Empty className="rounded-lg border bg-card">
+    <Empty className="rounded-2xl bg-card shadow-soft">
       <EmptyHeader>
         <EmptyMedia variant="icon"><Lock /></EmptyMedia>
         <EmptyTitle>{item.title} isn't part of your role</EmptyTitle>

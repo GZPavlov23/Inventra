@@ -114,12 +114,12 @@ export function InventoryPage() {
           </AlertDescription>
         </Alert>
       ) : batches.isPending ? (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-2xl bg-card shadow-soft">
           <BatchesTableSkeleton />
         </div>
       ) : batches.data.total === 0 ? (
         search || status !== 'in_stock' ? (
-          <Empty className="rounded-lg border bg-card">
+          <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
               <EmptyTitle>No batches found</EmptyTitle>
@@ -132,7 +132,7 @@ export function InventoryPage() {
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="rounded-lg border bg-card">
+          <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Boxes /></EmptyMedia>
               <EmptyTitle>No stock yet</EmptyTitle>
@@ -147,7 +147,7 @@ export function InventoryPage() {
         <>
           {/* Slightly faded while a new page or search result is loading. */}
           <div
-            className={`rounded-lg border bg-card transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-2xl bg-card shadow-soft transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={batches.isFetching}
           >
             <BatchesTable batches={batches.data.items} currency={store.currency} onAction={openDialog}

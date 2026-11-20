@@ -45,7 +45,7 @@ export function PasswordInput(props: Omit<ComponentProps<'input'>, 'type'>) {
         </button>
       </div>
       {capsLock && (
-        <p role="status" className="flex items-center gap-1 text-xs font-medium text-amber-700">
+        <p role="status" className="flex items-center gap-1 text-xs font-medium text-warning-foreground">
           <ArrowBigUpDash className="size-3.5" />
           Caps Lock is on
         </p>

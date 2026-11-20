@@ -50,7 +50,7 @@ export function DeliveryDetailsDialog({ delivery, currency, open, onOpenChange, 
 function ReceivedStamp({ day }: { day: string }) {
   return (
     <div
-      className="stamp mt-1 flex shrink-0 -rotate-4 flex-col items-center rounded-sm border-2 border-primary/70 px-2.5 py-1 text-primary/80"
+      className="stamp mt-1 flex shrink-0 -rotate-4 flex-col items-center rounded-sm border-2 border-good/70 px-2.5 py-1 text-good/80"
       aria-hidden
     >
       <span className="text-xs font-semibold tracking-widest uppercase">Received</span>

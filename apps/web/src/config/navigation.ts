@@ -1,6 +1,7 @@
 import {
   Boxes,
   Building2,
+  CalendarHeart,
   ClipboardList,
   LayoutDashboard,
   type LucideIcon,
@@ -106,7 +107,16 @@ export const SETTINGS_ITEM: NavItem = {
   description: 'Your account, the store and the people who work there.',
 }
 
-export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), SETTINGS_ITEM]
+// Not a pill in the top bar: opened from the dashboard and the quick search.
+export const MONTH_ITEM: NavItem = {
+  title: 'Your month',
+  path: '/month',
+  icon: CalendarHeart,
+  description: 'The month in short: sold, thrown away, the best product and how it compares.',
+  requires: 'see_finances',
+}
+
+export const ALL_NAV_ITEMS: NavItem[] = [...NAV_GROUPS.flatMap((group) => group.items), MONTH_ITEM, SETTINGS_ITEM]
 
 export function isActivePath(itemPath: string, currentPath: string): boolean {
   // "/" would match every page, so the dashboard is active only on an exact match.

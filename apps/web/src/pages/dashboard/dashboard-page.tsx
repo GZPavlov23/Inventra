@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { ReceiptText } from 'lucide-react'
+import { ArrowRight, ReceiptText } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { useCurrentUser } from '@/auth/use-auth'
-import { StatTile } from '@/components/stat-tile'
+import { StatPanel, StatTile } from '@/components/stat-tile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
-import { daysAgo, formatMoney, today } from '@/lib/format'
+import { daysAgo, formatLongDay, formatMoney, partOfDay, today } from '@/lib/format'
 import { inventoryApi } from '@/lib/inventory-api'
 import { salesApi } from '@/lib/sales-api'
 import { AttentionList } from '@/pages/dashboard/attention-list'
@@ -27,6 +27,7 @@ import { TodaysBriefing } from '@/pages/dashboard/briefing'
 const CHART_DAYS = 30
 const ATTENTION_ROWS = 6
 const COMPARED_DAYS = 7
+const LIVE_EVERY_MS = 60_000
 
 export function DashboardPage() {
   const { store } = useCurrentUser()
@@ -42,6 +43,7 @@ export function DashboardPage() {
   const todaysSales = useQuery({
     queryKey: ['sales', 'summary', thisDay],
     queryFn: () => salesApi.summary(thisDay),
+    refetchInterval: LIVE_EVERY_MS,
   })
   const monthSales = useQuery({
     queryKey: ['sales', 'summary', lastMonth],
@@ -58,6 +60,8 @@ export function DashboardPage() {
   const daily = useQuery({
     queryKey: ['sales', 'daily', lastMonth],
     queryFn: () => salesApi.daily(lastMonth),
+    // Sales rung up on another till show up within a minute; sales made here, at once.
+    refetchInterval: LIVE_EVERY_MS,
   })
   const stock = useQuery({ queryKey: ['batches', 'summary'], queryFn: inventoryApi.summary })
   const expired = useQuery({
@@ -79,10 +83,7 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">{store.name}: how the store is doing today.</p>
-      </div>
+      <Greeting />
 
       <TodaysBriefing />
 
@@ -98,7 +99,7 @@ export function DashboardPage() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <StatPanel className="grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <StatTile
           label="Revenue today"
           value={todaysSales.data && money(todaysSales.data.revenue)}
@@ -125,7 +126,7 @@ export function DashboardPage() {
           value={stock.data?.expiring_batches.toLocaleString()}
           note="Batches, within 7 days"
         />
-      </div>
+      </StatPanel>
 
       <div className="grid gap-3 lg:grid-cols-3">
         <Card className="min-w-0 lg:col-span-2">
@@ -183,6 +184,27 @@ export function DashboardPage() {
       </div>
 
       <ReportsCard />
+    </div>
+  )
+}
+
+// The day starts with a person, not a page title.
+function Greeting() {
+  const user = useCurrentUser()
+  const part = partOfDay()
+  const firstName = user.full_name.trim().split(/\s+/)[0]
+  return (
+    <div className="py-2 text-center">
+      <p className="font-hand text-2xl text-destructive">{formatLongDay(today())}</p>
+      <h2 className="mx-auto mt-1 max-w-3xl text-4xl leading-tight font-bold md:text-5xl">
+        Good {part}, {firstName}! Here's your shop today.
+      </h2>
+      <svg aria-hidden="true" width="240" height="14" viewBox="0 0 240 14" className="mx-auto mt-2 block">
+        <path d="M3 9 C 55 2, 104 13, 152 6 S 218 4, 237 8" fill="none" stroke="var(--signal)" strokeWidth="5" strokeLinecap="round" />
+      </svg>
+      <Button variant="secondary" size="sm" asChild className="mt-4">
+        <Link to="/month">Your month so far<ArrowRight /></Link>
+      </Button>
     </div>
   )
 }

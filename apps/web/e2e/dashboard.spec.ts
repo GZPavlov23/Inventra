@@ -7,7 +7,7 @@ const API = '/api/v1'
 test.beforeEach(async ({ page }) => {
   await logInAsDemoOwner(page)
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Dashboard', level: 2 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /your shop today/, level: 2 })).toBeVisible()
 })
 
 const tile = (page: Page, label: string) => page.getByRole('group', { name: label })

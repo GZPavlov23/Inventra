@@ -125,12 +125,12 @@ export function SuppliersPage() {
           </AlertDescription>
         </Alert>
       ) : suppliers.isPending ? (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-2xl bg-card shadow-soft">
           <SuppliersTableSkeleton />
         </div>
       ) : suppliers.data.total === 0 ? (
         search || status !== 'active' ? (
-          <Empty className="rounded-lg border bg-card">
+          <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
               <EmptyTitle>No suppliers found</EmptyTitle>
@@ -143,7 +143,7 @@ export function SuppliersPage() {
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="rounded-lg border bg-card">
+          <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
               <EmptyTitle>No suppliers yet</EmptyTitle>
@@ -163,7 +163,7 @@ export function SuppliersPage() {
       ) : (
         <>
           <div
-            className={`rounded-lg border bg-card transition-opacity ${suppliers.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-2xl bg-card shadow-soft transition-opacity ${suppliers.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={suppliers.isFetching}
           >
             <SuppliersTable

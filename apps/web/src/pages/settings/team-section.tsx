@@ -30,7 +30,7 @@ import { type MemberStatus, teamApi, type TeamMember } from '@/lib/team-api'
 import { InviteDialog } from '@/pages/settings/invite-dialog'
 
 const STATUS: Record<MemberStatus, { label: string; className: string }> = {
-  active: { label: 'Active', className: 'bg-primary/10 text-primary' },
+  active: { label: 'Active', className: 'bg-good/10 text-good' },
   invited: { label: 'Invited', className: 'bg-warning text-warning-foreground' },
   deactivated: { label: 'Deactivated', className: 'bg-muted text-muted-foreground' },
 }

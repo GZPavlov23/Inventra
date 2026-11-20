@@ -1,6 +1,6 @@
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
-import { Boxes, LayoutDashboard, Package, Plus, Search, ShoppingCart, Sparkles, Truck } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { useRef } from 'react'
 
 import logoMark from '@/assets/logo-mark.png'
@@ -20,7 +20,7 @@ const PREVIEW_PRODUCTS = [
   { name: 'Банани', category: 'Плодове и зеленчуци', barcode: '—', price: '1.89 / kg' },
 ]
 
-const SIDEBAR_ICONS = [LayoutDashboard, Package, Boxes, Truck, ShoppingCart, Sparkles]
+const PREVIEW_NAV = ['Dashboard', 'Products', 'Inventory', 'Deliveries', 'Sales']
 
 // Background circles: size in rem, seconds per full turn of their orbiting dot, and direction.
 const ORBITS = [
@@ -88,61 +88,61 @@ export function ProductPreview() {
       <div
         data-preview-frame
         aria-hidden
-        className="relative ml-16 flex h-[34rem] w-[54rem] shrink-0 overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-primary/10"
+        className="relative ml-16 flex h-[34rem] w-[54rem] shrink-0 overflow-hidden rounded-3xl bg-background shadow-soft"
       >
-        <div className="flex w-16 shrink-0 flex-col items-center gap-2 border-r bg-sidebar py-5">
-          <img src={logoMark} alt="" className="mb-4 size-8" />
-          {SIDEBAR_ICONS.map((Icon, index) => (
-            <span
-              key={index}
-              className={
-                index === 1
-                  ? 'flex size-10 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'flex size-10 items-center justify-center rounded-lg text-muted-foreground'
-              }
-            >
-              <Icon className="size-4" />
-            </span>
-          ))}
-        </div>
-
-        <div className="flex-1 p-8">
-          <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">Stock</p>
-          <h3 className="mt-1 text-2xl font-semibold tracking-tight">Products</h3>
-
-          <div className="mt-5 flex items-center gap-3">
-            <div className="flex h-9 w-64 items-center gap-2 rounded-md border px-3 text-sm text-muted-foreground">
-              <Search className="size-4" /> Search products…
-            </div>
-            <div className="flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
-              <Plus className="size-4" /> Add product
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* The same top bar as the app: the logo, then the pages as pills. */}
+          <div className="flex items-center gap-4 border-b px-8 py-4">
+            <img src={logoMark} alt="" className="size-7" />
+            <span className="font-heading text-lg font-bold">Inventra</span>
+            <div className="flex gap-1 rounded-full bg-secondary p-1 text-xs font-bold text-muted-foreground">
+              {PREVIEW_NAV.map((title) => (
+                <span
+                  key={title}
+                  className={title === 'Products' ? 'rounded-full bg-card px-3 py-1 text-foreground shadow-sm' : 'px-3 py-1'}
+                >
+                  {title}
+                </span>
+              ))}
             </div>
           </div>
+          <div className="flex-1 px-8 py-6">
+            <h3 className="text-2xl font-bold">Products</h3>
 
-          <table className="mt-6 w-full text-left text-sm">
-            <thead className="text-xs text-muted-foreground">
-              <tr className="border-b">
-                <th className="py-2.5 font-medium">Name</th>
-                <th className="py-2.5 font-medium">Category</th>
-                <th className="py-2.5 font-medium">Barcode</th>
-                <th className="py-2.5 text-right font-medium">Price (EUR)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PREVIEW_PRODUCTS.map((product) => (
-                <tr key={product.name} data-preview-row className="border-b last:border-0">
-                  <td className="py-3 font-medium">{product.name}</td>
-                  <td className="py-3">
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                      {product.category}
-                    </span>
-                  </td>
-                  <td className="py-3 font-mono text-xs text-muted-foreground">{product.barcode}</td>
-                  <td className="py-3 text-right figures">{product.price}</td>
+            <div className="mt-5 flex items-center gap-3">
+              <div className="flex h-9 w-64 items-center gap-2 rounded-full border bg-card px-3 text-sm text-muted-foreground">
+                <Search className="size-4" /> Search products…
+              </div>
+              <div className="flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
+                <Plus className="size-4" /> Add product
+              </div>
+            </div>
+
+            <table className="mt-6 w-full text-left text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr className="border-b">
+                  <th className="py-2.5 font-medium">Name</th>
+                  <th className="py-2.5 font-medium">Category</th>
+                  <th className="py-2.5 font-medium">Barcode</th>
+                  <th className="py-2.5 text-right font-medium">Price (EUR)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {PREVIEW_PRODUCTS.map((product) => (
+                  <tr key={product.name} data-preview-row className="border-b last:border-0">
+                    <td className="py-3 font-medium">{product.name}</td>
+                    <td className="py-3">
+                      <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-bold">
+                        {product.category}
+                      </span>
+                    </td>
+                    <td className="py-3 font-mono text-xs text-muted-foreground">{product.barcode}</td>
+                    <td className="py-3 text-right figures">{product.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </aside>

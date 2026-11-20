@@ -1,7 +1,7 @@
 import { estimatePasswordStrength } from '@/lib/password-strength'
 
-const SEGMENT_COLORS = ['', 'bg-destructive', 'bg-amber-500', 'bg-primary', 'bg-primary']
-const LABEL_COLORS = ['text-muted-foreground', 'text-destructive', 'text-amber-700', 'text-primary', 'text-primary']
+const SEGMENT_COLORS = ['', 'bg-destructive', 'bg-signal', 'bg-good', 'bg-good']
+const LABEL_COLORS = ['text-muted-foreground', 'text-destructive', 'text-warning-foreground', 'text-good', 'text-good']
 
 // Four bars that fill up as the password gets stronger, plus a one-word label.
 export function PasswordStrengthMeter({ password, email }: { password: string; email?: string }) {

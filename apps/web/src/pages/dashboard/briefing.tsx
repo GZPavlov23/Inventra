@@ -1,15 +1,16 @@
 import { useGSAP } from '@gsap/react'
 import { useQuery } from '@tanstack/react-query'
 import gsap from 'gsap'
-import { ArrowRight, CircleCheck, Phone } from 'lucide-react'
+import { ArrowRight, Phone } from 'lucide-react'
 import { type ReactNode, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 import { useCurrentUser } from '@/auth/use-auth'
+import { CaughtUpDrawing } from '@/components/drawings'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { daysUntil, formatDay, formatDayOfWeek, formatExpected, formatMoney, formatWeekday, today } from '@/lib/format'
+import { daysUntil, formatDay, formatDayOfWeek, formatExpected, formatMoney, today } from '@/lib/format'
 import { type BriefingNote, reportsApi } from '@/lib/reports-api'
 
 // Read in passing, so a few at first; the rest are one click away.
@@ -30,17 +31,24 @@ function plural(count: number, one: string, many: string): string {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`
 }
 
-// Colour says what kind of thing it is, the same everywhere in the app: red is a loss that
-// already happened or a promise broken, amber is a loss coming, green is good news.
+// Colour says what kind of thing it is, the same everywhere in the app: tomato is a loss that
+// already happened or a promise broken, mustard is a loss coming, green is good news.
 const TONES = {
-  loss: 'bg-destructive/10 text-destructive',
+  loss: 'bg-destructive/12 text-destructive',
   soon: 'bg-warning text-warning-foreground',
-  good: 'bg-primary/10 text-primary',
+  good: 'bg-good/12 text-good',
 } as const
 
-// Small and grey until the row is pointed at: the words say what to do, the icon only takes
-// you there. Its name is still read out, and shown on hover.
-const ACTION = '-mr-1.5 text-muted-foreground group-hover:text-primary'
+// The round badge in front of a note: the first letters of what it is about, like a contact.
+function badgeLetters(note: BriefingNote): string {
+  const name = note.product?.name ?? note.supplier?.name
+  if (!name) return '!'
+  const words = name.split(/\s+/).filter((word) => /^\p{L}/u.test(word))
+  return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '!'
+}
+
+// A soft pill with a word on it: the friendlier the action, the more likely it gets done.
+const ACTION = 'bg-secondary text-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_8%)]'
 
 type Written = {
   tag: string
@@ -58,8 +66,8 @@ function write(note: BriefingNote, money: (amount: string) => string): Written {
   const product = note.product && <strong className="font-medium">{note.product.name}</strong>
   const quantity = (value: string) => (note.product ? formatExpected(value, note.product.unit) : value)
   const go = (to: string, label: string) => (
-    <Button variant="ghost" size="icon-sm" className={ACTION} asChild>
-      <Link to={to} aria-label={label} title={label}><ArrowRight /></Link>
+    <Button size="sm" className={ACTION} asChild>
+      <Link to={to}>{label}<ArrowRight /></Link>
     </Button>
   )
 
@@ -91,9 +99,8 @@ function write(note: BriefingNote, money: (amount: string) => string): Written {
         amount: money(note.at_stake),
         meaning: 'ordered',
         action: note.supplier?.phone ? (
-          <Button variant="ghost" size="icon-sm" className={ACTION} asChild>
-            <a href={`tel:${note.supplier.phone}`} aria-label={`Call ${note.supplier.phone}`}
-              title={`Call ${note.supplier.phone}`}><Phone /></a>
+          <Button size="sm" className="bg-destructive text-primary-foreground hover:bg-destructive/90" asChild>
+            <a href={`tel:${note.supplier.phone}`}><Phone />Call {note.supplier.phone}</a>
           </Button>
         ) : go('/deliveries', 'Open'),
       }
@@ -175,67 +182,76 @@ export function TodaysBriefing() {
   )
 
   return (
-    <section aria-labelledby="briefing-title" className="flex overflow-hidden rounded-lg border bg-paper">
-      <div className="w-1 shrink-0 bg-primary" />
-      <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4 sm:px-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-          <h3 id="briefing-title" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Today's briefing
-          </h3>
-          <p className="figures text-xs text-muted-foreground">
-            {notes.length > 0 && `${money(String(atRisk))} at risk · ${plural(notes.length, 'note', 'notes')} · `}
-            {formatWeekday(today())}
+    <section aria-label="Today's briefing" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 className="text-2xl font-bold">Needs you today</h3>
+        {notes.length > 0 && (
+          <p className="figures text-sm text-muted-foreground">
+            {money(String(atRisk))} at risk · {plural(notes.length, 'note', 'notes')}
           </p>
-        </div>
+        )}
+      </div>
 
+      <div className="overflow-hidden rounded-2xl bg-card shadow-soft">
         {briefing.isError ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="m-4 w-auto">
             <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
               {briefing.error.message}
               <Button size="sm" variant="outline" onClick={() => void briefing.refetch()}>Try again</Button>
             </AlertDescription>
           </Alert>
         ) : !briefing.data ? (
-          <div className="flex flex-col gap-2" aria-busy="true">
-            <Skeleton className="h-6 w-full max-w-xl" />
-            <Skeleton className="h-6 w-full max-w-lg" />
+          <div className="flex flex-col gap-3 p-5" aria-busy="true">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         ) : notes.length === 0 ? (
-          <p className="flex items-center gap-2 text-base">
-            <CircleCheck className="size-4 text-primary" />
-            Nothing needs you today: no expired stock, no shortages ahead and no late deliveries.
-          </p>
+          // No notes means every check came back clean, so each of these sentences is true.
+          <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+            <CaughtUpDrawing className="h-28 text-foreground" />
+            <p className="mt-2 font-hand text-4xl text-good">All caught up!</p>
+            <p className="max-w-lg text-[1.0625rem] leading-relaxed">
+              Nothing needs you today. Nothing has expired, every delivery is on time, and nothing runs out
+              before more arrives.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Checked again every minute, so a new note shows up here on its own.
+            </p>
+            <Button variant="link" asChild className="mt-1 font-bold text-good">
+              <Link to="/inventory?status=expiring">See what expires this week</Link>
+            </Button>
+          </div>
         ) : (
-          <ol ref={list} className="flex flex-col divide-y divide-dashed divide-foreground/15">
+          <ol ref={list} className="flex flex-col divide-y divide-border/70">
             {shown.map((note, index) => {
               const { tag, tone, text, amount, meaning, action } = write(note, money)
-              const first = index === 0
               return (
                 <li key={`${note.kind}-${note.product?.id ?? note.delivery_id ?? index}`}
-                  className="group grid grid-cols-[1fr_auto_auto] items-start gap-x-3 gap-y-1 py-3 first:pt-1 last:pb-0 sm:grid-cols-[6.5rem_1fr_auto_auto] sm:items-center sm:gap-x-4">
-                  <span className={`w-fit rounded-sm px-1.5 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase ${TONES[tone]}`}>
-                    {tag}
+                  className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                  <span aria-hidden="true"
+                    className={`flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-extrabold ${TONES[tone]}`}>
+                    {badgeLetters(note)}
                   </span>
-                  <p className={`col-span-3 row-start-2 leading-snug sm:col-span-1 sm:col-start-2 sm:row-start-1 ${first ? 'text-lg' : 'text-base'}`}>
-                    {text}
-                  </p>
-                  <p className="col-start-2 row-start-1 text-right sm:col-start-3">
-                    <span className={`figures block font-medium ${first ? 'text-lg' : 'text-base'}`}>{amount}</span>
-                    <span className="block text-xs text-muted-foreground">{meaning}</span>
-                  </p>
-                  <div className="col-start-3 row-start-1 sm:col-start-4">{action}</div>
+                  <div className="min-w-0 flex-[1_1_16rem]">
+                    <p className="text-[1.0625rem] leading-snug">{text}</p>
+                    <p className="figures mt-0.5 text-sm text-muted-foreground">
+                      <span className="font-bold">{tag}</span> · {amount} {meaning}
+                    </p>
+                  </div>
+                  <div className="ml-auto">{action}</div>
                 </li>
               )
             })}
           </ol>
         )}
+      </div>
 
-        {(hidden > 0 || canShowFewer) && (
-          <Button variant="ghost" size="sm" className="self-start" aria-expanded={showAll}
-            onClick={() => setShowAll(!showAll)}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {(hidden > 0 || canShowFewer) ? (
+          <Button variant="ghost" size="sm" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
             {showAll ? 'Show fewer' : `Show ${hidden} more`}
           </Button>
-        )}
+        ) : <span />}
         {briefing.data && notes.length > 0 && (
           <p className="text-xs text-muted-foreground">
             Found in your stock, deliveries and sales. Forecast model: {briefing.data.method}.

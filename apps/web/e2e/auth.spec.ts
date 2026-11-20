@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 import { DEMO_OWNER, fillLogin, lastEmailedLink, logInAsDemoOwner } from './helpers.ts'
 
@@ -32,6 +32,13 @@ test('after logging in you land on the page you asked for and stay logged in', a
   expect(session?.sameSite).toBe('Lax')
   expect(await page.evaluate(() => document.cookie)).not.toContain('inventra_session')
 })
+
+// The store's name lives in the person's menu; a wide header shows it too, but not at the test's width.
+async function expectStoreInMenu(page: Page, name: string) {
+  await page.getByRole('button', { name: /^Account:/ }).click()
+  await expect(page.getByRole('menu')).toContainText(name)
+  await page.keyboard.press('Escape')
+}
 
 test('logging out ends the session', async ({ page }) => {
   await logInAsDemoOwner(page)
@@ -70,8 +77,10 @@ test('a new owner registers, confirms the email and gets an empty store', async 
 
   await page.goto('/login')
   await fillLogin(page, email, PASSWORD)
-  await expect(page.getByText('E2E Shop').first()).toBeVisible()
+  await expectStoreInMenu(page, 'E2E Shop')
   await expect(page.getByText('No sales yet')).toBeVisible()
+  // A new store has nothing to warn about yet, and says so warmly.
+  await expect(page.getByText('All caught up!')).toBeVisible()
   await expect(page.getByText('No goods were written off')).toBeVisible()
 
   await page.goto('/forecast')
@@ -123,5 +132,5 @@ test('a forgotten password can be replaced through the emailed link', async ({ p
   await expect(page.getByText('Invalid email or password')).toBeVisible()
 
   await fillLogin(page, email, newPassword)
-  await expect(page.getByText('Forgetful Shop').first()).toBeVisible()
+  await expectStoreInMenu(page, 'Forgetful Shop')
 })

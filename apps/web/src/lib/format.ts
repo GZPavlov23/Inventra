@@ -61,6 +61,11 @@ export function formatMonthDay(day: string): string {
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(parseDay(day))
 }
 
+// "Friday, 20 November", for a greeting.
+export function formatLongDay(day: string): string {
+  return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(parseDay(day))
+}
+
 export function formatDayOfWeek(day: string): string {
   return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(parseDay(day))
 }
@@ -79,6 +84,12 @@ function toDayString(moment: Date): string {
 // The calendar day of a moment such as received_at, in the browser's time zone.
 export function dayOf(moment: string): string {
   return toDayString(new Date(moment))
+}
+
+// For a greeting: "morning" until noon, "afternoon" until six, then "evening".
+export function partOfDay(): 'morning' | 'afternoon' | 'evening' {
+  const hour = new Date().getHours()
+  return hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
 }
 
 export function today(): string {

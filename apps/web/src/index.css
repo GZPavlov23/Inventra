@@ -1,17 +1,25 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/ibm-plex-sans";
+@import "@fontsource-variable/nunito";
+@import "@fontsource-variable/lora";
+@import "@fontsource/caveat/600.css";
 @import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'IBM Plex Sans Variable', sans-serif;
-    /* Quantities, prices and dates: every digit the same width, so columns line up. */
+    /* A friendly rounded sans for reading, a warm serif for headings, and a hand for the odd
+       note in the margin. All three have Cyrillic, for the product names. */
+    --font-sans: 'Nunito Variable', sans-serif;
+    --font-heading: 'Lora Variable', serif;
+    --font-hand: 'Caveat', cursive;
+    /* Only for barcodes and lot numbers, which are read character by character. */
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    /* Cards rest on the page with a soft shadow instead of a hard outline. */
+    --shadow-soft: 0 1px 0 var(--border), 0 10px 30px rgb(120 80 30 / 0.06);
+    --color-good: var(--good);
+    --color-signal: var(--signal);
     --color-warning: var(--warning);
     --color-warning-foreground: var(--warning-foreground);
     --color-paper: var(--paper);
@@ -56,86 +64,102 @@
 }
 
 :root {
-    /* A warm off-white, like paper, instead of screen white. Greys lean slightly towards it,
-       and text is a green-black ink that belongs with the logo. */
-    --background: oklch(0.982 0.006 85);
-    --foreground: oklch(0.21 0.014 170);
-    --card: oklch(0.997 0.002 85);
-    --card-foreground: oklch(0.21 0.014 170);
-    --popover: oklch(0.997 0.002 85);
-    --popover-foreground: oklch(0.21 0.014 170);
+    color-scheme: light;
+    /* Warm paper and a soft brown-black ink: a desk in a small shop, not a screen. */
+    --background: oklch(0.984 0.018 80);
+    --foreground: oklch(0.285 0.008 70);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.285 0.008 70);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.285 0.008 70);
     /* Receipts and delivery notes: a shade warmer than the cards around them. */
-    --paper: oklch(0.975 0.014 88);
-    --primary: oklch(0.454 0.089 170.3); /* brand teal-green #01664f (from the logo) */
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.951 0.009 85);
-    --secondary-foreground: oklch(0.25 0.014 170);
-    --muted: oklch(0.951 0.009 85);
-    --muted-foreground: oklch(0.5 0.016 80);
-    --accent: oklch(0.951 0.009 85);
-    --accent-foreground: oklch(0.25 0.014 170);
-    --destructive: oklch(0.577 0.245 27.325);
-    /* Amber means "soon": goods that expire or run out before long. */
-    --warning: oklch(0.94 0.06 85);
-    --warning-foreground: oklch(0.43 0.1 60);
-    --border: oklch(0.905 0.012 85);
-    --input: oklch(0.89 0.012 85);
-    --ring: oklch(0.72 0.12 166);
-    /* Series colors. Checked for color blindness and contrast on white with a validator. */
-    --chart-1: #0d7f64;
-    --chart-2: #d97706;
+    --paper: oklch(0.968 0.025 80);
+    /* What you press: dark pills, like the "New sale" button. */
+    --primary: oklch(0.285 0.008 70);
+    --primary-foreground: oklch(0.984 0.018 80);
+    /* Green means good, and nothing else: fresh, received, active, all clear. */
+    --good: oklch(0.5 0.09 152);
+    /* Mustard: soon, but not yet a loss. Bars and dots; text uses warning-foreground. */
+    --signal: oklch(0.8 0.15 75);
+    --secondary: oklch(0.93 0.025 80);
+    --secondary-foreground: oklch(0.285 0.008 70);
+    --muted: oklch(0.93 0.025 80);
+    --muted-foreground: oklch(0.5 0.02 75);
+    --accent: oklch(0.93 0.025 80);
+    --accent-foreground: oklch(0.285 0.008 70);
+    /* Tomato: a loss that happened or a promise broken. */
+    --destructive: oklch(0.56 0.17 37);
+    --warning: oklch(0.94 0.05 85);
+    --warning-foreground: oklch(0.47 0.1 70);
+    --border: oklch(0.9 0.03 80);
+    --input: oklch(0.88 0.03 80);
+    --ring: oklch(0.65 0.15 55);
+    /* Revenue in ink, profit in deep mustard: far apart in lightness, so told apart without colour. */
+    --chart-1: #2d2a26;
+    --chart-2: #c47f0e;
     --chart-3: oklch(0.6 0.1 220);
     --chart-4: oklch(0.8 0.12 120);
     --chart-5: oklch(0.75 0.13 75);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.962 0.01 85);
-    --sidebar-foreground: oklch(0.21 0.014 170);
-    --sidebar-primary: oklch(0.454 0.089 170.3);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.975 0.018 166.4); /* light mint: active menu item */
-    --sidebar-accent-foreground: oklch(0.273 0.051 175.9); /* brand deep green #002f26 */
-    --sidebar-border: oklch(0.905 0.012 85);
-    --sidebar-ring: oklch(0.72 0.12 166);
+    /* Soft and round: cards, fields and menus; buttons are full pills. */
+    --radius: 1rem;
+    --sidebar: oklch(0.96 0.02 80);
+    --sidebar-foreground: oklch(0.285 0.008 70);
+    --sidebar-primary: oklch(0.285 0.008 70);
+    --sidebar-primary-foreground: oklch(0.984 0.018 80);
+    --sidebar-accent: oklch(0.93 0.025 80);
+    --sidebar-accent-foreground: oklch(0.285 0.008 70);
+    --sidebar-border: oklch(0.9 0.03 80);
+    --sidebar-ring: oklch(0.65 0.15 55);
 }
 
+/* Evening desk: the same desk with the lamp on. Warm brown-black paper, cream ink, and the same
+   three meanings (tomato for a loss, mustard for soon, green for good), lifted so they still read
+   against the dark. Used when the computer is in dark mode, or when chosen in the account menu. */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+    --background: #1f1b17;
+    --foreground: #f3e9da;
+    --card: #2b251f;
+    --card-foreground: #f3e9da;
+    --popover: #2b251f;
+    --popover-foreground: #f3e9da;
+    --paper: #332c25;
+    /* What you press: cream pills on the dark. */
+    --primary: #f3e9da;
+    --primary-foreground: #1f1b17;
+    --good: #6fbf8b;
+    --signal: #f2b134;
+    --secondary: #3a322a;
+    --secondary-foreground: #f3e9da;
+    --muted: #3a322a;
+    --muted-foreground: #b8ac9b;
+    --accent: #3a322a;
+    --accent-foreground: #f3e9da;
+    --destructive: #ef7a55;
+    --warning: #4a3a18;
+    --warning-foreground: #f6cf7a;
+    --border: #3a322a;
+    --input: #4a4036;
+    --ring: #f2b134;
+    /* Revenue in cream, profit in mustard: still far apart in lightness. */
+    --chart-1: #f3e9da;
+    --chart-2: #f2b134;
+    --chart-3: #7fb3d5;
+    --chart-4: #b5d67a;
+    --chart-5: #e0b061;
+    --sidebar: #2b251f;
+    --sidebar-foreground: #f3e9da;
+    --sidebar-primary: #f3e9da;
+    --sidebar-primary-foreground: #1f1b17;
+    --sidebar-accent: #3a322a;
+    --sidebar-accent-foreground: #f3e9da;
+    --sidebar-border: #3a322a;
+    --sidebar-ring: #f2b134;
 }
 
+/* Quantities, prices and dates: every digit the same width, so columns line up. */
 @utility figures {
-    font-family: var(--font-mono);
-    font-variant-numeric: figures;
-    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
 }
 
 /* A receipt's torn top and bottom edges. */
@@ -179,5 +203,9 @@
     }
   html {
     @apply font-sans;
+    }
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
     }
 }

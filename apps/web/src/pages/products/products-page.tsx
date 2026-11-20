@@ -176,12 +176,12 @@ export function ProductsPage() {
           </AlertDescription>
         </Alert>
       ) : products.isPending ? (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-2xl bg-card shadow-soft">
           <ProductsTableSkeleton />
         </div>
       ) : products.data.total === 0 ? (
         search || status !== 'active' ? (
-          <Empty className="rounded-lg border bg-card">
+          <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
               <EmptyTitle>No products found</EmptyTitle>
@@ -194,7 +194,7 @@ export function ProductsPage() {
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="rounded-lg border bg-card">
+          <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Package /></EmptyMedia>
               <EmptyTitle>No products yet</EmptyTitle>
@@ -215,7 +215,7 @@ export function ProductsPage() {
         <>
           {/* Slightly faded while a new page or search result is loading. */}
           <div
-            className={`rounded-lg border bg-card transition-opacity ${products.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-2xl bg-card shadow-soft transition-opacity ${products.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={products.isFetching}
           >
             <ProductsTable

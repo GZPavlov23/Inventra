@@ -23,7 +23,7 @@ export function AccuracyCard({ accuracy }: { accuracy: AccuracyReport }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-2xl bg-card shadow-soft">
           <Table>
             <TableCaption className="sr-only">Error of each forecasting model</TableCaption>
             <TableHeader>

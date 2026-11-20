@@ -5,8 +5,8 @@ import type { Batch } from '@/lib/inventory-api'
 const FULL_BAR_DAYS = 14
 
 const COLORS = {
-  fresh: 'bg-primary',
-  expiring: 'bg-amber-500',
+  fresh: 'bg-good',
+  expiring: 'bg-signal',
   expired: 'bg-destructive',
   none: '',
 } as const

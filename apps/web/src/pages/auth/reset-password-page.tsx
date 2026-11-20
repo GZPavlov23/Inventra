@@ -51,7 +51,7 @@ export function ResetPasswordPage() {
     return (
       <AuthCard animationKey="done">
         <CardHeader>
-          <CircleCheck data-pop className="mb-2 size-9 text-primary" />
+          <CircleCheck data-pop className="mb-2 size-9 text-good" />
           <CardTitle className="text-3xl font-semibold tracking-tight">Password changed</CardTitle>
           <CardDescription className="text-base">
             You were logged out on all devices. Log in with your new password.

@@ -42,7 +42,7 @@ export function AccountSection() {
           <ul className="flex flex-col gap-1.5" aria-label="What your role can do">
             {allowed.map((permission) => (
               <li key={permission} className="flex items-start gap-2 text-sm">
-                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                <Check className="mt-0.5 size-4 shrink-0 text-good" />
                 {PERMISSION_TEXT[permission]}
               </li>
             ))}

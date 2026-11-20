@@ -55,7 +55,7 @@ function ReportState({ query, children }: {
 function Nothing({ children }: { children: ReactNode }) {
   return (
     <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
-      <CircleCheck className="size-4 text-primary" />
+      <CircleCheck className="size-4 text-good" />
       {children}
     </p>
   )

@@ -201,7 +201,7 @@ function Preview({ report, currency }: { report: SalesImportReport; currency: st
   return (
     <div className="flex flex-col gap-2 rounded-lg border p-3" role="status" aria-label="Check result">
       <p className="flex items-center gap-2 text-sm font-medium">
-        <CircleCheck className="size-4 text-primary" />
+        <CircleCheck className="size-4 text-good" />
         The file is fine. Nothing is saved yet.
       </p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">

@@ -51,7 +51,7 @@ export function AcceptInvitationPage() {
     return (
       <AuthCard animationKey="done">
         <CardHeader>
-          <CircleCheck data-pop className="mb-2 size-9 text-primary" />
+          <CircleCheck data-pop className="mb-2 size-9 text-good" />
           <CardTitle className="text-3xl font-semibold tracking-tight">You're in</CardTitle>
           <CardDescription className="text-base">
             Your account is ready. Log in with your email and the password you just chose.

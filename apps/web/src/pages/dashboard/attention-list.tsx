@@ -9,7 +9,7 @@ export function AttentionList({ batches }: { batches: Batch[] }) {
   if (batches.length === 0) {
     return (
       <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-        <CircleCheck className="size-4 text-primary" />
+        <CircleCheck className="size-4 text-good" />
         Nothing has expired or is about to.
       </p>
     )

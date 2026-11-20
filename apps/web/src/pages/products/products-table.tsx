@@ -49,7 +49,7 @@ function SortableHead({ column, label, numeric, sorting }: {
       <button
         type="button"
         onClick={() => sorting.onSort(column)}
-        className={`inline-flex cursor-pointer items-center gap-1 tracking-wide uppercase outline-offset-2 hover:text-foreground ${
+        className={`inline-flex cursor-pointer items-center gap-1 outline-offset-2 hover:text-foreground ${
           numeric ? 'flex-row-reverse' : ''
         }`}
       >

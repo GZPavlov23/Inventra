@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 
 import { useCurrentUser } from '@/auth/use-auth'
-import { StatTile } from '@/components/stat-tile'
+import { StatPanel, StatTile } from '@/components/stat-tile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -94,7 +94,7 @@ export function OrdersPage() {
           </AlertDescription>
         </Alert>
       ) : orders.data?.products_checked === 0 ? (
-        <Empty className="rounded-lg border bg-card">
+        <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><TrendingUp /></EmptyMedia>
             <EmptyTitle>Not enough sales yet</EmptyTitle>
@@ -110,7 +110,7 @@ export function OrdersPage() {
         </Empty>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <StatPanel className="grid-cols-2 sm:grid-cols-3">
             <StatTile
               label="Products to order"
               value={ordered?.length.toLocaleString()}
@@ -126,7 +126,7 @@ export function OrdersPage() {
               value={orders.data && `${(Number(orders.data.buffer_share) * 100).toFixed(0)}%`}
               note="Extra, based on the forecast's error"
             />
-          </div>
+          </StatPanel>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Tabs value={String(days)} onValueChange={changePeriod}>
@@ -146,13 +146,13 @@ export function OrdersPage() {
           {!lines ? (
             <Skeleton className="h-64 w-full" />
           ) : lines.length === 0 ? (
-            <p className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-              <CircleCheck className="size-4 text-primary" />
+            <p className="flex items-center gap-2 rounded-2xl bg-card shadow-soft p-4 text-sm text-muted-foreground">
+              <CircleCheck className="size-4 text-good" />
               Your stock covers the next {days} days. There is nothing to order.
             </p>
           ) : (
             <div
-              className={`rounded-lg border bg-card transition-opacity ${orders.isPlaceholderData ? 'opacity-60' : ''}`}
+              className={`rounded-2xl bg-card shadow-soft transition-opacity ${orders.isPlaceholderData ? 'opacity-60' : ''}`}
               aria-busy={orders.isFetching}
             >
               <OrdersTable

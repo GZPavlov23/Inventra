@@ -96,11 +96,11 @@ export function DeliveriesPage() {
           </AlertDescription>
         </Alert>
       ) : deliveries.isPending ? (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-2xl bg-card shadow-soft">
           <DeliveriesTableSkeleton />
         </div>
       ) : deliveries.data.total === 0 ? (
-        <Empty className="rounded-lg border bg-card">
+        <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><Truck /></EmptyMedia>
             <EmptyTitle>{status === 'ordered' ? 'Nothing on the way' : 'No deliveries here'}</EmptyTitle>
@@ -121,7 +121,7 @@ export function DeliveriesPage() {
       ) : (
         <>
           <div
-            className={`rounded-lg border bg-card transition-opacity ${deliveries.isPlaceholderData ? 'opacity-60' : ''}`}
+            className={`rounded-2xl bg-card shadow-soft transition-opacity ${deliveries.isPlaceholderData ? 'opacity-60' : ''}`}
             aria-busy={deliveries.isFetching}
           >
             <DeliveriesTable

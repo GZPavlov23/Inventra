@@ -32,9 +32,22 @@ export function useListParams() {
   // The box updates instantly; the URL (and so the request) only after typing pauses.
   const [searchInput, setSearchInput] = useState(search)
   const debouncedSearch = useDebouncedValue(searchInput.trim())
+
+  // The URL can also change from outside the box: a link, the Back button, the quick search.
+  // Then the box follows the URL, not the other way round.
+  const [seenSearch, setSeenSearch] = useState(search)
+  if (search !== seenSearch) {
+    setSeenSearch(search)
+    if (search !== searchInput.trim()) setSearchInput(search)
+  }
+
   useEffect(() => {
-    if (debouncedSearch !== search) updateParams({ q: debouncedSearch, page: null })
-  }, [debouncedSearch, search, updateParams])
+    // Only once the pause has caught up with the box: otherwise an old value still waiting in
+    // the debounce would overwrite a search that just came from a link.
+    if (debouncedSearch !== search && debouncedSearch === searchInput.trim()) {
+      updateParams({ q: debouncedSearch, page: null })
+    }
+  }, [debouncedSearch, search, searchInput, updateParams])
 
   return { searchParams, search, searchInput, setSearchInput, page, updateParams }
 }

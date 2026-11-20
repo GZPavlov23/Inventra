@@ -3,6 +3,8 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceArea,
+  ReferenceDot,
   ResponsiveContainer,
   Tooltip,
   type TooltipContentProps,
@@ -22,6 +24,7 @@ import {
 } from '@/components/ui/table'
 import { formatDay, formatMoney, formatMonthDay } from '@/lib/format'
 import type { DailySales } from '@/lib/sales-api'
+import { chartNotes, quietLabel } from '@/pages/dashboard/chart-notes'
 
 // Colors are checked with a color-blindness validator: see --chart-1 and --chart-2 in index.css.
 const SERIES = [
@@ -30,6 +33,17 @@ const SERIES = [
 ] as const
 
 type ChartRow = { index: number; day: string; revenue: number; profit: number }
+
+// Shared by the notes: the handwriting font, with a halo in the card's colour so a note stays
+// readable where it crosses a line.
+const HAND = {
+  fontFamily: 'var(--font-hand)',
+  fontSize: 20,
+  paintOrder: 'stroke',
+  stroke: 'var(--card)',
+  strokeWidth: 5,
+  strokeLinejoin: 'round',
+} as const
 
 function LineKey({ color }: { color: string }) {
   return <span aria-hidden className="h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
@@ -63,6 +77,9 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
     profit: Number(profit),
   }))
   const lastIndex = rows.length - 1
+  const notes = chartNotes(rows)
+  const bestOnRight = notes.best !== null && rows.findIndex((row) => row.day === notes.best?.day) > rows.length / 2
+  const today = rows[lastIndex]
   const compactMoney = new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency,
@@ -82,10 +99,33 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
         <li>Dashed: today so far</li>
       </ul>
 
+      {/* The notes in words, for screen readers; on screen they are written on the chart. */}
+      <p className="sr-only">
+        {notes.best && `Best day: ${formatMoney(notes.best.revenue, currency)} on ${formatDay(notes.best.day)}. `}
+        {notes.quiet && `Quiet stretch: ${notes.quiet.days} days below average, ${formatDay(notes.quiet.from)} to ${formatDay(notes.quiet.to)}.`}
+      </p>
+
       <div className="h-64" role="img" aria-label="Revenue and profit per day. The table below shows the same numbers.">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <LineChart data={rows} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--border)" />
+            {notes.quiet && (
+              <ReferenceArea
+                x1={notes.quiet.from}
+                x2={notes.quiet.to}
+                ifOverflow="hidden"
+                shape={({ x, y, width, height }: { x: number; y: number; width: number; height: number }) => (
+                  // The words sit a third of the way down: the lines are low on quiet days, and the
+                  // top is left to the best-day note.
+                  <g data-note="quiet">
+                    <rect x={x} y={y} width={width} height={height} rx={10} fill="var(--signal)" fillOpacity={0.12} />
+                    <text x={x + width / 2} y={y + Math.min(56, height / 3)} textAnchor="middle" fill="var(--warning-foreground)" {...HAND}>
+                      {quietLabel(notes.quiet?.days ?? 0)}
+                    </text>
+                  </g>
+                )}
+              />
+            )}
             <XAxis
               dataKey="day"
               tickFormatter={formatMonthDay}
@@ -131,6 +171,35 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
                 />,
               ]
             })}
+            {notes.best && (
+              <ReferenceDot
+                x={notes.best.day}
+                y={notes.best.revenue}
+                ifOverflow="visible"
+                shape={({ cx = 0, cy = 0 }) => (
+                  <g data-note="best">
+                    <circle cx={cx} cy={cy} r={13} fill="none" stroke="var(--destructive)" strokeWidth={2.5}
+                      strokeDasharray="62 20" strokeLinecap="round" />
+                    <text x={bestOnRight ? cx - 20 : cx + 20} y={cy + 6} textAnchor={bestOnRight ? 'end' : 'start'}
+                      fill="var(--destructive)" {...HAND}>
+                      best day: {formatMoney(notes.best?.revenue ?? 0, currency)}, {formatMonthDay(notes.best?.day ?? '')}
+                    </text>
+                  </g>
+                )}
+              />
+            )}
+            {today && (
+              <ReferenceDot
+                x={today.day}
+                y={today.revenue}
+                ifOverflow="visible"
+                shape={({ cx = 0, cy = 0 }) => (
+                  <text data-note="today" x={cx - 12} y={cy - 18} textAnchor="end" fill="var(--foreground)" {...HAND}>
+                    today so far
+                  </text>
+                )}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -141,7 +210,7 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
       </Button>
 
       {showTable && (
-        <div className="max-h-64 overflow-y-auto rounded-lg border bg-card">
+        <div className="max-h-64 overflow-y-auto rounded-2xl bg-card shadow-soft">
           <Table>
             <TableCaption className="sr-only">Revenue and profit per day</TableCaption>
             <TableHeader>

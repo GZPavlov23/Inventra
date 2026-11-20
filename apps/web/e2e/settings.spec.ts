@@ -118,18 +118,24 @@ test('a person changes their own password, and a wrong current one is caught', a
   await theirs.context().close()
 })
 
+async function storeInMenu(page: Page) {
+  await page.getByRole('button', { name: /^Account:/ }).click()
+  return page.getByRole('menu').locator('[data-slot="menu-store"]')
+}
+
 test('the owner renames the store and the menu shows the new name', async ({ page }) => {
   const field = page.getByRole('textbox', { name: 'Name', exact: true })
   const original = await field.inputValue()
   await field.fill('Е2Е Магазин')
   await page.getByRole('button', { name: 'Save name' }).click()
   await expect(page.getByText('The store was renamed')).toBeVisible()
-  await expect(page.locator('[data-sidebar="header"]')).toContainText('Е2Е Магазин')
+  await expect(await storeInMenu(page)).toContainText('Е2Е Магазин')
+  await page.keyboard.press('Escape')
 
   // Back as it was, for the tests that come after.
   await field.fill(original)
   await page.getByRole('button', { name: 'Save name' }).click()
-  await expect(page.locator('[data-sidebar="header"]')).toContainText(original)
+  await expect(await storeInMenu(page)).toContainText(original)
 })
 
 test('a broken invitation link says so', async ({ page }) => {

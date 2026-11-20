@@ -78,7 +78,7 @@ export function ForecastPage() {
           </AlertDescription>
         </Alert>
       ) : items?.length === 0 ? (
-        <Empty className="rounded-lg border bg-card">
+        <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><TrendingUp /></EmptyMedia>
             <EmptyTitle>Not enough sales yet</EmptyTitle>
@@ -131,7 +131,7 @@ export function ForecastPage() {
 
           {items ? (
             <div
-              className={`rounded-lg border bg-card transition-opacity ${forecast.isPlaceholderData ? 'opacity-60' : ''}`}
+              className={`rounded-2xl bg-card shadow-soft transition-opacity ${forecast.isPlaceholderData ? 'opacity-60' : ''}`}
               aria-busy={forecast.isFetching}
             >
               <ForecastTable items={items} onOpen={openDetails} />

@@ -20,6 +20,7 @@ import { MonthPage } from '@/pages/month/month-page'
 import { NotFoundPage } from '@/pages/not-found-page'
 import { OrdersPage } from '@/pages/orders/orders-page'
 import { PlannedPage } from '@/pages/planned-page'
+import { ProductStoryPage } from '@/pages/products/product-story-page'
 import { ProductsPage } from '@/pages/products/products-page'
 import { SalesPage } from '@/pages/sales/sales-page'
 import { SettingsPage } from '@/pages/settings/settings-page'
@@ -69,6 +70,8 @@ export const router = createBrowserRouter([
             path: item.path,
             element: <RoleGate item={item}>{BUILT_PAGES[item.path] ?? <PlannedPage item={item} />}</RoleGate>,
           })),
+          // One product's story. Everyone who sees Products sees it, so no role gate.
+          { path: '/products/:productId', element: <ProductStoryPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

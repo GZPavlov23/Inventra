@@ -27,6 +27,8 @@ ROUTES = [
     ("GET", "/products", None),
     ("GET", "/products/categories", None),
     ("GET", "/products/999999", None),
+    # Quantities only, so everyone who sees the product sees its story.
+    ("GET", "/products/999999/story", None),
     ("POST", "/products", Permission.MANAGE_CATALOG),
     ("PATCH", "/products/999999", Permission.MANAGE_CATALOG),
     ("GET", "/suppliers", None),

@@ -131,7 +131,9 @@ test('editing a product changes it, and Cancel changes nothing', async ({ page }
   await expect(row(page, 'Е2Е Редакция')).toBeVisible()
   await expect(row(page, 'Е2Е Не се записва')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Е2Е Редакция', exact: true }).click()
+  // From the keyboard: the row's menu. (The name itself leads to the product's story.)
+  await page.getByRole('button', { name: 'Actions for Е2Е Редакция' }).click()
+  await page.getByRole('menuitem', { name: 'Edit' }).click()
   await dialog(page).getByLabel('Name').fill('Е2Е Променен')
   await dialog(page).getByLabel('Sale price').fill('2.50')
   await dialog(page).getByRole('button', { name: 'Save changes' }).click()

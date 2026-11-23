@@ -42,6 +42,10 @@ export function formatChange(quantity: string | number, unit: ProductUnit): stri
   return `${Number(quantity) > 0 ? '+' : ''}${formatQuantity(quantity, unit)}`
 }
 
+export function formatTime(moment: string): string {
+  return new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(new Date(moment))
+}
+
 export function formatDateTime(moment: string): string {
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(moment))
 }

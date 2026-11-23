@@ -1,4 +1,5 @@
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, ChevronsUpDown, Ellipsis, Pencil } from 'lucide-react'
+import { Link } from 'react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -106,13 +107,12 @@ export function ProductsTable({
               onClick={actions && (() => actions.onEdit(product))}>
               <TableCell>
                 <div className="flex items-center gap-2 font-medium">
-                  {/* A real button, so keyboard users can open the row too. Its click
-                      bubbles up to the row's onClick. */}
-                  {actions ? (
-                    <button type="button" className="cursor-pointer text-left outline-offset-2">
-                      {product.name}
-                    </button>
-                  ) : product.name}
+                  {/* The name leads to the product's story; the rest of the row, for those who
+                      may, opens the form to edit it (also in the row's menu). */}
+                  <Link to={`/products/${product.id}`} onClick={(event) => event.stopPropagation()}
+                    className="text-left underline-offset-4 outline-offset-2 hover:underline">
+                    {product.name}
+                  </Link>
                   {!product.active && <Badge variant="outline">Archived</Badge>}
                 </div>
                 {(product.brand || product.barcode) && (

@@ -22,6 +22,7 @@ from app.services.report_service import ReportService
 from app.services.sale_import_service import SaleImportService
 from app.services.sale_service import SaleService
 from app.services.setup_service import SetupService
+from app.services.story_service import StoryService
 from app.services.supplier_service import SupplierService
 from app.services.team_service import TeamService
 
@@ -140,6 +141,13 @@ def get_setup_service(db: DbSession) -> SetupService:
 
 
 SetupServiceDep = Annotated[SetupService, Depends(get_setup_service)]
+
+
+def get_story_service(db: DbSession) -> StoryService:
+    return StoryService(db)
+
+
+StoryServiceDep = Annotated[StoryService, Depends(get_story_service)]
 
 
 def get_sale_import_service(db: DbSession) -> SaleImportService:

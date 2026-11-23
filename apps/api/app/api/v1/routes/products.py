@@ -1,10 +1,11 @@
 """HTTP endpoints for products. Routes only parse input, call the service and shape output."""
 
+from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import CurrentStore, ProductServiceDep, allowed_to
+from app.api.deps import CurrentStore, ProductServiceDep, StoryServiceDep, allowed_to
 from app.core.permissions import Permission
 from app.schemas.common import ErrorResponse
 from app.schemas.product import (
@@ -15,6 +16,7 @@ from app.schemas.product import (
     ProductUpdate,
     SortOrder,
 )
+from app.schemas.story import ProductStory
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -79,6 +81,22 @@ def get_product_by_barcode(barcode: str, store: CurrentStore, service: ProductSe
 @router.get("/{product_id}", response_model=ProductRead, responses=NOT_FOUND)
 def get_product(product_id: int, store: CurrentStore, service: ProductServiceDep):
     return service.get_product(store.id, product_id)
+
+
+@router.get("/{product_id}/story", response_model=ProductStory, responses=NOT_FOUND)
+def product_story(
+    product_id: int,
+    store: CurrentStore,
+    service: StoryServiceDep,
+    until: date | None = Query(None, description="The newest day shown, today if left out"),
+    days: int = Query(30, ge=7, le=90, description="How many days, counting back from until"),
+) -> ProductStory:
+    """Everything that happened to the product, day by day, the newest first. Quantities only.
+
+    `earlier` in the answer is the `until` for the next older stretch, so days with nothing
+    in them are skipped.
+    """
+    return service.product_story(store.id, product_id, until=until or date.today(), days=days)
 
 
 @router.patch(

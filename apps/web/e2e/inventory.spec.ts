@@ -308,7 +308,8 @@ test('the page stays usable after the batch menu opened a dialog', async ({ page
 
 test('the unit of a product with batches cannot be changed', async ({ page }) => {
   await page.goto('/products?q=Банани')
-  await page.getByRole('button', { name: 'Банани', exact: true }).click()
+  await page.getByRole('button', { name: 'Actions for Банани' }).click()
+  await page.getByRole('menuitem', { name: 'Edit' }).click()
   await dialog(page).getByRole('combobox', { name: 'Sold by' }).click()
   await page.getByRole('option', { name: 'Pieces' }).click()
   await dialog(page).getByRole('button', { name: 'Save changes' }).click()

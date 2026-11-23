@@ -67,7 +67,7 @@ test.describe('owner', () => {
     await expect(page.locator('.sr-only').filter({ hasText: `Best day: ${money(best.revenue)}` })).toBeAttached()
   })
 
-  test('the quick search finds a product by its barcode and goes to it', async ({ page }) => {
+  test('the quick search finds a product by its barcode and opens its story', async ({ page }) => {
     await page.goto('/inventory')
     await expect(page.getByRole('heading', { name: 'Inventory', level: 2 })).toBeVisible()
     await page.keyboard.press('ControlOrMeta+k')
@@ -76,18 +76,48 @@ test.describe('owner', () => {
     await expect(search.getByRole('option', { name: /Кисело мляко/ }).first()).toBeVisible()
     await page.keyboard.press('Enter')
 
-    await expect(page).toHaveURL('/products?q=2000000000022')
-    await expect(page.locator('tbody tr')).toHaveCount(1)
-    await expect(page.locator('tbody tr')).toContainText('Кисело мляко')
+    await expect(page).toHaveURL(/\/products\/\d+$/)
+    await expect(page.getByRole('heading', { name: 'Кисело мляко 3.6% 400 г', level: 2 })).toBeVisible()
+  })
 
-    // Opened again from the same page with another search: the page follows the new one.
+  test('a batch found from the same page replaces the search that was there', async ({ page }) => {
+    const search = page.getByRole('dialog', { name: 'Search everything' })
+    const batchOption = () => search.getByRole('group', { name: 'Batches on the shelf' }).getByRole('option').first()
+    await page.goto('/inventory')
+    await expect(page.getByRole('heading', { name: 'Inventory', level: 2 })).toBeVisible()
+
     await page.keyboard.press('ControlOrMeta+k')
     await search.getByRole('combobox').fill('2000000000015')
-    await expect(search.getByRole('option', { name: /Прясно мляко/ }).first()).toBeVisible()
-    await page.keyboard.press('Enter')
-    await expect(page).toHaveURL('/products?q=2000000000015')
-    await expect(page.getByPlaceholder('Search by name, brand or barcode')).toHaveValue('2000000000015')
-    await expect(page.locator('tbody tr')).toContainText('Прясно мляко')
+    await batchOption().click()
+    await expect(page).toHaveURL('/inventory?q=2000000000015')
+
+    await page.keyboard.press('ControlOrMeta+k')
+    await search.getByRole('combobox').fill('2000000000022')
+    await batchOption().click()
+    await expect(page).toHaveURL('/inventory?q=2000000000022')
+    await expect(page.getByPlaceholder('Search by product, barcode or lot')).toHaveValue('2000000000022')
+    await expect(page.locator('tbody tr').first()).toContainText('Кисело мляко')
+  })
+
+  test('a product story shows where it stands, what needs doing, and goes back in time', async ({ page }) => {
+    await page.goto('/products')
+    await page.getByRole('link', { name: 'Пилешко филе 500 г' }).click()
+    await expect(page).toHaveURL(/\/products\/\d+$/)
+    await expect(page.getByRole('heading', { name: 'Пилешко филе 500 г', level: 2 })).toBeVisible()
+
+    // The demo chicken expired yesterday and its delivery is late.
+    const now = page.getByRole('list', { name: 'Needs doing now' })
+    await expect(now).toContainText('still count as stock')
+    await expect(now).toContainText('Ферма Слънце (демо) was due')
+
+    const story = page.getByRole('list', { name: 'Story' })
+    await expect(story).toContainText(/Sold \d+ pcs in \d+ sales?/)
+    const daysBefore = await story.locator(':scope > li').count()
+    await page.getByRole('button', { name: 'Show earlier' }).click()
+    await expect.poll(() => story.locator(':scope > li').count()).toBeGreaterThan(daysBefore)
+
+    await now.getByRole('link', { name: 'Write off' }).click()
+    await expect(page).toHaveURL('/inventory?status=expired&q=2000000000077')
   })
 
   test('the quick search goes to pages and starts a sale', async ({ page }) => {
@@ -195,6 +225,12 @@ test.describe('staff', () => {
 
     await page.goto('/month')
     await expect(page.getByText("isn't part of your role")).toBeVisible()
+
+    // A product's story is in quantities, so the till sees it too, and can write off from it.
+    await page.goto('/products')
+    await page.getByRole('link', { name: 'Пилешко филе 500 г' }).click()
+    await expect(page.getByRole('list', { name: 'Story' })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Needs doing now' }).getByRole('link', { name: 'Write off' })).toBeVisible()
 
     // The shelf's calendar is for whoever looks after the shelf.
     await page.goto('/inventory?view=calendar')

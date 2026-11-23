@@ -125,7 +125,7 @@ function SearchBox({ close }: { close: () => void }) {
           <CommandGroup heading="Products">
             {foundProducts.map((product) => (
               <CommandItem key={product.id} value={`product-${product.id}`}
-                onSelect={() => go(`/products?q=${encodeURIComponent(product.barcode ?? product.name)}`)}>
+                onSelect={() => go(`/products/${product.id}`)}>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-bold">{product.name}</span>
                   <span className="figures text-xs text-muted-foreground">

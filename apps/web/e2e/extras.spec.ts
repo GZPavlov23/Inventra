@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 
-import { DEMO_STAFF, logInAs, logInAsDemoOwner } from './helpers.ts'
+import { DEMO_STAFF, fillLogin, lastEmailedLink, logInAs, logInAsDemoOwner } from './helpers.ts'
 
 // The cozy-desk extras: the floating New sale, the notes on the chart, the quick search,
 // "Your month" and the evening theme. (The empty briefing is checked in auth.spec.ts, on a new
@@ -27,6 +27,13 @@ const newSaleDialog = (page: Page) => page.getByRole('dialog', { name: 'New sale
 test.describe('owner', () => {
   test.beforeEach(async ({ page }) => {
     await logInAsDemoOwner(page)
+  })
+
+  test('a store that is set up has no set-up list and the usual greeting', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: /Here's your shop today\./, level: 2 })).toBeVisible()
+    await expect(page.getByRole('region', { name: /steps to your first forecast/ })).toHaveCount(0)
+    await expect(page.getByText(/Setting up:/)).toHaveCount(0)
   })
 
   test('New sale floats on every page and opens with N, but not while typing', async ({ page }) => {
@@ -192,5 +199,46 @@ test.describe('staff', () => {
     // The shelf's calendar is for whoever looks after the shelf.
     await page.goto('/inventory?view=calendar')
     await expect(page.getByRole('list', { name: 'Expiry calendar' })).toBeVisible()
+  })
+})
+
+test.describe('a new store', () => {
+  test('the set-up list ticks off what is done, and folds away when asked', async ({ page }) => {
+    const email = `setup.${Date.now()}@e2e-shop.example`
+    const password = 'a-good-new-password'
+    await page.goto('/register')
+    await page.getByLabel('Your name').fill('Мария Илиева')
+    await page.getByLabel('Store name').fill('Магазин Липа')
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password', { exact: true }).fill(password)
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page.getByText('Check your email')).toBeVisible()
+    await page.goto(lastEmailedLink(email, 'verify-email'))
+    await expect(page.getByText('Email confirmed')).toBeVisible()
+    await page.goto('/login')
+    await fillLogin(page, email, password)
+
+    await expect(page.getByRole('heading', { name: /Let's get Магазин Липа ready\./, level: 2 })).toBeVisible()
+    const list = page.getByRole('region', { name: '5 steps to your first forecast' })
+    await expect(list).toContainText('0 of 5 done')
+    await expect(list.getByRole('link', { name: 'Add products' })).toBeVisible()
+
+    // A step is ticked off by doing it, not by a checkbox.
+    const response = await page.request.post(`${API}/products`, {
+      data: { name: 'Мляко', purchase_price: '1.00', sale_price: '1.50' },
+    })
+    expect(response.status()).toBe(201)
+    await page.reload()
+    await expect(list).toContainText('1 of 5 done')
+    await expect(list).toContainText('Add your products (done)')
+    await expect(list.getByRole('link', { name: 'Receive goods' })).toBeVisible()
+
+    await list.getByRole('button', { name: 'Not now' }).click()
+    await expect(list).toHaveCount(0)
+    await expect(page.getByText('Setting up: 1 of 5 done')).toBeVisible()
+    await page.reload()
+    await expect(page.getByText('Setting up: 1 of 5 done')).toBeVisible()
+    await page.getByRole('button', { name: 'Show' }).click()
+    await expect(list).toBeVisible()
   })
 })

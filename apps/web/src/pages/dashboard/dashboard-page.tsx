@@ -23,6 +23,8 @@ import { AttentionList } from '@/pages/dashboard/attention-list'
 import { ReportsCard } from '@/pages/dashboard/reports-card'
 import { SalesChart } from '@/pages/dashboard/sales-chart'
 import { TodaysBriefing } from '@/pages/dashboard/briefing'
+import { SetupChecklist } from '@/pages/dashboard/setup-checklist'
+import { useStoreSetup } from '@/pages/dashboard/use-store-setup'
 
 const CHART_DAYS = 30
 const ATTENTION_ROWS = 6
@@ -84,6 +86,8 @@ export function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <Greeting />
+
+      <SetupChecklist />
 
       <TodaysBriefing />
 
@@ -191,20 +195,26 @@ export function DashboardPage() {
 // The day starts with a person, not a page title.
 function Greeting() {
   const user = useCurrentUser()
+  const setup = useStoreSetup()
   const part = partOfDay()
   const firstName = user.full_name.trim().split(/\s+/)[0]
+  // A new store isn't "your shop today" yet: first it has to be set up.
+  const settingUp = setup.data !== undefined && !setup.data.done
   return (
     <div className="py-2 text-center">
       <p className="font-hand text-2xl text-destructive">{formatLongDay(today())}</p>
       <h2 className="mx-auto mt-1 max-w-3xl text-4xl leading-tight font-bold md:text-5xl">
-        Good {part}, {firstName}! Here's your shop today.
+        Good {part}, {firstName}! {settingUp ? `Let's get ${user.store.name} ready.` : "Here's your shop today."}
       </h2>
       <svg aria-hidden="true" width="240" height="14" viewBox="0 0 240 14" className="mx-auto mt-2 block">
         <path d="M3 9 C 55 2, 104 13, 152 6 S 218 4, 237 8" fill="none" stroke="var(--signal)" strokeWidth="5" strokeLinecap="round" />
       </svg>
-      <Button variant="secondary" size="sm" asChild className="mt-4">
-        <Link to="/month">Your month so far<ArrowRight /></Link>
-      </Button>
+      {/* A store still setting up has no month to look back on yet. */}
+      {setup.data?.done && (
+        <Button variant="secondary" size="sm" asChild className="mt-4">
+          <Link to="/month">Your month so far<ArrowRight /></Link>
+        </Button>
+      )}
     </div>
   )
 }

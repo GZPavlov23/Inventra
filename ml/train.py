@@ -2,7 +2,8 @@
 
 Measuring happens on stores the model has never seen, over four separate weeks, always training
 only on what came before. That is the situation Inventra is in: every store is a new store.
-The numbers go to results.json. The final model is then trained on everything.
+The numbers go to results.json. The final model is then trained on everything except the stores
+set aside for the demo (demo_stores.py), which no training run ever sees.
 """
 
 import json
@@ -21,6 +22,7 @@ from app.forecasting.features import (
     build_features,
 )
 from app.forecasting.models import recent_average, seasonal_average
+from demo_stores import demo_store_ids
 
 HERE = Path(__file__).parent
 RAW_DATA = HERE / "data" / "raw"
@@ -120,12 +122,15 @@ class Score:
         }
 
 
-def measure(sales: np.ndarray, sold_out: np.ndarray, stores: np.ndarray, first_day: date) -> dict:
+def measure(
+    sales: np.ndarray, sold_out: np.ndarray, stores: np.ndarray, first_day: date, demo: np.ndarray
+) -> dict:
     rng = np.random.default_rng(SEED)
-    unique = np.unique(stores)
+    # The demo stores take part in nothing here: neither learned from nor measured on.
+    unique = np.setdiff1d(np.unique(stores), demo)
     hidden_stores = rng.choice(unique, int(len(unique) * HIDDEN_STORE_SHARE), replace=False)
     hidden = np.isin(stores, hidden_stores)
-    visible = np.where(~hidden)[0]
+    visible = np.where(~hidden & ~np.isin(stores, demo))[0]
 
     level = sales[hidden][:, :HISTORY_DAYS].mean(axis=1)
     slow = level <= np.quantile(level, 0.25)
@@ -161,6 +166,7 @@ def measure(sales: np.ndarray, sold_out: np.ndarray, stores: np.ndarray, first_d
 
     return {
         "data": "FreshRetailNet-50K, CC BY 4.0",
+        "demo_stores_left_out": len(demo),
         "hidden_stores": len(hidden_stores),
         "hidden_series": int(hidden.sum()),
         "test_weeks": len(TEST_ORIGINS),
@@ -176,11 +182,15 @@ def main() -> None:
     sales, sold_out, stores, first_day = load()
     print(f"{len(sales)} series of {TOTAL_DAYS} days, from {first_day}", flush=True)
 
-    results = measure(sales, sold_out, stores, first_day)
+    demo = demo_store_ids(stores)
+    results = measure(sales, sold_out, stores, first_day, demo)
     RESULTS_FILE.write_text(json.dumps(results, indent=2) + "\n")
     print(json.dumps(results["scores"], indent=2))
 
-    chosen = np.random.default_rng(SEED).choice(len(sales), TRAINING_SERIES, replace=False)
+    allowed = np.where(~np.isin(stores, demo))[0]
+    chosen = np.random.default_rng(SEED).choice(allowed, TRAINING_SERIES, replace=False)
+    # A last check: not a single demo store may have slipped into the training set.
+    assert not np.isin(stores[chosen], demo).any(), "a demo store got into training"
     model = train(sales[chosen], sold_out[chosen], first_day, TOTAL_DAYS - MAX_HORIZON)
     joblib.dump(model, MODEL_FILE, compress=3)
     print(f"Model saved: {MODEL_FILE} ({MODEL_FILE.stat().st_size // 1024} KB)")

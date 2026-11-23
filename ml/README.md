@@ -27,15 +27,25 @@ The API only needs that file, so nobody has to run this to use the app.
 
 ## How it is measured
 
-Over 4 separate weeks, on 179 stores hidden from training, with the model training only on what came before each week. Days when the goods ran out aren't scored, because their sales show the stock rather than the demand. WAPE is the error as a share of everything sold.
+Over 4 separate weeks, on 170 stores hidden from training, with the model training only on what came before each week. Days when the goods ran out aren't scored, because their sales show the stock rather than the demand. WAPE is the error as a share of everything sold.
 
 | Model | Daily WAPE | Weekly WAPE |
 |---|---|---|
-| Same weekday, last 4 weeks | 37.9% | 24.7% |
-| Average of the last 7 days | 34.3% | 21.5% |
-| **Machine learning** | **32.3%** | **20.1%** |
+| Same weekday, last 4 weeks | 37.3% | 24.8% |
+| Average of the last 7 days | 33.9% | 21.3% |
+| **Machine learning** | **32.0%** | **20.1%** |
 
-It won all 4 weeks, and also on the slowest quarter of products (25.2% against 27.1%). The exact numbers are in `results.json`.
+It won 4 of 4 weeks, and also on the slowest quarter of products (24.6% against 26.7%). The exact numbers are in `results.json`.
+
+## The demo store's sales
+
+The demo store in Inventra sells along real sales from this dataset, so the forecast can be shown on real demand rather than invented numbers. That is only a fair test if the model has never seen those sales:
+
+- `demo_stores.py` sets aside 44 stores. `train.py` leaves them out of every training run, the final model included, and checks it with an `assert` before saving.
+- `export_demo.py` picks 10 store and product pairs from those stores by rules written down before anyone looked at which model wins: a product that sells every day, at most 10% of days with no sales, and out of stock on 5–25% of days. It writes `apps/api/scripts/demo_demand.json` (12 weeks), which `scripts/seed_demo.py` scales to the size of a small shop.
+- The days the goods ran out become batches that run out on exactly those days, so the app finds them in the stock history like in a real shop. A test checks that they match the data day by day.
+
+Run it after training: `.venv/bin/python export_demo.py`.
 
 ## How it works
 

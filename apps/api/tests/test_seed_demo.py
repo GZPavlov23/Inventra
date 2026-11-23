@@ -1,5 +1,6 @@
 """The demo data must obey the same rules as real data, because the jury will look at it."""
 
+import json
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
@@ -23,7 +24,9 @@ from app.models import (
 )
 from app.models.batch import ExpiryStatus
 from app.repositories.inventory_repository import InventoryRepository
+from app.services.forecast_service import ForecastService
 from scripts.seed_demo import (
+    DEMO_DEMAND_FILE,
     DEMO_SALES_WEEKS,
     delete_demo_stock,
     seed_batches,
@@ -233,3 +236,47 @@ def test_waste_history_keeps_todays_stock_and_has_every_reason(
     assert {line.reason for line in waste} == {"expired", "damaged", "other"}
     assert all(line.quantity_delta < 0 for line in waste)
     assert all(line.occurred_at.date() < date.today() for line in waste)
+
+
+# The real sales behind the demo
+
+
+def test_the_demo_data_is_real_attributed_and_complete() -> None:
+    demand = json.loads(DEMO_DEMAND_FILE.read_text(encoding="utf-8"))
+    assert "FreshRetailNet-50K" in demand["source"] and "CC BY 4.0" in demand["source"]
+    assert demand["days"] == DEMO_SALES_WEEKS * 7
+    assert len(demand["series"]) == 10
+    for series in demand["series"]:
+        assert len(series["sales"]) == len(series["sold_out"]) == demand["days"]
+        assert set(series["sold_out"]) <= {0, 1}
+
+
+def test_the_shelf_runs_empty_on_exactly_the_days_the_real_goods_did(
+    db: Session, seeded: Store
+) -> None:
+    """The forecast reads sold-out days from the stock history, as in a real shop. If the demo
+    hid one (stock lying on a shelf that really was empty) or invented one, the comparison of
+    the models would no longer be fair."""
+    demand = json.loads(DEMO_DEMAND_FILE.read_text(encoding="utf-8"))
+    products = list(db.scalars(select(Product).where(Product.active).order_by(Product.id)))
+    first_day = date.today() - timedelta(days=demand["days"])
+    found = ForecastService(db)._sold_out(seeded.id, date.today() - timedelta(days=1))
+
+    for product, real in zip(products, demand["series"], strict=True):
+        # Before a product's first delivery the shop's stock is unknown, not empty: the same
+        # holds for a real shop that has just started using Inventra.
+        first_known = next(offset for offset, sold in enumerate(real["sales"]) if sold > 0)
+        expected = {
+            first_day + timedelta(days=offset)
+            for offset, flag in enumerate(real["sold_out"])
+            if flag and offset >= first_known
+        }
+        days = found[product.id]
+        # Every real empty day is empty here too...
+        assert expected <= days, product.name
+        # ...and the only extra ones are the evening before a day the goods were gone from the
+        # morning, with nothing sold: the shelf really was empty overnight.
+        for day in days - expected:
+            next_day = (day - first_day).days + 1
+            assert day + timedelta(days=1) in expected, (product.name, day)
+            assert real["sales"][next_day] == 0, (product.name, day)

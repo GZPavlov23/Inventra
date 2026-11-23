@@ -17,10 +17,12 @@ All data here is fictional DEMO data. Barcodes use the GS1 prefix 200, which is 
 in-store use and never assigned to real retail products, so they can't clash with a real scan.
 """
 
+import json
 import random
 import sys
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -158,10 +160,25 @@ DEMO_DELIVERIES = [
 # This supplier's first goods of the sales history arrived as a delivery that is already received.
 DEMO_RECEIVED_FROM = "Пекарна Изгрев (демо)"
 
-# How many weeks of invented sales the demo store has.
-DEMO_SALES_WEEKS = 8
-# Sales per day, Monday to Sunday: small stores are busiest before and on the weekend.
-DEMO_SALES_PER_DAY = (9, 8, 9, 10, 14, 17, 12)
+# The demo's sales follow real ones: 10 store and product pairs from FreshRetailNet-50K, from
+# stores set aside so the forecast's model never learned from them (ml/export_demo.py picks
+# them, ml/demo_stores.py keeps them out of training). The data is CC BY 4.0, by Dingdong-Inc.
+DEMO_DEMAND_FILE = Path(__file__).with_name("demo_demand.json")
+# How many weeks of sales the demo store has: the length of the real series.
+DEMO_SALES_WEEKS = 12
+# The real numbers are scaled to what a small shop sells of each product on an average day.
+DEMO_DAILY_UNITS = {
+    "Прясно мляко 3% 1 л": Decimal("8"),
+    "Кисело мляко 3.6% 400 г": Decimal("7"),
+    "Сирене краве 400 г": Decimal("3"),
+    "Бял хляб 500 г": Decimal("6"),
+    "Пълнозърнест хляб 400 г": Decimal("4"),
+    "Яйца размер M 10 бр.": Decimal("4"),
+    "Пилешко филе 500 г": Decimal("4"),
+    "Минерална вода 1.5 л": Decimal("7"),
+    "Банани": Decimal("3.5"),
+    "Домати": Decimal("3"),
+}
 # Always the same numbers, so the demo doesn't change between runs.
 DEMO_RANDOM_SEED = 2026
 
@@ -321,10 +338,13 @@ def seed_batches(session: Session, store_id: int, owner_id: int) -> None:
 
 
 def seed_sales(session: Session, store_id: int, owner_id: int) -> None:
-    """Invented past sales, so reports and charts have something to show.
+    """Past sales that follow real ones, so the reports, the charts and the forecast have
+    something true to work on.
 
-    The sold goods come from old batches that are used up, so today's stock stays as it is.
-    Records are written directly, because the app only records sales as they happen.
+    Each product follows one real series: its daily sales, and the days the goods ran out. Those
+    days become batches that run out on exactly that day, so the app finds them in the stock
+    history the same way it would in a real shop. Today's stock stays as it is. Records are
+    written directly, because the app only records sales as they happen.
     """
     today_start = datetime.combine(date.today(), time.min).astimezone()
     stmt = select(Sale.id).where(Sale.store_id == store_id, Sale.sold_at < today_start).limit(1)
@@ -337,88 +357,205 @@ def seed_sales(session: Session, store_id: int, owner_id: int) -> None:
     if not products:
         return
 
+    demand = json.loads(DEMO_DEMAND_FILE.read_text(encoding="utf-8"))
+    days = DEMO_SALES_WEEKS * 7
+    assert demand["days"] == days, "demo_demand.json doesn't match DEMO_SALES_WEEKS"
     rng = random.Random(DEMO_RANDOM_SEED)
-    first_day = date.today() - timedelta(weeks=DEMO_SALES_WEEKS)
-    received_at = datetime.combine(first_day - timedelta(days=1), time(7)).astimezone()
+    first_day = date.today() - timedelta(days=days)
 
-    sales: list[tuple[datetime, list[tuple[Product, Decimal]]]] = []
-    for offset in range(DEMO_SALES_WEEKS * 7):
+    plans = [
+        (
+            product,
+            daily_quantities(rng, product, real["sales"]),
+            [bool(f) for f in real["sold_out"]],
+        )
+        for product, real in zip(products, demand["series"], strict=False)
+    ]
+
+    # The batches: a new one arrives the morning after the shelf ran empty, and each holds just
+    # what was sold from it, so it runs out on the day the real goods did.
+    batch_of: dict[tuple[int, int], Batch] = {}
+    for product, quantities, ran_out in plans:
+        start = 0
+        for offset in range(days):
+            if ran_out[offset] or offset == days - 1:
+                add_history_batch(
+                    session,
+                    store_id,
+                    owner_id,
+                    product,
+                    first_day,
+                    start,
+                    offset,
+                    quantities,
+                    batch_of,
+                )
+                start = offset + 1
+        if not ran_out[-1]:
+            keep_shelf_stocked_overnight(session, store_id, product.id, today_start)
+
+    created = 0
+    for offset in range(days):
         day = first_day + timedelta(days=offset)
-        for _ in range(DEMO_SALES_PER_DAY[day.weekday()]):
-            moment = time(rng.randint(8, 19), rng.randint(0, 59))
-            lines = [
-                (product, demo_quantity(rng, product))
-                for product in rng.sample(products, rng.randint(1, 3))
-            ]
-            sales.append((datetime.combine(day, moment).astimezone(), lines))
-    sales.sort(key=lambda sale: sale[0])
+        for moment, lines in day_receipts(rng, day, offset, plans):
+            sale = Sale(store_id=store_id, actor_id=owner_id, sold_at=moment)
+            session.add(sale)
+            session.flush()
+            for product, quantity in lines:
+                item = SaleItem(
+                    store_id=store_id,
+                    sale_id=sale.id,
+                    product_id=product.id,
+                    quantity=quantity,
+                    unit_price=product.sale_price,
+                )
+                session.add(item)
+                session.flush()
+                session.add(
+                    InventoryMovement(
+                        store_id=store_id,
+                        product_id=product.id,
+                        batch_id=batch_of[(product.id, offset)].id,
+                        actor_id=owner_id,
+                        type=MovementType.SALE,
+                        quantity_delta=-quantity,
+                        sale_item_id=item.id,
+                        occurred_at=moment,
+                    )
+                )
+            created += 1
+    session.commit()
+    print(f"Sales history: {created} demo sales created, following real sales")
 
-    # One used-up batch per product, large enough for everything sold from it.
-    sold: dict[int, Decimal] = {}
-    for _, lines in sales:
-        for product, quantity in lines:
-            sold[product.id] = sold.get(product.id, Decimal(0)) + quantity
 
-    batches: dict[int, Batch] = {}
-    for product in products:
-        if product.id not in sold:
-            continue
-        batch = Batch(
+def daily_quantities(rng: random.Random, product: Product, real: list[float]) -> list[Decimal]:
+    """The real series, scaled so an average day sells DEMO_DAILY_UNITS of the product."""
+    scale = DEMO_DAILY_UNITS[product.name] / Decimal(str(sum(real) / len(real)))
+    quantities = []
+    for value in real:
+        amount = Decimal(str(value)) * scale
+        if product.unit == ProductUnit.PIECE:
+            # Rounded up or down by chance, in proportion, so the average stays the same.
+            whole = int(amount)
+            quantities.append(Decimal(whole + (rng.random() < float(amount - whole))))
+        else:
+            quantities.append(amount.quantize(Decimal("0.001")))
+    return quantities
+
+
+def add_history_batch(
+    session: Session,
+    store_id: int,
+    owner_id: int,
+    product: Product,
+    first_day: date,
+    start: int,
+    end: int,
+    quantities: list[Decimal],
+    batch_of: dict[tuple[int, int], Batch],
+) -> None:
+    """One used-up batch for the days start to end, holding exactly what they sold."""
+    sold = sum(quantities[start : end + 1], Decimal(0))
+    if sold == 0:
+        return
+    received_at = datetime.combine(first_day + timedelta(days=start), time(7)).astimezone()
+    batch = Batch(
+        store_id=store_id,
+        product_id=product.id,
+        expiry_date=first_day + timedelta(days=end + 2),
+        received_at=received_at,
+        received_quantity=sold,
+        remaining_quantity=0,
+        purchase_price=product.purchase_price,
+    )
+    session.add(batch)
+    session.flush()
+    session.add(
+        InventoryMovement(
             store_id=store_id,
             product_id=product.id,
-            expiry_date=date.today() - timedelta(days=1),
-            received_at=received_at,
-            received_quantity=sold[product.id],
-            remaining_quantity=0,
-            purchase_price=product.purchase_price,
+            batch_id=batch.id,
+            actor_id=owner_id,
+            type=MovementType.RECEIPT,
+            quantity_delta=sold,
+            occurred_at=received_at,
         )
-        session.add(batch)
-        session.flush()
-        batches[product.id] = batch
-        session.add(
-            InventoryMovement(
-                store_id=store_id,
-                product_id=product.id,
-                batch_id=batch.id,
-                actor_id=owner_id,
-                type=MovementType.RECEIPT,
-                quantity_delta=sold[product.id],
-                occurred_at=received_at,
-            )
-        )
+    )
+    for offset in range(start, end + 1):
+        batch_of[(product.id, offset)] = batch
 
-    for moment, lines in sales:
-        sale = Sale(store_id=store_id, actor_id=owner_id, sold_at=moment)
-        session.add(sale)
-        session.flush()
-        for product, quantity in lines:
-            item = SaleItem(
-                store_id=store_id,
-                sale_id=sale.id,
-                product_id=product.id,
-                quantity=quantity,
-                unit_price=product.sale_price,
+
+def keep_shelf_stocked_overnight(
+    session: Session, store_id: int, product_id: int, today_start: datetime
+) -> None:
+    """Today's goods arrive yesterday morning, unless the real series ran out yesterday.
+
+    Otherwise the last history batch, used up by yesterday evening, would make yesterday look
+    like a day the shelf ran empty.
+    """
+    yesterday_morning = today_start - timedelta(days=1) + timedelta(hours=7)
+    for batch in session.scalars(
+        select(Batch).where(
+            Batch.store_id == store_id,
+            Batch.product_id == product_id,
+            Batch.remaining_quantity > 0,
+            Batch.received_at >= today_start,
+        )
+    ):
+        batch.received_at = yesterday_morning
+        for movement in session.scalars(
+            select(InventoryMovement).where(
+                InventoryMovement.batch_id == batch.id,
+                InventoryMovement.type == MovementType.RECEIPT,
             )
-            session.add(item)
-            session.flush()
-            session.add(
-                InventoryMovement(
-                    store_id=store_id,
-                    product_id=product.id,
-                    batch_id=batches[product.id].id,
-                    actor_id=owner_id,
-                    type=MovementType.SALE,
-                    quantity_delta=-quantity,
-                    sale_item_id=item.id,
-                    occurred_at=moment,
-                )
-            )
-    session.commit()
-    print(f"Sales history: {len(sales)} demo sales created")
+        ):
+            movement.occurred_at = yesterday_morning
+
+
+def day_receipts(
+    rng: random.Random, day: date, offset: int, plans: list
+) -> list[tuple[datetime, list[tuple[Product, Decimal]]]]:
+    """A day's sales split into receipts of one to three products, at random times."""
+    pieces: list[tuple[Product, Decimal]] = []
+    for product, quantities, _ in plans:
+        left = quantities[offset]
+        while left > 0:
+            if product.unit == ProductUnit.PIECE:
+                take = min(left, Decimal(rng.randint(1, 3)))
+            else:
+                take = min(left, Decimal(rng.randint(250, 1500)).scaleb(-3))
+                # Not a few grams left over on their own.
+                if left - take < Decimal("0.150"):
+                    take = left
+            pieces.append((product, take))
+            left -= take
+    rng.shuffle(pieces)
+
+    receipts: list[list[tuple[Product, Decimal]]] = []
+    for product, quantity in pieces:
+        open_receipt = receipts[-1] if receipts else None
+        if (
+            open_receipt is not None
+            and len(open_receipt) < rng.randint(1, 3)
+            and all(p.id != product.id for p, _ in open_receipt)
+        ):
+            open_receipt.append((product, quantity))
+        else:
+            receipts.append([(product, quantity)])
+    moments = sorted(
+        datetime.combine(day, time(rng.randint(8, 19), rng.randint(0, 59))).astimezone()
+        for _ in receipts
+    )
+    return list(zip(moments, receipts, strict=True))
 
 
 def seed_waste(session: Session, store_id: int, owner_id: int) -> None:
-    """Invented past write-offs, each on its own used-up batch, so today's stock stays as it is."""
+    """Invented past write-offs, each on its own used-up batch, so today's stock stays as it is.
+
+    The thrown-away goods arrive with the same delivery the day's sales came from, and are
+    thrown away at closing. Arriving any earlier, they would sit on a shelf that really ran
+    empty, and hide that day from the forecast.
+    """
     today_start = datetime.combine(date.today(), time.min).astimezone()
     stmt = select(InventoryMovement.id).where(
         InventoryMovement.store_id == store_id,
@@ -438,12 +575,18 @@ def seed_waste(session: Session, store_id: int, owner_id: int) -> None:
 
         amount = Decimal(quantity)
         day = date.today() - timedelta(days=days_ago)
-        received_at = datetime.combine(day - timedelta(days=5), time(7)).astimezone()
+        delivered = delivery_of_the_day(session, product.id, day)
+        received_at = (
+            delivered + timedelta(minutes=30)
+            if delivered is not None
+            else datetime.combine(day, time(7)).astimezone()
+        )
         thrown_away_at = datetime.combine(day, time(20)).astimezone()
         batch = Batch(
             store_id=store_id,
             product_id=product.id,
-            expiry_date=day - timedelta(days=1),
+            # Its last day: sellable until closing, then thrown away.
+            expiry_date=day,
             received_at=received_at,
             received_quantity=amount,
             remaining_quantity=0,
@@ -470,6 +613,25 @@ def seed_waste(session: Session, store_id: int, owner_id: int) -> None:
         created += 1
     session.commit()
     print(f"Waste history: {created} demo write-offs created")
+
+
+def delivery_of_the_day(session: Session, product_id: int, day: date) -> datetime | None:
+    """When the history batch the product sold from that day arrived."""
+    sold_from = select(InventoryMovement.batch_id).where(
+        InventoryMovement.product_id == product_id, InventoryMovement.type == MovementType.SALE
+    )
+    end_of_day = datetime.combine(day + timedelta(days=1), time.min).astimezone()
+    stmt = (
+        select(Batch.received_at)
+        .where(
+            Batch.product_id == product_id,
+            Batch.id.in_(sold_from),
+            Batch.received_at < end_of_day,
+        )
+        .order_by(Batch.received_at.desc())
+        .limit(1)
+    )
+    return session.scalar(stmt)
 
 
 def seed_deliveries(session: Session, store_id: int, owner_id: int) -> None:
@@ -556,12 +718,6 @@ def seed_received_delivery(session: Session, store_id: int, owner_id: int) -> No
         for batch in batches.values()
     )
     session.commit()
-
-
-def demo_quantity(rng: random.Random, product: Product) -> Decimal:
-    if product.unit == ProductUnit.PIECE:
-        return Decimal(rng.randint(1, 3))
-    return Decimal(rng.randint(250, 1500)).scaleb(-3).quantize(Decimal("0.001"))
 
 
 def main() -> None:

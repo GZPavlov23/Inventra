@@ -1,0 +1,37 @@
+# Netlify builds and serves the web app (apps/web). The API and the database run elsewhere and
+# are reached through api.inventra.day (a Cloudflare Tunnel to the server).
+
+[build]
+  base = "apps/web"
+  command = "npm run build"
+  # Relative to base: apps/web/dist, where Vite writes the finished site.
+  publish = "dist"
+
+[build.environment]
+  # Vite 8 needs a recent Node; this is the current long-term-support line.
+  NODE_VERSION = "24"
+
+# The API. For the browser it stays on the site's own address, so the session cookie works
+# exactly as with Vite's proxy in development: no cross-site cookies, no CORS.
+[[redirects]]
+  from = "/api/*"
+  to = "https://api.inventra.day/api/:splat"
+  status = 200
+  force = true
+
+# A single-page app: /products/12 or /inventory?view=calendar are not files. Every address
+# gets index.html, and React Router decides what to show.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # The site can't be shown inside someone else's page (clickjacking).
+    X-Frame-Options = "DENY"
+    # The browser trusts the content types we send instead of guessing.
+    X-Content-Type-Options = "nosniff"
+    # Other sites see where a visitor came from, but not the full address with its parameters.
+    Referrer-Policy = "strict-origin-when-cross-origin"

@@ -1,0 +1,8 @@
+# Sent with every page and file of the site.
+/*
+  # The site can't be shown inside someone else's page (clickjacking).
+  X-Frame-Options: DENY
+  # The browser trusts the content types we send instead of guessing.
+  X-Content-Type-Options: nosniff
+  # Other sites see where a visitor came from, but not the full address with its parameters.
+  Referrer-Policy: strict-origin-when-cross-origin

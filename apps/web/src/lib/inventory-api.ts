@@ -75,6 +75,21 @@ export type MovementPage = {
   offset: number
 }
 
+export type ExpiringBatch = {
+  batch_id: number
+  product: { id: number; name: string; barcode: string | null; unit: ProductUnit }
+  lot_code: string | null
+  remaining_quantity: string
+  value: string
+}
+
+export type ExpiryCalendar = {
+  days: { day: string; value: string; batches: ExpiringBatch[] }[]
+  total: string
+  overdue: ExpiringBatch[]
+  overdue_value: string
+}
+
 export const inventoryApi = {
   list: ({ search, status, limit, offset }: BatchListParams) => {
     const query = new URLSearchParams({ status, limit: String(limit), offset: String(offset) })
@@ -82,6 +97,9 @@ export const inventoryApi = {
     return api<BatchPage>(`/batches?${query}`)
   },
   summary: () => api<InventorySummary>('/batches/summary'),
+  // Lives under /reports in the API, but it is the shelf's calendar, so it sits here.
+  expiryCalendar: (dateFrom: string, dateTo: string) =>
+    api<ExpiryCalendar>(`/reports/expiry-calendar?date_from=${dateFrom}&date_to=${dateTo}`),
   receive: (data: ReceiptInput) => api<Batch>('/batches', { method: 'POST', body: data }),
   writeOff: (batchId: number, data: WasteInput) =>
     api<Batch>(`/batches/${batchId}/waste`, { method: 'POST', body: data }),

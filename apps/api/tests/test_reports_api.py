@@ -65,12 +65,14 @@ def other_store(db: Session, owner: User) -> Store:
     return store
 
 
-@pytest.mark.parametrize("path", ["waste", "running-out", "top-products", "categories"])
+@pytest.mark.parametrize(
+    "path", ["waste", "running-out", "top-products", "categories", "expiry-calendar"]
+)
 def test_every_report_requires_login(anon_client: TestClient, path: str) -> None:
     assert anon_client.get(f"{URL}/{path}", params=period()).status_code == 401
 
 
-@pytest.mark.parametrize("path", ["waste", "top-products", "categories"])
+@pytest.mark.parametrize("path", ["waste", "top-products", "categories", "expiry-calendar"])
 def test_periods_must_make_sense(client: TestClient, path: str) -> None:
     response = client.get(f"{URL}/{path}", params=period(0, -1))
     assert (response.status_code, response.json()["code"]) == (422, "invalid_period")
@@ -358,3 +360,133 @@ def test_the_trend_needs_products_and_a_sensible_period(client: TestClient, para
 
 def test_the_trend_requires_login(anon_client: TestClient) -> None:
     assert anon_client.get(f"{URL}/sales-trend", params={"product_id": 1}).status_code == 401
+
+
+# Expiry calendar
+
+
+def calendar(client: TestClient, first: int = 0, last: int = 20) -> dict:
+    response = client.get(f"{URL}/expiry-calendar", params=period(first, last))
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def expiring_on(
+    client: TestClient, product: dict, quantity: str, days: int, **extra: object
+) -> dict:
+    return receive(client, product, quantity, expiry_date=in_days(days).isoformat(), **extra)
+
+
+def expired(db: Session, batch: dict, days_ago: int) -> None:
+    db.get(Batch, batch["id"]).expiry_date = in_days(-days_ago)
+    db.flush()
+
+
+def test_an_empty_shelf_has_an_empty_calendar(client: TestClient) -> None:
+    assert calendar(client) == {"days": [], "total": "0", "overdue": [], "overdue_value": "0"}
+
+
+def test_batches_are_grouped_by_day_and_valued_at_their_own_prices(client: TestClient) -> None:
+    milk = make_product(client, "Milk")
+    bread = make_product(client, "Bread")
+    tomatoes = make_product(client, "Tomatoes", unit="kg")
+    expiring_on(client, milk, "10", 3, purchase_price="1.10")
+    expiring_on(client, bread, "4", 3, purchase_price="0.95")
+    expiring_on(client, tomatoes, "2.5", 7, purchase_price="1.33")
+
+    result = calendar(client)
+
+    assert [day["day"] for day in result["days"]] == [
+        in_days(3).isoformat(),
+        in_days(7).isoformat(),
+    ]
+    first, second = result["days"]
+    # Same day: by product name.
+    assert [b["product"]["name"] for b in first["batches"]] == ["Bread", "Milk"]
+    assert [b["value"] for b in first["batches"]] == ["3.80", "11.00"]
+    assert first["value"] == "14.80"
+    # 2.5 x 1.33 = 3.325: half a cent rounds up, like every other amount.
+    assert second["batches"][0]["value"] == "3.33"
+    assert Decimal(result["total"]) == Decimal("14.80") + Decimal("3.33")
+
+
+def test_only_what_is_left_and_dated_inside_the_period_shows(
+    client: TestClient, db: Session
+) -> None:
+    milk = make_product(client)
+    receive(client, milk, "50")  # no expiry date: never on the calendar
+    sold_out = expiring_on(client, milk, "3", 2)
+    write_off(client, sold_out, "3")
+    half = expiring_on(client, milk, "10", 4)
+    write_off(client, half, "6", reason="damaged")
+    expiring_on(client, milk, "5", 30)  # after the period
+
+    [day] = calendar(client)["days"]
+    assert day["day"] == in_days(4).isoformat()
+    [batch] = day["batches"]
+    assert (batch["batch_id"], Decimal(batch["remaining_quantity"])) == (half["id"], 4)
+    # Only what is left has a value: the 6 thrown away are already counted as waste.
+    assert batch["value"] == "4.00"
+
+
+def test_the_first_and_last_day_of_the_period_are_included(client: TestClient) -> None:
+    milk = make_product(client)
+    expiring_on(client, milk, "1", 0)
+    expiring_on(client, milk, "1", 20)
+    expiring_on(client, milk, "1", 21)
+
+    days = [day["day"] for day in calendar(client, first=0, last=20)["days"]]
+    assert days == [in_days(0).isoformat(), in_days(20).isoformat()]
+
+
+def test_goods_that_expired_before_the_period_are_listed_as_overdue(
+    client: TestClient, db: Session
+) -> None:
+    milk = make_product(client, purchase_price="2.00")
+    old = expiring_on(client, milk, "6", 1)
+    expired(db, old, 5)
+    cleared = expiring_on(client, milk, "2", 1)
+    expired(db, cleared, 3)
+    write_off(client, cleared, "2")
+
+    result = calendar(client)
+    assert result["days"] == []
+    assert [b["batch_id"] for b in result["overdue"]] == [old["id"]]
+    assert result["overdue_value"] == "12.00"
+
+
+def test_a_calendar_that_starts_later_does_not_call_good_stock_overdue(
+    client: TestClient, db: Session
+) -> None:
+    milk = make_product(client)
+    expiring_on(client, milk, "5", 2)  # still good today
+    gone_off = expiring_on(client, milk, "1", 1)
+    expired(db, gone_off, 1)
+
+    result = calendar(client, first=7, last=20)
+    assert [b["batch_id"] for b in result["overdue"]] == [gone_off["id"]]
+    assert result["days"] == []
+
+
+def test_a_day_inside_the_period_is_on_the_calendar_even_if_it_has_passed(
+    client: TestClient, db: Session
+) -> None:
+    milk = make_product(client)
+    batch = expiring_on(client, milk, "5", 1)
+    expired(db, batch, 2)
+
+    result = calendar(client, first=-6, last=7)
+    assert [day["day"] for day in result["days"]] == [in_days(-2).isoformat()]
+    assert result["overdue"] == []
+
+
+def test_the_calendar_shows_only_this_store(
+    client: TestClient, db: Session, owner: User, other_store: Store
+) -> None:
+    milk = make_product(client)
+    expiring_on(client, milk, "5", 2)
+    assert calendar(client)["days"] != []
+
+    owner.store_id = other_store.id
+    db.commit()
+    assert calendar(client)["days"] == []

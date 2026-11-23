@@ -7,10 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.core.money import to_cents
 from app.core.period import period_bounds, period_length
+from app.models.batch import Batch
 from app.repositories.forecast_repository import ForecastRepository
 from app.repositories.report_repository import ReportRepository
 from app.schemas.report import (
     CategorySales,
+    ExpiringBatch,
+    ExpiryCalendar,
+    ExpiryDay,
     RunningOutProduct,
     SalesTrend,
     TopProduct,
@@ -74,6 +78,32 @@ class ReportService:
         ]
         return WasteReport(total=sum((r.value for r in reasons), Decimal(0)), reasons=reasons)
 
+    def expiry_calendar(self, store_id: int, *, date_from: date, date_to: date) -> ExpiryCalendar:
+        """Per day, what expires and what it cost: the shelf's calendar."""
+        period_length(date_from, date_to)
+        # "Overdue" means already expired, so a calendar that starts next week doesn't call
+        # this week's goods overdue: they are still good today.
+        overdue_until = min(date_from, date.today()) - timedelta(days=1)
+
+        days: dict[date, list[ExpiringBatch]] = {}
+        overdue: list[ExpiringBatch] = []
+        for batch in self.reports.expiring_batches(store_id, until=date_to):
+            if batch.expiry_date >= date_from:
+                days.setdefault(batch.expiry_date, []).append(expiring(batch))
+            elif batch.expiry_date <= overdue_until:
+                overdue.append(expiring(batch))
+
+        calendar = [
+            ExpiryDay(day=day, value=sum((b.value for b in batches), Decimal(0)), batches=batches)
+            for day, batches in days.items()
+        ]
+        return ExpiryCalendar(
+            days=calendar,
+            total=sum((day.value for day in calendar), Decimal(0)),
+            overdue=overdue,
+            overdue_value=sum((b.value for b in overdue), Decimal(0)),
+        )
+
     def running_out(self, store_id: int) -> list[RunningOutProduct]:
         today = date.today()
         first_day = today - timedelta(days=SALES_WINDOW_DAYS)
@@ -114,3 +144,13 @@ class ReportService:
             CategorySales(category=category, revenue=revenue, profit=revenue - cost)
             for category, revenue, cost in self.reports.categories(store_id, start=start, end=end)
         ]
+
+
+def expiring(batch: Batch) -> ExpiringBatch:
+    return ExpiringBatch(
+        batch_id=batch.id,
+        product=batch.product,
+        lot_code=batch.lot_code,
+        remaining_quantity=batch.remaining_quantity,
+        value=to_cents(batch.remaining_quantity * batch.purchase_price),
+    )

@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.batch import Batch
 from app.models.inventory_movement import InventoryMovement, MovementType
@@ -68,6 +68,22 @@ class ReportRepository:
             Batch.store_id == store_id,
             Batch.remaining_quantity > 0,
             Batch.expiry_date < today,
+        )
+        return list(self.session.scalars(stmt))
+
+    def expiring_batches(self, store_id: int, *, until: date) -> list[Batch]:
+        """Batches with goods left that expire on `until` or earlier, the earliest first.
+        Batches without an expiry date never show up."""
+        stmt = (
+            select(Batch)
+            .join(Product, Batch.product_id == Product.id)
+            .options(selectinload(Batch.product))
+            .where(
+                Batch.store_id == store_id,
+                Batch.remaining_quantity > 0,
+                Batch.expiry_date <= until,
+            )
+            .order_by(Batch.expiry_date, Product.name, Batch.id)
         )
         return list(self.session.scalars(stmt))
 

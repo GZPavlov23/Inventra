@@ -56,6 +56,12 @@ ROUTES = [
     ("GET", "/reports/briefing", Permission.SEE_FINANCES),
     ("GET", "/reports/waste?date_from=2026-11-01&date_to=2026-11-02", Permission.SEE_FINANCES),
     ("GET", "/reports/running-out", Permission.SEE_FINANCES),
+    # Everyone who looks after the shelves: staff already see batch prices on the inventory list.
+    (
+        "GET",
+        "/reports/expiry-calendar?date_from=2026-11-01&date_to=2026-11-02",
+        Permission.HANDLE_STOCK,
+    ),
     (
         "GET",
         "/reports/top-products?date_from=2026-11-01&date_to=2026-11-02",

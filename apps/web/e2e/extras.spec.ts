@@ -118,6 +118,35 @@ test.describe('owner', () => {
     await expect(page.getByRole('region', { name: 'How close the forecast was' })).toHaveCount(0)
   })
 
+  test('the expiry calendar adds up each day and leads back to the batch in the list', async ({ page }) => {
+    // This week's Monday, the same first day the page uses.
+    const monday = new Date()
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+    const first = day(Math.round((monday.getTime() - Date.now()) / 86_400_000))
+    const lastDate = new Date(monday)
+    lastDate.setDate(lastDate.getDate() + 34)
+    const last = day(Math.round((lastDate.getTime() - Date.now()) / 86_400_000))
+    type Calendar = { total: string; days: { day: string; value: string; batches: { product: { name: string; barcode: string | null }; value: string }[] }[] }
+    const calendar = await json<Calendar>(page, `/reports/expiry-calendar?date_from=${first}&date_to=${last}`)
+    const [firstDay] = calendar.days
+    const [batch] = firstDay.batches
+
+    await page.goto('/inventory')
+    await page.getByRole('tab', { name: 'Calendar' }).click()
+    await expect(page).toHaveURL('/inventory?view=calendar')
+    await expect(page.getByText(`${money(calendar.total)} expires in these 5 weeks`)).toBeVisible()
+
+    const days = page.getByRole('list', { name: 'Expiry calendar' })
+    await days.getByRole('button', { name: new RegExp(`: ${money(firstDay.value).replace('.', '\\.')},`) }).first().click()
+    const panel = page.getByRole('dialog')
+    await expect(panel).toContainText(batch.product.name)
+    await expect(panel).toContainText(money(batch.value))
+
+    await panel.getByRole('link', { name: 'Show in the list' }).first().click()
+    await expect(page).toHaveURL(`/inventory?q=${encodeURIComponent(batch.product.barcode ?? batch.product.name)}`)
+    await expect(page.getByRole('tab', { name: 'List' })).toHaveAttribute('aria-selected', 'true')
+  })
+
   test('the evening theme is chosen in the account menu and stays after a reload', async ({ page }) => {
     const html = page.locator('html')
     await page.goto('/inventory')
@@ -159,5 +188,9 @@ test.describe('staff', () => {
 
     await page.goto('/month')
     await expect(page.getByText("isn't part of your role")).toBeVisible()
+
+    // The shelf's calendar is for whoever looks after the shelf.
+    await page.goto('/inventory?view=calendar')
+    await expect(page.getByRole('list', { name: 'Expiry calendar' })).toBeVisible()
   })
 })

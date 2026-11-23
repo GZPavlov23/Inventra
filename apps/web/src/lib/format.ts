@@ -81,6 +81,20 @@ function toDayString(moment: Date): string {
   return `${moment.getFullYear()}-${month}-${date}`
 }
 
+// Calendar arithmetic on "2026-11-23" strings, through local dates so a clock change can't
+// skip or repeat a day.
+export function addDays(day: string, days: number): string {
+  const moment = parseDay(day)
+  moment.setDate(moment.getDate() + days)
+  return toDayString(moment)
+}
+
+// The Monday of the week a day falls in: shop weeks start on Monday in Bulgaria.
+export function startOfWeek(day: string): string {
+  const weekday = (parseDay(day).getDay() + 6) % 7 // Monday 0 … Sunday 6
+  return addDays(day, -weekday)
+}
+
 // The calendar day of a moment such as received_at, in the browser's time zone.
 export function dayOf(moment: string): string {
   return toDayString(new Date(moment))

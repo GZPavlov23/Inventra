@@ -9,6 +9,7 @@ from app.core.permissions import Permission
 from app.schemas.briefing import Briefing
 from app.schemas.report import (
     CategorySales,
+    ExpiryCalendar,
     RunningOutProduct,
     SalesTrend,
     TopProduct,
@@ -48,6 +49,25 @@ def waste_report(
 ) -> WasteReport:
     """What thrown-away goods cost, in total and per reason."""
     return service.waste(store.id, date_from=date_from, date_to=date_to)
+
+
+@router.get(
+    "/expiry-calendar",
+    response_model=ExpiryCalendar,
+    dependencies=[allowed_to(Permission.HANDLE_STOCK)],
+)
+def expiry_calendar_report(
+    store: CurrentStore,
+    service: ReportServiceDep,
+    date_from: date = Query(description="First day, included"),
+    date_to: date = Query(description="Last day, included"),
+) -> ExpiryCalendar:
+    """What expires on each day of the period, and what was paid for it.
+
+    For everyone who looks after the shelves: staff already see each batch's purchase price
+    on the inventory list, and this adds them up per day.
+    """
+    return service.expiry_calendar(store.id, date_from=date_from, date_to=date_to)
 
 
 @router.get(

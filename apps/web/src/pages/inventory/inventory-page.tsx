@@ -20,6 +20,7 @@ import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-
 import { type Batch, type BatchStatus, inventoryApi } from '@/lib/inventory-api'
 import { type BatchAction, BatchesTable, BatchesTableSkeleton } from '@/pages/inventory/batches-table'
 import { CorrectionDialog } from '@/pages/inventory/correction-dialog'
+import { ExpiryCalendarView } from '@/pages/inventory/expiry-calendar'
 import { HistoryDialog } from '@/pages/inventory/history-dialog'
 import { ReceiveDialog } from '@/pages/inventory/receive-dialog'
 import { WasteDialog } from '@/pages/inventory/waste-dialog'
@@ -39,6 +40,8 @@ export function InventoryPage() {
   const { store } = useCurrentUser()
   const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
+  // The same batches two ways: a list in shelf order, or a calendar of when they expire.
+  const view = searchParams.get('view') === 'calendar' ? 'calendar' : 'list'
 
   const batches = useQuery({
     queryKey: ['batches', { search, status, page }],
@@ -46,6 +49,7 @@ export function InventoryPage() {
       inventoryApi.list({ search, status, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     // While the next page loads, keep showing the current one instead of a blank table.
     placeholderData: keepPreviousData,
+    enabled: view === 'list',
   })
   useReturnToLastPage(batches.data, updateParams)
 
@@ -72,92 +76,108 @@ export function InventoryPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Inventory</h2>
           <p className="text-sm text-muted-foreground">
-            Your batches, in the order they should leave the shelf.
+            {view === 'calendar'
+              ? 'When each batch expires, and what was paid for it.'
+              : 'Your batches, in the order they should leave the shelf.'}
           </p>
         </div>
-        <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs value={view} onValueChange={(value) => updateParams({ view: value === 'list' ? null : value })}>
+            <TabsList aria-label="Show as">
+              <TabsTrigger value="list">List</TabsTrigger>
+              <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            aria-label="Search batches"
-            placeholder="Search by product, barcode or lot"
-            className="pl-9"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-          />
-        </div>
-        <Tabs
-          value={status}
-          onValueChange={(value) => updateParams({ status: value === 'in_stock' ? null : value, page: null })}
-        >
-          <TabsList>
-            {STATUSES.map(({ value, label }) => (
-              <TabsTrigger key={value} value={value}>
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {batches.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-            {batches.error.message}
-            <Button size="sm" variant="outline" onClick={() => void batches.refetch()}>
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : batches.isPending ? (
-        <div className="rounded-2xl bg-card shadow-soft">
-          <BatchesTableSkeleton />
-        </div>
-      ) : batches.data.total === 0 ? (
-        search || status !== 'in_stock' ? (
-          <Empty className="rounded-2xl bg-card shadow-soft">
-            <EmptyHeader>
-              <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
-              <EmptyTitle>No batches found</EmptyTitle>
-              <EmptyDescription>
-                {search ? `Nothing matches “${search}”.` : 'There are no batches in this list.'}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button variant="outline" onClick={clearFilters}>Show all stock</Button>
-            </EmptyContent>
-          </Empty>
-        ) : (
-          <Empty className="rounded-2xl bg-card shadow-soft">
-            <EmptyHeader>
-              <EmptyMedia variant="icon"><Boxes /></EmptyMedia>
-              <EmptyTitle>No stock yet</EmptyTitle>
-              <EmptyDescription>Receive your first delivery to see it here.</EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
-            </EmptyContent>
-          </Empty>
-        )
+      {view === 'calendar' ? (
+        <ExpiryCalendarView />
       ) : (
         <>
-          {/* Slightly faded while a new page or search result is loading. */}
-          <div
-            className={`rounded-2xl bg-card shadow-soft transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
-            aria-busy={batches.isFetching}
-          >
-            <BatchesTable batches={batches.data.items} currency={store.currency} onAction={openDialog}
-              justAdded={justAdded} />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                aria-label="Search batches"
+                placeholder="Search by product, barcode or lot"
+                className="pl-9"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+              />
+            </div>
+            <Tabs
+              value={status}
+              onValueChange={(value) => updateParams({ status: value === 'in_stock' ? null : value, page: null })}
+            >
+              <TabsList>
+                {STATUSES.map(({ value, label }) => (
+                  <TabsTrigger key={value} value={value}>
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
-          <Pagination
-            page={page}
-            total={batches.data.total}
-            onPageChange={(next) => updateParams({ page: next === 1 ? null : String(next) })}
-          />
+
+          {batches.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                {batches.error.message}
+                <Button size="sm" variant="outline" onClick={() => void batches.refetch()}>
+                  Try again
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : batches.isPending ? (
+            <div className="rounded-2xl bg-card shadow-soft">
+              <BatchesTableSkeleton />
+            </div>
+          ) : batches.data.total === 0 ? (
+            search || status !== 'in_stock' ? (
+              <Empty className="rounded-2xl bg-card shadow-soft">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
+                  <EmptyTitle>No batches found</EmptyTitle>
+                  <EmptyDescription>
+                    {search ? `Nothing matches “${search}”.` : 'There are no batches in this list.'}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button variant="outline" onClick={clearFilters}>Show all stock</Button>
+                </EmptyContent>
+              </Empty>
+            ) : (
+              <Empty className="rounded-2xl bg-card shadow-soft">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon"><Boxes /></EmptyMedia>
+                  <EmptyTitle>No stock yet</EmptyTitle>
+                  <EmptyDescription>Receive your first delivery to see it here.</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
+                </EmptyContent>
+              </Empty>
+            )
+          ) : (
+            <>
+              {/* Slightly faded while a new page or search result is loading. */}
+              <div
+                className={`rounded-2xl bg-card shadow-soft transition-opacity ${batches.isPlaceholderData ? 'opacity-60' : ''}`}
+                aria-busy={batches.isFetching}
+              >
+                <BatchesTable batches={batches.data.items} currency={store.currency} onAction={openDialog}
+                  justAdded={justAdded} />
+              </div>
+              <Pagination
+                page={page}
+                total={batches.data.total}
+                onPageChange={(next) => updateParams({ page: next === 1 ? null : String(next) })}
+              />
+            </>
+          )}
         </>
       )}
 

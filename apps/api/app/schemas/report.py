@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from pydantic import BaseModel
@@ -37,6 +38,34 @@ class TopProduct(BaseModel):
     quantity: Decimal
     revenue: Decimal
     profit: Decimal
+
+
+class ExpiringBatch(BaseModel):
+    batch_id: int
+    product: BatchProduct
+    lot_code: str | None
+    remaining_quantity: Decimal
+    # What is left, at this batch's own purchase price, rounded to cents.
+    value: Decimal
+
+
+class ExpiryDay(BaseModel):
+    day: date
+    # The sum of its batches' values, so the days add up to the total exactly.
+    value: Decimal
+    batches: list[ExpiringBatch]
+
+
+class ExpiryCalendar(BaseModel):
+    """What leaves the shelf on which day, at the purchase prices of the batches."""
+
+    # Only the days on which something expires, the earliest first.
+    days: list[ExpiryDay]
+    total: Decimal
+    # Already expired before the calendar starts and still not written off: it would fall
+    # off the front of the calendar, so it is listed on its own.
+    overdue: list[ExpiringBatch]
+    overdue_value: Decimal
 
 
 class CategorySales(BaseModel):

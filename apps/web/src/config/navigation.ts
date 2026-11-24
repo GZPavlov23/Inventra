@@ -12,16 +12,17 @@ import {
   Truck,
 } from 'lucide-react'
 
+import type { Messages } from '@/i18n/en'
 import type { Permission } from '@/lib/auth-api'
 
-// One list drives the sidebar, the routes and the page titles,
+// One list drives the menu, the routes and the page titles,
 // so adding a module means adding one entry here.
 
 export type NavItem = {
-  title: string
+  // Its name in t.nav and what it is for in t.navText, so both follow the chosen language.
+  key: Exclude<keyof Messages['nav'], 'main'>
   path: string
   icon: LucideIcon
-  description: string
   // Left out of the menu for roles without it. Pages without one are for everyone.
   requires?: Permission
 }
@@ -36,10 +37,9 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Overview',
     items: [
       {
-        title: 'Dashboard',
+        key: 'dashboard',
         path: '/',
         icon: LayoutDashboard,
-        description: 'Stock levels, expiring batches, alerts and forecasts at a glance.',
         requires: 'see_finances',
       },
     ],
@@ -48,28 +48,24 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Stock',
     items: [
       {
-        title: 'Products',
+        key: 'products',
         path: '/products',
         icon: Package,
-        description: 'The product catalog: names, barcodes, categories and prices.',
       },
       {
-        title: 'Inventory',
+        key: 'inventory',
         path: '/inventory',
         icon: Boxes,
-        description: 'Batches with their quantities and expiry dates, and every stock movement.',
       },
       {
-        title: 'Deliveries',
+        key: 'deliveries',
         path: '/deliveries',
         icon: Truck,
-        description: 'What you ordered from suppliers and what really arrived.',
       },
       {
-        title: 'Suppliers',
+        key: 'suppliers',
         path: '/suppliers',
         icon: Building2,
-        description: 'The companies you buy from and how to reach them.',
       },
     ],
   },
@@ -77,23 +73,20 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Sales & planning',
     items: [
       {
-        title: 'Sales',
+        key: 'sales',
         path: '/sales',
         icon: ShoppingCart,
-        description: 'Recording sales manually or importing them from a CSV file.',
       },
       {
-        title: 'Orders',
+        key: 'orders',
         path: '/orders',
         icon: ClipboardList,
-        description: 'What to order, how much and why, based on the forecast and your stock.',
         requires: 'plan',
       },
       {
-        title: 'Forecast',
+        key: 'forecast',
         path: '/forecast',
         icon: TrendingUp,
-        description: 'Expected sales per product, what will run short, and how accurate the forecast is.',
         requires: 'plan',
       },
     ],
@@ -101,18 +94,16 @@ export const NAV_GROUPS: NavGroup[] = [
 ]
 
 export const SETTINGS_ITEM: NavItem = {
-  title: 'Settings',
+  key: 'settings',
   path: '/settings',
   icon: Settings,
-  description: 'Your account, the store and the people who work there.',
 }
 
 // Not a pill in the top bar: opened from the dashboard and the quick search.
 export const MONTH_ITEM: NavItem = {
-  title: 'Your month',
+  key: 'month',
   path: '/month',
   icon: CalendarHeart,
-  description: 'The month in short: sold, thrown away, the best product and how it compares.',
   requires: 'see_finances',
 }
 

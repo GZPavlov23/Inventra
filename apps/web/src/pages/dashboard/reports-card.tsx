@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useT } from '@/i18n/language-context'
 import {
   CategoriesPanel,
   RunningOutPanel,
@@ -15,15 +16,16 @@ import {
 gsap.registerPlugin(useGSAP)
 
 const REPORTS = [
-  { value: 'waste', label: 'Waste', panel: WastePanel },
-  { value: 'running-out', label: 'Running out', panel: RunningOutPanel },
-  { value: 'top-products', label: 'Top products', panel: TopProductsPanel },
-  { value: 'categories', label: 'Categories', panel: CategoriesPanel },
-]
+  { value: 'waste', label: 'waste', panel: WastePanel },
+  { value: 'running-out', label: 'runningOut', panel: RunningOutPanel },
+  { value: 'top-products', label: 'topProducts', panel: TopProductsPanel },
+  { value: 'categories', label: 'categories', panel: CategoriesPanel },
+] as const
 
 // All reports stay on the page and only the chosen one is shown, so switching never waits for
 // the server. The choice lives in the URL, so it survives a reload.
 export function ReportsCard() {
+  const t = useT()
   const [searchParams, setSearchParams] = useSearchParams()
   const selected = REPORTS.find(({ value }) => value === searchParams.get('report')) ?? REPORTS[0]
 
@@ -67,12 +69,12 @@ export function ReportsCard() {
   }
 
   return (
-    <section aria-label="Reports" className="flex flex-col gap-3">
+    <section aria-label={t.reports.label} className="flex flex-col gap-3">
       <div className="overflow-x-auto">
         <Tabs value={selected.value} onValueChange={choose}>
           <TabsList>
             {REPORTS.map(({ value, label }) => (
-              <TabsTrigger key={value} value={value}>{label}</TabsTrigger>
+              <TabsTrigger key={value} value={value}>{t.reports.tabs[label]}</TabsTrigger>
             ))}
           </TabsList>
         </Tabs>

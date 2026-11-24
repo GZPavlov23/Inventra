@@ -25,12 +25,14 @@ import { deliveriesApi, type Delivery } from '@/lib/deliveries-api'
 import { formatMoney, lineCents, today } from '@/lib/format'
 import type { Product } from '@/lib/products-api'
 import { suppliersApi } from '@/lib/suppliers-api'
+import { useT } from '@/i18n/language-context'
 
 export function NewDeliveryDialog({ open, onOpenChange, onCreated }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: (delivery: Delivery) => void
 }) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A click outside doesn't close it, so a filled-in order isn't lost by accident.
@@ -40,9 +42,9 @@ export function NewDeliveryDialog({ open, onOpenChange, onCreated }: {
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>New delivery</DialogTitle>
+          <DialogTitle>{t.deliveries.new}</DialogTitle>
           <DialogDescription>
-            What you ordered from a supplier. Stock changes only when the goods arrive.
+            {t.deliveries.newText}
           </DialogDescription>
         </DialogHeader>
         <DeliveryForm onCreated={onCreated} onClose={() => onOpenChange(false)} />
@@ -56,6 +58,7 @@ function DeliveryForm({ onCreated, onClose }: {
   onClose: () => void
 }) {
   const { store } = useCurrentUser()
+  const t = useT()
   const queryClient = useQueryClient()
   const [supplierId, setSupplierId] = useState('')
   const [expectedOn, setExpectedOn] = useState('')
@@ -76,7 +79,7 @@ function DeliveryForm({ onCreated, onClose }: {
       }),
     onSuccess: (delivery) => {
       void queryClient.invalidateQueries({ queryKey: ['deliveries'] })
-      toast.success(`Delivery #${delivery.id} from ${delivery.supplier.name} was added`)
+      toast.success(t.deliveries.added(delivery.id, delivery.supplier.name))
       onCreated?.(delivery)
       onClose()
     },
@@ -117,11 +120,11 @@ function DeliveryForm({ onCreated, onClose }: {
     return (
       <>
         <p className="text-sm text-muted-foreground">
-          A delivery comes from a supplier, and you don't have any yet.
+          {t.deliveries.noSuppliers}
         </p>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button asChild><Link to="/suppliers">Go to Suppliers</Link></Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
+          <Button asChild><Link to="/suppliers">{t.deliveries.goToSuppliers}</Link></Button>
         </DialogFooter>
       </>
     )
@@ -141,10 +144,10 @@ function DeliveryForm({ onCreated, onClose }: {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="delivery_supplier" label="Supplier" required>
+        <FormField id="delivery_supplier" label={t.deliveries.supplier} required>
           <Select value={supplierId} onValueChange={setSupplierId}>
             <SelectTrigger id="delivery_supplier" className="w-full">
-              <SelectValue placeholder="Choose a supplier" />
+              <SelectValue placeholder={t.deliveries.chooseSupplier} />
             </SelectTrigger>
             <SelectContent>
               {suppliers.data?.items.map((supplier) => (
@@ -153,22 +156,22 @@ function DeliveryForm({ onCreated, onClose }: {
             </SelectContent>
           </Select>
         </FormField>
-        <FormField id="expected_on" label="Expected on" error={fieldErrors.expected_on}>
+        <FormField id="expected_on" label={t.deliveries.expectedLabel} error={fieldErrors.expected_on}>
           <Input id="expected_on" type="date" min={today()}
             aria-invalid={Boolean(fieldErrors.expected_on)}
             value={expectedOn} onChange={(event) => setExpectedOn(event.target.value)} />
         </FormField>
       </div>
 
-      <ProductPicker id="delivery_product" value={null} onChange={addProduct} placeholder="Add a product" />
+      <ProductPicker id="delivery_product" value={null} onChange={addProduct} placeholder={t.sales.addProduct} />
 
       {lines.length > 0 && (
-        <ul className="flex flex-col divide-y" aria-label="Products in this delivery">
+        <ul className="flex flex-col divide-y" aria-label={t.deliveries.inThisDelivery}>
           {lines.map((line) => (
             <ProductLineRow
               key={line.product.id}
               line={line}
-              priceLabel="Cost"
+              priceLabel={t.deliveries.cost}
               currency={store.currency}
               onChange={(changes) => updateLine(line.product.id, changes)}
               onRemove={() => removeLine(line.product.id)}
@@ -178,17 +181,17 @@ function DeliveryForm({ onCreated, onClose }: {
       )}
 
       <div className="flex items-center justify-between border-t pt-3">
-        <span className="text-sm text-muted-foreground">Total</span>
-        <span className="text-lg font-semibold" aria-label="Delivery total">
+        <span className="text-sm text-muted-foreground">{t.deliveries.total}</span>
+        <span className="text-lg font-semibold" aria-label={t.deliveries.deliveryTotal}>
           {formatMoney(totalCents / 100, store.currency)}
         </span>
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={create.isPending || lines.length === 0 || !supplierId}>
           {create.isPending && <Spinner />}
-          Add delivery
+          {t.deliveries.add}
         </Button>
       </DialogFooter>
     </form>

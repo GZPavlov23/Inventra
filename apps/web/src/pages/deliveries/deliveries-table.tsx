@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/table'
 import type { Delivery } from '@/lib/deliveries-api'
 import { daysUntil, formatDateTime, formatDay, formatMoney } from '@/lib/format'
+import type { Messages } from '@/i18n/en'
+import { useT } from '@/i18n/language-context'
 
 const LINES_SHOWN = 2
 
@@ -20,10 +22,11 @@ function isLate(delivery: Delivery): boolean {
 }
 
 export function DeliveryStatusBadge({ delivery }: { delivery: Delivery }) {
-  if (isLate(delivery)) return <Badge variant="destructive">Late</Badge>
-  if (delivery.status === 'ordered') return <Badge variant="secondary">On the way</Badge>
-  if (delivery.status === 'received') return <Badge>Received</Badge>
-  return <Badge variant="outline">Cancelled</Badge>
+  const t = useT()
+  if (isLate(delivery)) return <Badge variant="destructive">{t.deliveries.late}</Badge>
+  if (delivery.status === 'ordered') return <Badge variant="secondary">{t.deliveries.statuses.ordered}</Badge>
+  if (delivery.status === 'received') return <Badge>{t.deliveries.statuses.received}</Badge>
+  return <Badge variant="outline">{t.deliveries.statuses.cancelled}</Badge>
 }
 
 function dateText(delivery: Delivery): string {
@@ -31,23 +34,24 @@ function dateText(delivery: Delivery): string {
   return delivery.expected_on ? formatDay(delivery.expected_on) : '—'
 }
 
-function linesText(delivery: Delivery): string {
+function linesText(delivery: Delivery, t: Messages): string {
   const shown = delivery.items.slice(0, LINES_SHOWN).map((line) => line.product.name)
   const hidden = delivery.items.length - shown.length
-  return hidden > 0 ? `${shown.join(', ')} and ${hidden} more` : shown.join(', ')
+  return hidden > 0 ? t.deliveries.andMore(shown.join(', '), hidden) : shown.join(', ')
 }
 
 function TableHeadings() {
+  const t = useT()
   return (
     <TableHeader>
       <TableRow>
-        <TableHead>Delivery</TableHead>
-        <TableHead>Supplier</TableHead>
-        <TableHead>Products</TableHead>
-        <TableHead>Date</TableHead>
-        <TableHead>Status</TableHead>
-        <TableHead className="text-right">Cost</TableHead>
-        <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
+        <TableHead>{t.deliveries.delivery}</TableHead>
+        <TableHead>{t.deliveries.supplier}</TableHead>
+        <TableHead>{t.deliveries.products}</TableHead>
+        <TableHead>{t.deliveries.date}</TableHead>
+        <TableHead>{t.deliveries.status}</TableHead>
+        <TableHead className="text-right">{t.deliveries.cost}</TableHead>
+        <TableHead className="w-24"><span className="sr-only">{t.inventory.actions}</span></TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -62,9 +66,10 @@ type DeliveriesTableProps = {
 }
 
 export function DeliveriesTable({ deliveries, currency, onOpen, onReceive, justAdded }: DeliveriesTableProps) {
+  const t = useT()
   return (
     <Table>
-      <TableCaption className="sr-only">Deliveries of your store, newest first</TableCaption>
+      <TableCaption className="sr-only">{t.deliveries.caption}</TableCaption>
       <TableHeadings />
       <TableBody>
         {deliveries.map((delivery) => (
@@ -75,7 +80,7 @@ export function DeliveriesTable({ deliveries, currency, onOpen, onReceive, justA
               <button type="button" className="cursor-pointer outline-offset-2">#{delivery.id}</button>
             </TableCell>
             <TableCell className="font-medium">{delivery.supplier.name}</TableCell>
-            <TableCell className="max-w-xs truncate text-muted-foreground">{linesText(delivery)}</TableCell>
+            <TableCell className="max-w-xs truncate text-muted-foreground">{linesText(delivery, t)}</TableCell>
             <TableCell className="text-muted-foreground figures">{dateText(delivery)}</TableCell>
             <TableCell><DeliveryStatusBadge delivery={delivery} /></TableCell>
             <TableCell className="text-right font-medium figures">
@@ -83,9 +88,9 @@ export function DeliveriesTable({ deliveries, currency, onOpen, onReceive, justA
             </TableCell>
             <TableCell className="py-0 text-right" onClick={(event) => event.stopPropagation()}>
               {delivery.status === 'ordered' && (
-                <Button size="sm" variant="outline" aria-label={`Receive delivery #${delivery.id}`}
+                <Button size="sm" variant="outline" aria-label={t.deliveries.receiveNumber(delivery.id)}
                   onClick={() => onReceive(delivery)}>
-                  Receive
+                  {t.deliveries.receive}
                 </Button>
               )}
             </TableCell>
@@ -97,9 +102,10 @@ export function DeliveriesTable({ deliveries, currency, onOpen, onReceive, justA
 }
 
 export function DeliveriesTableSkeleton({ rows = 4 }: { rows?: number }) {
+  const t = useT()
   return (
     <Table aria-busy="true">
-      <TableCaption className="sr-only">Loading deliveries</TableCaption>
+      <TableCaption className="sr-only">{t.deliveries.loading}</TableCaption>
       <TableHeadings />
       <TableBody>
         {Array.from({ length: rows }, (_, index) => (

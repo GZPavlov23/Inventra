@@ -18,15 +18,18 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { downloadCsv } from '@/lib/csv'
-import { formatMoney, lineCents, today } from '@/lib/format'
+import { formatMoney, formatPercent, lineCents, today } from '@/lib/format'
 import { forecastsApi, type OrderLine, recommendedQuantity } from '@/lib/forecasts-api'
 import { CreateDeliveriesDialog } from '@/pages/orders/create-deliveries-dialog'
 import { OrdersTable } from '@/pages/orders/orders-table'
+import { currentLocale } from '@/i18n/language'
+import { useT } from '@/i18n/language-context'
 
 const PERIODS = [7, 14]
 
 export function OrdersPage() {
   const { store } = useCurrentUser()
+  const t = useT()
   const [searchParams, setSearchParams] = useSearchParams()
   const days = searchParams.get('days') === '14' ? 14 : 7
 
@@ -54,12 +57,12 @@ export function OrdersPage() {
 
   const download = () => {
     downloadCsv(`inventra-order-${today()}.csv`, [
-      ['product', 'barcode', 'quantity', 'unit', 'unit_cost', 'cost', 'supplier'],
+      t.orders.csvColumns,
       ...(ordered ?? []).map((line) => [
         line.product.name,
         line.product.barcode ?? '',
         quantityOf(line),
-        line.product.unit,
+        t.units[line.product.unit],
         line.unit_cost,
         (lineCents(quantityOf(line), line.unit_cost) / 100).toFixed(2),
         line.supplier?.name ?? '',
@@ -71,17 +74,17 @@ export function OrdersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Orders</h2>
-          <p className="text-sm text-muted-foreground">What to order, how much, and why.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.orders}</h2>
+          <p className="text-sm text-muted-foreground">{t.orders.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={download} disabled={!ordered?.length}>
             <Download />
-            Download order
+            {t.orders.download}
           </Button>
           <Button onClick={() => setCreateOpen(true)} disabled={!ordered?.length}>
             <Truck />
-            Create deliveries
+            {t.orders.create}
           </Button>
         </div>
       </div>
@@ -90,21 +93,21 @@ export function OrdersPage() {
         <Alert variant="destructive">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             {orders.error.message}
-            <Button size="sm" variant="outline" onClick={() => void orders.refetch()}>Try again</Button>
+            <Button size="sm" variant="outline" onClick={() => void orders.refetch()}>{t.common.tryAgain}</Button>
           </AlertDescription>
         </Alert>
       ) : orders.data?.products_checked === 0 ? (
         <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><TrendingUp /></EmptyMedia>
-            <EmptyTitle>Not enough sales yet</EmptyTitle>
+            <EmptyTitle>{t.forecast.notEnough}</EmptyTitle>
             <EmptyDescription>
-              Recommendations come from the forecast, which needs at least 14 days of sales for a product.
+              {t.orders.notEnoughText}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button variant="outline" asChild>
-              <Link to="/sales">Go to Sales</Link>
+              <Link to="/sales">{t.forecast.goToSales}</Link>
             </Button>
           </EmptyContent>
         </Empty>
@@ -112,19 +115,19 @@ export function OrdersPage() {
         <>
           <StatPanel className="grid-cols-2 sm:grid-cols-3">
             <StatTile
-              label="Products to order"
-              value={ordered?.length.toLocaleString()}
-              note={orders.data && `Out of ${orders.data.products_checked} with a forecast`}
+              label={t.orders.toOrder}
+              value={ordered?.length.toLocaleString(currentLocale())}
+              note={orders.data && t.orders.outOf(orders.data.products_checked)}
             />
             <StatTile
-              label="Estimated cost"
+              label={t.orders.estimatedCost}
               value={totalCents === undefined ? undefined : formatMoney(totalCents / 100, store.currency)}
-              note="At current purchase prices"
+              note={t.orders.atCurrentPrices}
             />
             <StatTile
-              label="Safety buffer"
-              value={orders.data && `${(Number(orders.data.buffer_share) * 100).toFixed(0)}%`}
-              note="Extra, based on the forecast's error"
+              label={t.orders.buffer}
+              value={orders.data && formatPercent(Number(orders.data.buffer_share) * 100, 0)}
+              note={t.orders.bufferNote}
             />
           </StatPanel>
 
@@ -132,13 +135,13 @@ export function OrdersPage() {
             <Tabs value={String(days)} onValueChange={changePeriod}>
               <TabsList>
                 {PERIODS.map((period) => (
-                  <TabsTrigger key={period} value={String(period)}>Cover {period} days</TabsTrigger>
+                  <TabsTrigger key={period} value={String(period)}>{t.orders.cover(period)}</TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
             {edited && (
               <Button variant="ghost" size="sm" onClick={() => setQuantities({})}>
-                Back to the recommendation
+                {t.orders.backToRecommendation}
               </Button>
             )}
           </div>
@@ -148,7 +151,7 @@ export function OrdersPage() {
           ) : lines.length === 0 ? (
             <p className="flex items-center gap-2 rounded-2xl bg-card shadow-soft p-4 text-sm text-muted-foreground">
               <CircleCheck className="size-4 text-good" />
-              Your stock covers the next {days} days. There is nothing to order.
+              {t.orders.covered(days)}
             </p>
           ) : (
             <div
@@ -167,9 +170,7 @@ export function OrdersPage() {
 
           {orders.data && (
             <p className="text-sm text-muted-foreground">
-              Forecast model: {orders.data.method}. Stock that will expire before it sells isn't
-              counted on, and goods already on the way are. Orders are rounded up, so they can be
-              a little above the sum shown. Pack sizes aren't taken into account yet.
+              {t.orders.footer(t.common.models[orders.data.method] ?? orders.data.method)}
             </p>
           )}
         </>

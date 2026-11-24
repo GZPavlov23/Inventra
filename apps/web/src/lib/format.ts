@@ -1,15 +1,16 @@
+import { currentLocale, currentMessages } from '@/i18n/language'
 import type { ProductUnit } from '@/lib/products-api'
 
 // Number and date formatting shared by all pages, so values look the same everywhere.
 
 export function formatMoney(amount: string | number, currency: string): string {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(Number(amount))
+  return new Intl.NumberFormat(currentLocale(), { style: 'currency', currency }).format(Number(amount))
 }
 
 // "14.500" kg becomes "14.5 kg": the API always sends three decimals.
 export function formatQuantity(quantity: string | number, unit: ProductUnit): string {
-  const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 }).format(Number(quantity))
-  return `${number} ${unit}`
+  const number = new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: 3 }).format(Number(quantity))
+  return `${number} ${currentMessages().units[unit]}`
 }
 
 // A forecast is an expectation, not a count: 30.75 pieces means "about 31".
@@ -24,9 +25,18 @@ export function formatShortage(quantity: string | number, unit: ProductUnit): st
   return formatQuantity(rounded, unit)
 }
 
+// 24.2 as "24.2%" or "24,2 %": the decimal mark and the space follow the chosen language.
+export function formatPercent(percent: number, digits = 1): string {
+  return new Intl.NumberFormat(currentLocale(), {
+    style: 'percent',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(percent / 100)
+}
+
 // An error of 0.2419 is shown as 24.2%. Empty means there was nothing to measure yet.
 export function formatShare(share: string | null): string {
-  return share === null ? 'Not measured yet' : `${(Number(share) * 100).toFixed(1)}%`
+  return share === null ? currentMessages().notMeasured : formatPercent(Number(share) * 100)
 }
 
 // A sale line in whole cents, rounded like the server does (half up). Whole numbers keep it
@@ -43,11 +53,11 @@ export function formatChange(quantity: string | number, unit: ProductUnit): stri
 }
 
 export function formatTime(moment: string): string {
-  return new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(new Date(moment))
+  return new Intl.DateTimeFormat(currentLocale(), { timeStyle: 'short' }).format(new Date(moment))
 }
 
 export function formatDateTime(moment: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(moment))
+  return new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(moment))
 }
 
 // "2026-11-01" is a calendar day. new Date() would read it as midnight in UTC, which is
@@ -58,24 +68,29 @@ function parseDay(day: string): Date {
 }
 
 export function formatDay(day: string): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(parseDay(day))
+  return new Intl.DateTimeFormat(currentLocale(), { dateStyle: 'medium' }).format(parseDay(day))
 }
 
 export function formatMonthDay(day: string): string {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(parseDay(day))
+  return new Intl.DateTimeFormat(currentLocale(), { month: 'short', day: 'numeric' }).format(parseDay(day))
 }
 
 // "Friday, 20 November", for a greeting.
 export function formatLongDay(day: string): string {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' }).format(parseDay(day))
+  return new Intl.DateTimeFormat(currentLocale(), { weekday: 'long', day: 'numeric', month: 'long' }).format(parseDay(day))
 }
 
 export function formatDayOfWeek(day: string): string {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(parseDay(day))
+  return new Intl.DateTimeFormat(currentLocale(), { weekday: 'long' }).format(parseDay(day))
+}
+
+// "Mon" or "пн", for a calendar's column headings.
+export function formatShortWeekday(day: string): string {
+  return new Intl.DateTimeFormat(currentLocale(), { weekday: 'short' }).format(parseDay(day))
 }
 
 export function formatWeekday(day: string): string {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(parseDay(day))
+  return new Intl.DateTimeFormat(currentLocale(), { weekday: 'short', month: 'short', day: 'numeric' }).format(parseDay(day))
 }
 
 // A day as "2026-10-30", the format date inputs and the API use.

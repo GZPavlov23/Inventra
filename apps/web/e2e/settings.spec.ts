@@ -1,5 +1,6 @@
 import { type Browser, expect, type Page, test } from '@playwright/test'
 
+import { ENGLISH } from './config.ts'
 import { lastEmailedLink, logInAsDemoOwner } from './helpers.ts'
 
 const PASSWORD = 'a-good-new-password'
@@ -34,7 +35,8 @@ async function invite(page: Page, person: { name: string; email: string }, role:
 
 // The invited person, in a browser of their own, follows the link and logs in.
 async function join(browser: Browser, person: { name: string; email: string }): Promise<Page> {
-  const context = await browser.newContext()
+  // A browser of its own doesn't get the config's settings: English is chosen here too.
+  const context = await browser.newContext({ storageState: ENGLISH })
   const theirs = await context.newPage()
   await theirs.goto(lastEmailedLink(person.email, 'accept-invitation'))
   await theirs.getByLabel('Password', { exact: true }).fill(PASSWORD)

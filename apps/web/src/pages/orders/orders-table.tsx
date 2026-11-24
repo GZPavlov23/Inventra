@@ -10,13 +10,15 @@ import {
 } from '@/components/ui/table'
 import { formatExpected, formatMoney, formatQuantity, lineCents } from '@/lib/format'
 import { type OrderLine, recommendedQuantity } from '@/lib/forecasts-api'
+import type { Messages } from '@/i18n/en'
+import { useT } from '@/i18n/language-context'
 
 // The sum behind the number, so nobody has to trust a quantity they can't follow.
-function explanation(line: OrderLine): string {
+function explanation(line: OrderLine, t: Messages): string {
   const { unit } = line.product
   const stock = Number(line.from_stock) + Number(line.left_over)
-  const sum = `Expected ${formatExpected(line.expected, unit)}, plus a buffer of ${formatExpected(line.buffer, unit)}, minus ${formatExpected(stock, unit)} of usable stock`
-  return Number(line.on_the_way) > 0 ? `${sum} and ${formatExpected(line.on_the_way, unit)} on the way` : sum
+  const sum = t.orders.explanation(formatExpected(line.expected, unit), formatExpected(line.buffer, unit), formatExpected(stock, unit))
+  return Number(line.on_the_way) > 0 ? t.orders.onTheWay(sum, formatExpected(line.on_the_way, unit)) : sum
 }
 
 type OrdersTableProps = {
@@ -27,14 +29,15 @@ type OrdersTableProps = {
 }
 
 export function OrdersTable({ lines, quantities, currency, onChange }: OrdersTableProps) {
+  const t = useT()
   return (
     <Table>
-      <TableCaption className="sr-only">What to order, the most expensive first</TableCaption>
+      <TableCaption className="sr-only">{t.orders.caption}</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Product</TableHead>
-          <TableHead className="w-32">Order</TableHead>
-          <TableHead className="w-24 text-right">Cost</TableHead>
+          <TableHead>{t.orders.product}</TableHead>
+          <TableHead className="w-32">{t.orders.order}</TableHead>
+          <TableHead className="w-24 text-right">{t.orders.cost}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -47,17 +50,17 @@ export function OrdersTable({ lines, quantities, currency, onChange }: OrdersTab
               <TableCell className="whitespace-normal">
                 <p className="font-medium">{product.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {line.supplier?.name ?? 'No supplier'}
+                  {line.supplier?.name ?? t.orders.noSupplier}
                 </p>
-                <p className="text-xs text-muted-foreground">{explanation(line)}</p>
+                <p className="text-xs text-muted-foreground">{explanation(line, t)}</p>
                 {Number(line.expiring_unsold) > 0 && (
                   <p className="text-xs text-warning-foreground">
-                    {formatExpected(line.expiring_unsold, product.unit)} of your stock will expire before it sells
+                    {t.orders.willExpire(formatExpected(line.expiring_unsold, product.unit))}
                   </p>
                 )}
                 {edited && (
                   <p className="text-xs text-muted-foreground">
-                    Recommended: {formatQuantity(line.order, product.unit)}
+                    {t.orders.recommended(formatQuantity(line.order, product.unit))}
                   </p>
                 )}
               </TableCell>
@@ -65,9 +68,9 @@ export function OrdersTable({ lines, quantities, currency, onChange }: OrdersTab
                 <div className="flex items-center gap-1.5">
                   <Input type="number" inputMode="decimal" min="0"
                     step={product.unit === 'pcs' ? '1' : '0.1'}
-                    aria-label={`Order of ${product.name}`}
+                    aria-label={t.orders.orderOf(product.name)}
                     value={quantity} onChange={(event) => onChange(product.id, event.target.value)} />
-                  <span className="text-xs text-muted-foreground">{product.unit}</span>
+                  <span className="text-xs text-muted-foreground">{t.units[product.unit]}</span>
                 </div>
               </TableCell>
               <TableCell className="text-right font-medium figures">

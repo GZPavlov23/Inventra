@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { formatQuantity } from '@/lib/format'
 import { type Product, productsApi } from '@/lib/products-api'
+import { useT } from '@/i18n/language-context'
 
 type ProductPickerProps = {
   id: string
@@ -25,7 +26,8 @@ type ProductPickerProps = {
 
 // Finds a product on the server, because a store can have thousands of them. It searches
 // by barcode too, so a USB scanner works: it types the code and presses Enter.
-export function ProductPicker({ id, value, onChange, placeholder = 'Choose a product' }: ProductPickerProps) {
+export function ProductPicker({ id, value, onChange, placeholder }: ProductPickerProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const typed = query.trim()
@@ -71,7 +73,7 @@ export function ProductPicker({ id, value, onChange, placeholder = 'Choose a pro
           className="w-full justify-between font-normal"
         >
           <span className={`truncate ${value ? '' : 'text-muted-foreground'}`}>
-            {value?.name ?? placeholder}
+            {value?.name ?? placeholder ?? t.shared.chooseProduct}
           </span>
           <ChevronsUpDown className="text-muted-foreground" />
         </Button>
@@ -80,13 +82,13 @@ export function ProductPicker({ id, value, onChange, placeholder = 'Choose a pro
         {/* The server already filtered these rows. */}
         <Command shouldFilter={false} value={activeRow} onValueChange={setHighlighted}>
           <CommandInput
-            placeholder="Search by name or barcode"
+            placeholder={t.shared.pickerSearch}
             maxLength={100}
             value={query}
             onValueChange={setQuery}
           />
           <CommandList>
-            {!outdated && products.data?.total === 0 && <CommandEmpty>No products found.</CommandEmpty>}
+            {!outdated && products.data?.total === 0 && <CommandEmpty>{t.shared.noProducts}</CommandEmpty>}
             <CommandGroup>
               {items.map((product) => (
                 <CommandItem

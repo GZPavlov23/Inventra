@@ -6,52 +6,21 @@ import { useCurrentUser } from '@/auth/use-auth'
 import { Button } from '@/components/ui/button'
 import type { StoreSetup } from '@/lib/setup-api'
 import { useStoreSetup } from '@/pages/dashboard/use-store-setup'
+import { useT } from '@/i18n/language-context'
 
 type Step = {
   key: keyof Omit<StoreSetup, 'done'>
-  title: string
-  why: string
-  action: string
   path: string
 }
 
 // In the order they depend on each other: no products, nothing to receive; no stock, nothing to sell.
+// The words for each step are in the dictionary (t.setup.steps).
 const STEPS: Step[] = [
-  {
-    key: 'products',
-    title: 'Add your products',
-    why: 'Names, barcodes and prices: everything else in Inventra is about them.',
-    action: 'Add products',
-    path: '/products',
-  },
-  {
-    key: 'goods',
-    title: 'Receive your first goods',
-    why: 'So Inventra knows what is on the shelf, and when each batch expires.',
-    action: 'Receive goods',
-    path: '/inventory',
-  },
-  {
-    key: 'sales',
-    title: 'Record a sale, or import past sales',
-    why: 'The forecast starts once there are 14 days of sales. Importing them from your till gets you there today.',
-    action: 'Go to Sales',
-    path: '/sales',
-  },
-  {
-    key: 'suppliers',
-    title: 'Add your suppliers',
-    why: 'Their phone numbers show up right on the dashboard when a delivery is late.',
-    action: 'Add suppliers',
-    path: '/suppliers',
-  },
-  {
-    key: 'team',
-    title: 'Invite whoever works the till',
-    why: 'They sell and receive goods, without seeing what the store earns.',
-    action: 'Invite someone',
-    path: '/settings',
-  },
+  { key: 'products', path: '/products' },
+  { key: 'goods', path: '/inventory' },
+  { key: 'sales', path: '/sales' },
+  { key: 'suppliers', path: '/suppliers' },
+  { key: 'team', path: '/settings' },
 ]
 
 const foldKey = (storeId: number) => `inventra-setup-folded-${storeId}`
@@ -79,6 +48,7 @@ function saveFolded(storeId: number, folded: boolean) {
 // off by the data itself (a product exists, a batch exists...), never by a checkbox.
 export function SetupChecklist() {
   const { store } = useCurrentUser()
+  const t = useT()
   const setup = useStoreSetup()
   const [folded, setFolded] = useState(() => readFolded(store.id))
 
@@ -95,8 +65,8 @@ export function SetupChecklist() {
   if (folded) {
     return (
       <p className="figures flex flex-wrap items-center justify-center gap-x-2 text-sm text-muted-foreground">
-        Setting up: {doneCount} of {steps.length} done ·
-        <Button variant="link" size="sm" className="h-auto p-0 font-bold" onClick={() => fold(false)}>Show</Button>
+        {t.setup.folded(doneCount, steps.length)}
+        <Button variant="link" size="sm" className="h-auto p-0 font-bold" onClick={() => fold(false)}>{t.common.show}</Button>
       </p>
     )
   }
@@ -105,16 +75,16 @@ export function SetupChecklist() {
     <section aria-labelledby="setup-title" className="rounded-3xl bg-card p-6 shadow-soft">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id="setup-title" className="text-2xl font-bold">
-          {steps.length} steps to your first forecast
+          {t.setup.title(steps.length)}
         </h3>
         <div className="flex items-center gap-3">
-          <span className="figures text-sm font-bold text-muted-foreground">{doneCount} of {steps.length} done</span>
-          <Button variant="ghost" size="sm" onClick={() => fold(true)}>Not now</Button>
+          <span className="figures text-sm font-bold text-muted-foreground">{t.setup.progress(doneCount, steps.length)}</span>
+          <Button variant="ghost" size="sm" onClick={() => fold(true)}>{t.common.notNow}</Button>
         </div>
       </div>
       <div
         role="progressbar"
-        aria-label="Set-up progress"
+        aria-label={t.setup.progressLabel}
         aria-valuemin={0}
         aria-valuemax={steps.length}
         aria-valuenow={doneCount}
@@ -140,14 +110,14 @@ export function SetupChecklist() {
               </span>
               <div className="min-w-0 flex-[1_1_12rem]">
                 <p className={`font-bold ${done ? 'text-muted-foreground line-through' : isCurrent ? '' : 'text-muted-foreground'}`}>
-                  {step.title}
-                  {done && <span className="sr-only"> (done)</span>}
+                  {t.setup.steps[step.key].title}
+                  {done && <span className="sr-only"> {t.common.done}</span>}
                 </p>
-                {!done && <p className="text-sm text-muted-foreground">{step.why}</p>}
+                {!done && <p className="text-sm text-muted-foreground">{t.setup.steps[step.key].why}</p>}
               </div>
               {isCurrent && (
                 <Button asChild>
-                  <Link to={step.path}>{step.action}</Link>
+                  <Link to={step.path}>{t.setup.steps[step.key].action}</Link>
                 </Button>
               )}
             </li>

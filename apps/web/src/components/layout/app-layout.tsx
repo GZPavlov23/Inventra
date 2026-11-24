@@ -6,11 +6,14 @@ import { FloatingNewSale } from '@/components/new-sale/floating-new-sale'
 import { NewSaleProvider } from '@/components/new-sale/new-sale-provider'
 import { ALL_NAV_ITEMS, isActivePath } from '@/config/navigation'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { useT } from '@/i18n/language-context'
 
 // The frame around every page: the top bar, then the page in a calm centred column.
 export function AppLayout() {
   const { pathname } = useLocation()
-  const title = ALL_NAV_ITEMS.find((item) => isActivePath(item.path, pathname))?.title ?? 'Page not found'
+  const t = useT()
+  const item = ALL_NAV_ITEMS.find((candidate) => isActivePath(candidate.path, pathname))
+  const title = item ? t.nav[item.key] : t.pages.notFoundTitle
 
   useDocumentTitle(title)
 

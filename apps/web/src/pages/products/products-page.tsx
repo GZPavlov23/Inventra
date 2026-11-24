@@ -29,12 +29,9 @@ import {
 import { reportsApi } from '@/lib/reports-api'
 import { ProductFormDialog } from '@/pages/products/product-form-dialog'
 import { ProductsTable, ProductsTableSkeleton } from '@/pages/products/products-table'
+import { useT } from '@/i18n/language-context'
 
-const STATUSES: { value: ProductStatus; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'archived', label: 'Archived' },
-  { value: 'all', label: 'All' },
-]
+const STATUSES: ProductStatus[] = ['active', 'archived', 'all']
 
 const TREND_DAYS = 14
 
@@ -45,11 +42,12 @@ function readSort(value: string | null): ProductSort {
 }
 
 function readStatus(value: string | null): ProductStatus {
-  return STATUSES.some((status) => status.value === value) ? (value as ProductStatus) : 'active'
+  return STATUSES.some((status) => status === value) ? (value as ProductStatus) : 'active'
 }
 
 export function ProductsPage() {
   const { store } = useCurrentUser()
+  const t = useT()
   const can = useCan()
   const editable = can('manage_catalog')
   const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
@@ -91,11 +89,11 @@ export function ProductsPage() {
     onSuccess: (_, { product, active }) => {
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       if (active) {
-        toast.success(`${product.name} was restored`)
+        toast.success(t.products.restored(product.name))
       } else {
         // Archiving is safe to undo, so one click does it and the toast offers the way back.
-        toast.success(`${product.name} was archived`, {
-          action: { label: 'Undo', onClick: () => setActive.mutate({ product, active: true }) },
+        toast.success(t.products.archived(product.name), {
+          action: { label: t.products.undo, onClick: () => setActive.mutate({ product, active: true }) },
         })
       }
     },
@@ -134,8 +132,8 @@ export function ProductsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Products</h2>
-          <p className="text-sm text-muted-foreground">Your product catalog: names, barcodes and prices.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.products}</h2>
+          <p className="text-sm text-muted-foreground">{t.products.subtitle}</p>
         </div>
         {editable && <AddProductButton onAdded={(product) => setJustSaved(product.id)} />}
       </div>
@@ -145,8 +143,8 @@ export function ProductsPage() {
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
-            aria-label="Search products"
-            placeholder="Search by name, brand or barcode"
+            aria-label={t.products.searchLabel}
+            placeholder={t.products.searchPlaceholder}
             className="pl-9"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -157,9 +155,9 @@ export function ProductsPage() {
           onValueChange={(value) => updateParams({ status: value === 'active' ? null : value, page: null })}
         >
           <TabsList>
-            {STATUSES.map(({ value, label }) => (
+            {STATUSES.map((value) => (
               <TabsTrigger key={value} value={value}>
-                {label}
+                {t.products.statuses[value]}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -171,7 +169,7 @@ export function ProductsPage() {
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             {products.error.message}
             <Button size="sm" variant="outline" onClick={() => void products.refetch()}>
-              Try again
+              {t.common.tryAgain}
             </Button>
           </AlertDescription>
         </Alert>
@@ -184,24 +182,24 @@ export function ProductsPage() {
           <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
-              <EmptyTitle>No products found</EmptyTitle>
+              <EmptyTitle>{t.products.noneFound}</EmptyTitle>
               <EmptyDescription>
-                {search ? `Nothing matches “${search}”.` : 'There are no products in this list.'}
+                {search ? t.inventory.nothingMatches(search) : t.products.noneInList}
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button variant="outline" onClick={clearFilters}>Show all active products</Button>
+              <Button variant="outline" onClick={clearFilters}>{t.products.showAllActive}</Button>
             </EmptyContent>
           </Empty>
         ) : (
           <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Package /></EmptyMedia>
-              <EmptyTitle>No products yet</EmptyTitle>
+              <EmptyTitle>{t.products.noProducts}</EmptyTitle>
               <EmptyDescription>
                 {editable
-                  ? 'Add your first product to start building your catalog.'
-                  : "The store's owner or a manager adds products here."}
+                  ? t.products.addFirst
+                  : t.products.ownerAdds}
               </EmptyDescription>
             </EmptyHeader>
             {editable && (
@@ -246,11 +244,12 @@ export function ProductsPage() {
 
 function AddProductButton({ onAdded }: { onAdded?: (product: Product) => void }) {
   const [open, setOpen] = useState(false)
+  const t = useT()
   return (
     <>
       <Button onClick={() => setOpen(true)}>
         <Plus />
-        Add product
+        {t.products.add}
       </Button>
       <ProductFormDialog open={open} onOpenChange={setOpen} onSaved={onAdded} />
     </>

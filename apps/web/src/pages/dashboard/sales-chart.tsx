@@ -24,12 +24,14 @@ import {
 } from '@/components/ui/table'
 import { formatDay, formatMoney, formatMonthDay } from '@/lib/format'
 import type { DailySales } from '@/lib/sales-api'
-import { chartNotes, quietLabel } from '@/pages/dashboard/chart-notes'
+import { chartNotes } from '@/pages/dashboard/chart-notes'
+import { currentLocale } from '@/i18n/language'
+import { useT } from '@/i18n/language-context'
 
 // Colors are checked with a color-blindness validator: see --chart-1 and --chart-2 in index.css.
 const SERIES = [
-  { key: 'revenue', label: 'Revenue', color: 'var(--chart-1)' },
-  { key: 'profit', label: 'Profit', color: 'var(--chart-2)' },
+  { key: 'revenue', color: 'var(--chart-1)' },
+  { key: 'profit', color: 'var(--chart-2)' },
 ] as const
 
 type ChartRow = { index: number; day: string; revenue: number; profit: number }
@@ -50,6 +52,7 @@ function LineKey({ color }: { color: string }) {
 }
 
 function ChartTooltip({ active, payload, label, currency }: TooltipContentProps & { currency: string }) {
+  const t = useT()
   if (!active || !payload?.length) return null
   return (
     <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
@@ -60,7 +63,7 @@ function ChartTooltip({ active, payload, label, currency }: TooltipContentProps 
           <p key={series.key} className="flex items-center gap-2">
             <LineKey color={series.color} />
             <span className="font-medium figures">{formatMoney(row[series.key], currency)}</span>
-            <span className="text-muted-foreground">{series.label}</span>
+            <span className="text-muted-foreground">{t.chart[series.key]}</span>
           </p>
         )
       })}
@@ -69,6 +72,7 @@ function ChartTooltip({ active, payload, label, currency }: TooltipContentProps 
 }
 
 export function SalesChart({ days, currency }: { days: DailySales[]; currency: string }) {
+  const t = useT()
   const [showTable, setShowTable] = useState(false)
   const rows: ChartRow[] = days.map(({ day, revenue, profit }, index) => ({
     index,
@@ -80,7 +84,7 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
   const notes = chartNotes(rows)
   const bestOnRight = notes.best !== null && rows.findIndex((row) => row.day === notes.best?.day) > rows.length / 2
   const today = rows[lastIndex]
-  const compactMoney = new Intl.NumberFormat(undefined, {
+  const compactMoney = new Intl.NumberFormat(currentLocale(), {
     style: 'currency',
     currency,
     notation: 'compact',
@@ -89,23 +93,23 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
 
   return (
     <div className="flex flex-col gap-3">
-      <ul aria-label="Legend" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {SERIES.map(({ key, label, color }) => (
+      <ul aria-label={t.chart.legend} className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        {SERIES.map(({ key, color }) => (
           <li key={key} className="flex items-center gap-1.5">
             <LineKey color={color} />
-            {label}
+            {t.chart[key]}
           </li>
         ))}
-        <li>Dashed: today so far</li>
+        <li>{t.chart.dashed}</li>
       </ul>
 
       {/* The notes in words, for screen readers; on screen they are written on the chart. */}
       <p className="sr-only">
-        {notes.best && `Best day: ${formatMoney(notes.best.revenue, currency)} on ${formatDay(notes.best.day)}. `}
-        {notes.quiet && `Quiet stretch: ${notes.quiet.days} days below average, ${formatDay(notes.quiet.from)} to ${formatDay(notes.quiet.to)}.`}
+        {notes.best && t.chart.bestDayWords(formatMoney(notes.best.revenue, currency), formatDay(notes.best.day))}
+        {notes.quiet && t.chart.quietWords(notes.quiet.days, formatDay(notes.quiet.from), formatDay(notes.quiet.to))}
       </p>
 
-      <div className="h-64" role="img" aria-label="Revenue and profit per day. The table below shows the same numbers.">
+      <div className="h-64" role="img" aria-label={t.chart.label}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows} margin={{ top: 12, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--border)" />
@@ -120,7 +124,7 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
                   <g data-note="quiet">
                     <rect x={x} y={y} width={width} height={height} rx={10} fill="var(--signal)" fillOpacity={0.12} />
                     <text x={x + width / 2} y={y + Math.min(56, height / 3)} textAnchor="middle" fill="var(--warning-foreground)" {...HAND}>
-                      {quietLabel(notes.quiet?.days ?? 0)}
+                      {t.chart.quiet(notes.quiet?.days ?? 0)}
                     </text>
                   </g>
                 )}
@@ -182,7 +186,7 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
                       strokeDasharray="62 20" strokeLinecap="round" />
                     <text x={bestOnRight ? cx - 20 : cx + 20} y={cy + 6} textAnchor={bestOnRight ? 'end' : 'start'}
                       fill="var(--destructive)" {...HAND}>
-                      best day: {formatMoney(notes.best?.revenue ?? 0, currency)}, {formatMonthDay(notes.best?.day ?? '')}
+                      {t.chart.bestDay(formatMoney(notes.best?.revenue ?? 0, currency), formatMonthDay(notes.best?.day ?? ''))}
                     </text>
                   </g>
                 )}
@@ -195,7 +199,7 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
                 ifOverflow="visible"
                 shape={({ cx = 0, cy = 0 }) => (
                   <text data-note="today" x={cx - 12} y={cy - 18} textAnchor="end" fill="var(--foreground)" {...HAND}>
-                    today so far
+                    {t.chart.todaySoFar}
                   </text>
                 )}
               />
@@ -206,19 +210,19 @@ export function SalesChart({ days, currency }: { days: DailySales[]; currency: s
 
       <Button variant="ghost" size="sm" className="self-start" aria-expanded={showTable}
         onClick={() => setShowTable((shown) => !shown)}>
-        {showTable ? 'Hide the table' : 'Show as a table'}
+        {showTable ? t.chart.hideTable : t.chart.showTable}
       </Button>
 
       {showTable && (
         <div className="max-h-64 overflow-y-auto rounded-2xl bg-card shadow-soft">
           <Table>
-            <TableCaption className="sr-only">Revenue and profit per day</TableCaption>
+            <TableCaption className="sr-only">{t.chart.tableCaption}</TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead>Day</TableHead>
-                <TableHead className="text-right">Sales</TableHead>
-                <TableHead className="text-right">Revenue</TableHead>
-                <TableHead className="text-right">Profit</TableHead>
+                <TableHead>{t.chart.day}</TableHead>
+                <TableHead className="text-right">{t.chart.sales}</TableHead>
+                <TableHead className="text-right">{t.chart.revenue}</TableHead>
+                <TableHead className="text-right">{t.chart.profit}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

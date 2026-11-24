@@ -12,9 +12,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { type ApiError, toApiError } from '@/lib/api'
 import { authApi } from '@/lib/auth-api'
+import { useT } from '@/i18n/language-context'
 
 export function ForgotPasswordPage() {
-  useDocumentTitle('Forgot password')
+  const t = useT()
+  useDocumentTitle(t.auth.forgotLink)
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
@@ -36,20 +38,15 @@ export function ForgotPasswordPage() {
 
   if (sentTo) {
     return (
-      <CheckEmailCard>
-        If an account uses <span className="font-medium text-foreground">{sentTo}</span>, we have
-        sent it a link to choose a new password. The link works once, for 1 hour.
-      </CheckEmailCard>
+      <CheckEmailCard>{t.auth.forgotSent(sentTo)}</CheckEmailCard>
     )
   }
 
   return (
     <AuthCard shakeKey={error}>
       <CardHeader data-animate>
-        <CardTitle className="text-3xl font-semibold tracking-tight">Forgot your password?</CardTitle>
-        <CardDescription className="text-base">
-          Enter your email and we will send you a link to choose a new one.
-        </CardDescription>
+        <CardTitle className="text-3xl font-semibold tracking-tight">{t.auth.forgotTitle}</CardTitle>
+        <CardDescription className="text-base">{t.auth.forgotSubtitle}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -59,19 +56,19 @@ export function ForgotPasswordPage() {
             </Alert>
           )}
           <div data-animate className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="email" required placeholder="you@store.com"
+            <Label htmlFor="email">{t.auth.email}</Label>
+            <Input id="email" type="email" autoComplete="email" required placeholder={t.auth.emailPlaceholder}
               value={email} onChange={(event) => setEmail(event.target.value)} />
           </div>
           <Button data-animate type="submit" disabled={submitting}>
             {submitting && <Spinner />}
-            Send reset link
+            {t.auth.sendResetLink}
           </Button>
         </form>
         <p data-animate className="mt-6 text-center text-sm text-muted-foreground">
-          Remembered it?{' '}
+          {t.auth.remembered}{' '}
           <Link to="/login" className="font-medium text-primary hover:underline">
-            Back to log in
+            {t.auth.backToLogIn}
           </Link>
         </p>
       </CardContent>

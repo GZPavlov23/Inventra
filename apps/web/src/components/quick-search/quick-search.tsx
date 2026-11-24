@@ -20,6 +20,8 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { daysUntil, formatDay, formatQuantity } from '@/lib/format'
 import { inventoryApi } from '@/lib/inventory-api'
 import { productsApi } from '@/lib/products-api'
+import { en, type Messages } from '@/i18n/en'
+import { useT } from '@/i18n/language-context'
 
 const PRODUCTS_SHOWN = 5
 const BATCHES_SHOWN = 4
@@ -30,6 +32,7 @@ const SEARCH_SHORTCUT = isMac ? '⌘ K' : 'Ctrl K'
 // One box for everything: type a name or scan a barcode, and go to the product, the batch, the
 // page or the action, without the mouse. Opens with Ctrl K (⌘ K on a Mac) from any page.
 export function QuickSearch() {
+  const t = useT()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -50,14 +53,14 @@ export function QuickSearch() {
         type="button"
         onClick={() => setOpen(true)}
         aria-keyshortcuts="Control+K Meta+K"
-        className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-full bg-secondary px-2.5 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"
+        title={`${t.header.search} (${SEARCH_SHORTCUT})`}
+        className="flex size-9 items-center justify-center rounded-full bg-secondary text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"
       >
         <Search className="size-4" aria-hidden />
-        <span className="sr-only xl:not-sr-only">Search</span>
-        <kbd aria-hidden className="hidden rounded-md bg-card px-1.5 font-sans text-xs xl:inline">{SEARCH_SHORTCUT}</kbd>
+        <span className="sr-only">{t.header.search}</span>
       </button>
-      <CommandDialog open={open} onOpenChange={setOpen} title="Search everything"
-        description="Products, batches, pages and actions" className="rounded-3xl! sm:max-w-xl">
+      <CommandDialog open={open} onOpenChange={setOpen} title={t.search.title}
+        description={t.search.description} className="rounded-3xl! sm:max-w-xl">
         {/* Mounted only while open, so every opening starts with an empty box. */}
         {open && <SearchBox close={() => setOpen(false)} />}
       </CommandDialog>
@@ -67,6 +70,7 @@ export function QuickSearch() {
 
 function SearchBox({ close }: { close: () => void }) {
   const can = useCan()
+  const t = useT()
   const navigate = useNavigate()
   const openNewSale = useOpenNewSale()
   const [text, setText] = useState('')
@@ -91,8 +95,11 @@ function SearchBox({ close }: { close: () => void }) {
     void navigate(path)
   }
   const matches = (words: string) => words.toLowerCase().includes(text.trim().toLowerCase())
-  const pages = ALL_NAV_ITEMS.filter((item) => (!item.requires || can(item.requires)) && matches(item.title))
-  const sellAction = can('sell') && matches('new sale sell till')
+  // A page is found by its name in the chosen language, and by its English name too.
+  const pages = ALL_NAV_ITEMS.filter(
+    (item) => (!item.requires || can(item.requires)) && matches(`${t.nav[item.key]} ${en.nav[item.key]}`),
+  )
+  const sellAction = can('sell') && matches(t.search.saleWords)
   // Still waiting while typing hasn't paused yet, so "Nothing found" doesn't flash in between.
   const waiting = text.trim() !== search || (looking && (products.isFetching || batches.isFetching))
   // Shown all at once when both searches are back: otherwise whichever answered first would sit
@@ -116,20 +123,20 @@ function SearchBox({ close }: { close: () => void }) {
   return (
     // The server already searched, so the list shows what it found instead of filtering again.
     <Command shouldFilter={false} value={selected} onValueChange={setSelected} className="rounded-3xl! p-2">
-      <CommandInput value={text} onValueChange={setText} placeholder="Type a name, or scan a barcode"
-        aria-label="Search products, batches, pages and actions" className="h-10 text-base" />
+      <CommandInput value={text} onValueChange={setText} placeholder={t.search.placeholder}
+        aria-label={t.search.label} className="h-10 text-base" />
       <CommandList className="max-h-[min(28rem,60svh)] p-1">
-        {!waiting && <CommandEmpty>Nothing found for “{text.trim()}”.</CommandEmpty>}
+        {!waiting && <CommandEmpty>{t.search.nothingFound(text.trim())}</CommandEmpty>}
 
         {foundProducts.length > 0 && (
-          <CommandGroup heading="Products">
+          <CommandGroup heading={t.search.products}>
             {foundProducts.map((product) => (
               <CommandItem key={product.id} value={`product-${product.id}`}
                 onSelect={() => go(`/products/${product.id}`)}>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-bold">{product.name}</span>
                   <span className="figures text-xs text-muted-foreground">
-                    {formatQuantity(product.stock, product.unit)} in stock
+                    {t.search.inStock(formatQuantity(product.stock, product.unit))}
                     {product.barcode && ` · ${product.barcode}`}
                   </span>
                 </div>
@@ -139,7 +146,7 @@ function SearchBox({ close }: { close: () => void }) {
         )}
 
         {foundBatches.length > 0 && (
-          <CommandGroup heading="Batches on the shelf">
+          <CommandGroup heading={t.search.batches}>
             {foundBatches.map((batch) => (
               <CommandItem key={batch.id} value={`batch-${batch.id}`}
                 onSelect={() => go(`/inventory?q=${encodeURIComponent(batch.product.barcode ?? batch.product.name)}`)}>
@@ -148,11 +155,11 @@ function SearchBox({ close }: { close: () => void }) {
                     {batch.product.name} · {formatQuantity(batch.remaining_quantity, batch.product.unit)}
                   </span>
                   <span className="figures text-xs text-muted-foreground">
-                    {batch.expiry_date ? `Expires ${formatDay(batch.expiry_date)}` : 'No expiry date'}
+                    {batch.expiry_date ? t.search.expires(formatDay(batch.expiry_date)) : t.search.noExpiry}
                   </span>
                 </div>
                 {batch.expiry_status === 'expiring' && batch.expiry_date && (
-                  <Badge variant="secondary" className="bg-warning text-warning-foreground">{daysLeft(batch.expiry_date)}</Badge>
+                  <Badge variant="secondary" className="bg-warning text-warning-foreground">{daysLeft(batch.expiry_date, t)}</Badge>
                 )}
               </CommandItem>
             ))}
@@ -160,21 +167,21 @@ function SearchBox({ close }: { close: () => void }) {
         )}
 
         {sellAction && (
-          <CommandGroup heading="Do something">
+          <CommandGroup heading={t.search.actions}>
             <CommandItem value="action-new-sale" onSelect={() => { close(); openNewSale() }}>
               <Plus aria-hidden />
-              <span className="font-bold">New sale</span>
+              <span className="font-bold">{t.newSale.button}</span>
               <kbd className="ml-auto text-xs text-muted-foreground">N</kbd>
             </CommandItem>
           </CommandGroup>
         )}
 
         {pages.length > 0 && (
-          <CommandGroup heading="Go to">
+          <CommandGroup heading={t.search.goTo}>
             {pages.map((item) => (
               <CommandItem key={item.path} value={`page-${item.path}`} onSelect={() => go(item.path)}>
                 <item.icon aria-hidden />
-                <span className="font-bold">{item.title}</span>
+                <span className="font-bold">{t.nav[item.key]}</span>
                 <ArrowRight className="ml-auto text-muted-foreground" aria-hidden />
               </CommandItem>
             ))}
@@ -182,15 +189,15 @@ function SearchBox({ close }: { close: () => void }) {
         )}
       </CommandList>
       <p className="flex flex-wrap gap-x-4 gap-y-1 border-t px-3 pt-2.5 pb-1 text-xs text-muted-foreground">
-        <span><b>↑ ↓</b> to move</span>
-        <span><b>Enter</b> to open</span>
-        <span><b>Esc</b> to close</span>
+        <span><b>↑ ↓</b> {t.search.move}</span>
+        <span><b>Enter</b> {t.search.open}</span>
+        <span><b>Esc</b> {t.search.close}</span>
       </p>
     </Command>
   )
 }
 
-function daysLeft(day: string): string {
+function daysLeft(day: string, t: Messages): string {
   const days = daysUntil(day)
-  return days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days} days left`
+  return days === 0 ? t.search.today : days === 1 ? t.search.tomorrow : t.search.daysLeft(days)
 }

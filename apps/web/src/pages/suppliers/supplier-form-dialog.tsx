@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { type ApiError, toApiError } from '@/lib/api'
 import { type Supplier, suppliersApi, type SupplierInput } from '@/lib/suppliers-api'
+import { useT } from '@/i18n/language-context'
 
 const EMPTY_SUPPLIER: SupplierInput = { name: '', contact_name: '', phone: '', email: '', notes: '' }
 
@@ -39,6 +40,7 @@ type SupplierFormDialogProps = {
 }
 
 export function SupplierFormDialog({ supplier, open, onOpenChange }: SupplierFormDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -46,11 +48,11 @@ export function SupplierFormDialog({ supplier, open, onOpenChange }: SupplierFor
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{supplier ? 'Edit supplier' : 'Add supplier'}</DialogTitle>
+          <DialogTitle>{supplier ? t.suppliers.editTitle : t.suppliers.add}</DialogTitle>
           <DialogDescription>
             {supplier
-              ? 'Change the details of this supplier.'
-              : 'Add a company you buy from. Only the name is required.'}
+              ? t.suppliers.editText
+              : t.suppliers.addText}
           </DialogDescription>
         </DialogHeader>
         <SupplierForm key={supplier?.id} supplier={supplier} onClose={() => onOpenChange(false)} />
@@ -61,6 +63,7 @@ export function SupplierFormDialog({ supplier, open, onOpenChange }: SupplierFor
 
 function SupplierForm({ supplier, onClose }: { supplier?: Supplier; onClose: () => void }) {
   const queryClient = useQueryClient()
+  const t = useT()
   const initialValues = supplier ? toFormValues(supplier) : EMPTY_SUPPLIER
   const [form, setForm] = useState<SupplierInput>(initialValues)
 
@@ -71,7 +74,7 @@ function SupplierForm({ supplier, onClose }: { supplier?: Supplier; onClose: () 
       void queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       // Products show their supplier's name.
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success(supplier ? `${saved.name} was saved` : `${saved.name} was added`)
+      toast.success(supplier ? t.products.saved(saved.name) : t.products.added(saved.name))
       onClose()
     },
   })
@@ -100,38 +103,38 @@ function SupplierForm({ supplier, onClose }: { supplier?: Supplier; onClose: () 
         </Alert>
       )}
 
-      <FormField id="supplier-name" label="Company name" required error={fieldErrors.name}>
+      <FormField id="supplier-name" label={t.suppliers.companyName} required error={fieldErrors.name}>
         <Input id="supplier-name" required maxLength={200} aria-invalid={Boolean(fieldErrors.name)}
           value={form.name} onChange={(event) => update('name', event.target.value)} />
       </FormField>
 
-      <FormField id="contact_name" label="Contact person" error={fieldErrors.contact_name}>
+      <FormField id="contact_name" label={t.suppliers.contactPerson} error={fieldErrors.contact_name}>
         <Input id="contact_name" maxLength={120} aria-invalid={Boolean(fieldErrors.contact_name)}
           value={form.contact_name} onChange={(event) => update('contact_name', event.target.value)} />
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="phone" label="Phone" error={fieldErrors.phone}>
+        <FormField id="phone" label={t.suppliers.phone} error={fieldErrors.phone}>
           <Input id="phone" type="tel" maxLength={32} aria-invalid={Boolean(fieldErrors.phone)}
             value={form.phone} onChange={(event) => update('phone', event.target.value)} />
         </FormField>
-        <FormField id="supplier-email" label="Email" error={fieldErrors.email}>
+        <FormField id="supplier-email" label={t.suppliers.email} error={fieldErrors.email}>
           <Input id="supplier-email" type="email" maxLength={254} aria-invalid={Boolean(fieldErrors.email)}
             value={form.email} onChange={(event) => update('email', event.target.value)} />
         </FormField>
       </div>
 
-      <FormField id="notes" label="Notes" error={fieldErrors.notes}
-        hint="Anything useful when ordering, like delivery days or payment terms.">
+      <FormField id="notes" label={t.suppliers.notes} error={fieldErrors.notes}
+        hint={t.suppliers.notesHint}>
         <Textarea id="notes" maxLength={500} rows={3} aria-invalid={Boolean(fieldErrors.notes)}
           value={form.notes} onChange={(event) => update('notes', event.target.value)} />
       </FormField>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={saveSupplier.isPending || (Boolean(supplier) && !hasChanges)}>
           {saveSupplier.isPending && <Spinner />}
-          {supplier ? 'Save changes' : 'Add supplier'}
+          {supplier ? t.products.saveChanges : t.suppliers.add}
         </Button>
       </DialogFooter>
     </form>

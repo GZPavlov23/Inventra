@@ -1,3 +1,7 @@
+import { currentMessages } from '@/i18n/language'
+import { serverText } from '@/i18n/server-text'
+
+
 // A thin wrapper around fetch for our REST API.
 // Requests go to /api/... on the web app's own address; in development Vite forwards them to
 // FastAPI (see vite.config.ts). The browser attaches the httpOnly session cookie by itself:
@@ -29,14 +33,13 @@ function readFieldErrors(issues: ValidationIssue[] = []): Record<string, string>
   for (const { loc, msg } of issues) {
     // loc looks like ["body", "barcode"]; keep the first message of each field.
     const field = loc[0] === 'body' ? loc[1] : undefined
-    if (typeof field === 'string' && !(field in fields)) fields[field] = msg
+    if (typeof field === 'string' && !(field in fields)) fields[field] = serverText('validation_error', msg, true)
   }
   return fields
 }
 
 // A new error object every time, so each failed attempt is a distinct event for the UI.
-const serverUnreachable = () =>
-  new ApiError(0, 'network_error', 'Cannot reach the server. Check that the backend is running.')
+const serverUnreachable = () => new ApiError(0, 'network_error', currentMessages().errors.network_error)
 
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -68,11 +71,12 @@ export async function api<T>(path: string, { method = 'GET', body }: RequestOpti
     // Every API error has the shape {code, detail}. Anything else means the API itself is
     // down (e.g. the dev proxy answers 500 when FastAPI isn't running).
     if (!data?.code) throw serverUnreachable()
-    throw new ApiError(response.status, data.code, data.detail, readFieldErrors(data.errors))
+    // Read out in the chosen language once, here, so every screen can simply show error.message.
+    throw new ApiError(response.status, data.code, serverText(data.code, data.detail), readFieldErrors(data.errors))
   }
   return data as T
 }
 
 export function toApiError(error: unknown): ApiError {
-  return error instanceof ApiError ? error : new ApiError(0, 'unknown', 'Something went wrong')
+  return error instanceof ApiError ? error : new ApiError(0, 'unknown', currentMessages().errors.unknown)
 }

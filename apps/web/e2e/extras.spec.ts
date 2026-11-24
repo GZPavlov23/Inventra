@@ -278,3 +278,41 @@ test.describe('a new store', () => {
     await expect(list).toBeVisible()
   })
 })
+
+test.describe('language', () => {
+  // A browser with nothing chosen yet, like a first visit.
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('the site starts in Bulgarian, switches to English and remembers it', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'bg')
+    await expect(page.getByText('Добре дошъл отново')).toBeVisible()
+
+    // The server answers in English, but by code the error is shown in Bulgarian.
+    await page.getByLabel('Имейл').fill('nobody@nowhere.example')
+    await page.getByLabel('Парола', { exact: true }).fill('not-the-password')
+    await page.getByRole('button', { name: 'Вход', exact: true }).click()
+    await expect(page.getByText('Грешен имейл или парола')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Switch to English' }).click()
+    await expect(page.getByText('Welcome back')).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    await page.reload()
+    await expect(page.getByText('Welcome back')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Превключи на български' }).click()
+    await expect(page.getByText('Добре дошъл отново')).toBeVisible()
+  })
+
+  test('the menu, numbers and units follow the language', async ({ page }) => {
+    await page.goto('/login')
+    await page.getByLabel('Имейл').fill('owner@inventra.example')
+    await page.getByLabel('Парола', { exact: true }).fill('Inventra-demo-2026')
+    await page.getByRole('button', { name: 'Вход', exact: true }).click()
+
+    const menu = page.getByRole('navigation', { name: 'Основно меню' })
+    await expect(menu.getByRole('link', { name: 'Наличност' })).toBeVisible()
+    await menu.getByRole('link', { name: 'Наличност' }).click()
+    await expect(page.locator('tbody tr').first()).toContainText('бр.')
+  })
+})

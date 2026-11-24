@@ -12,23 +12,23 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { daysUntil, formatDay, formatDayOfWeek, formatExpected, formatMoney, today } from '@/lib/format'
 import { type BriefingNote, reportsApi } from '@/lib/reports-api'
+import type { Messages } from '@/i18n/en'
+import { useT } from '@/i18n/language-context'
+import { sentence } from '@/i18n/sentence'
+import { toApiError } from '@/lib/api'
 
 // Read in passing, so a few at first; the rest are one click away.
 const SHOWN_AT_FIRST = 5
 // Someone else may sell or receive goods while the dashboard stays open on the counter.
 const REFRESH_EVERY_MS = 60_000
 
-// "today", "tomorrow", "on Friday" within a week, a date further away.
-function when(day: string): string {
+// "today", "tomorrow", "on Friday" within a week, a date further away, in the chosen language.
+function when(day: string, t: Messages): string {
   const days = daysUntil(day)
-  if (days === 0) return 'today'
-  if (days === 1) return 'tomorrow'
-  if (days > 1 && days < 7) return `on ${formatDayOfWeek(day)}`
-  return `on ${formatDay(day)}`
-}
-
-function plural(count: number, one: string, many: string): string {
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`
+  if (days === 0) return t.briefing.today
+  if (days === 1) return t.briefing.tomorrow
+  if (days > 1 && days < 7) return t.briefing.onWeekday(formatDayOfWeek(day))
+  return t.briefing.onDate(formatDay(day))
 }
 
 // Colour says what kind of thing it is, the same everywhere in the app: tomato is a loss that
@@ -62,7 +62,7 @@ type Written = {
 
 // Each kind of fact, said in words. The server only sends facts, so the mobile app can say
 // them its own way.
-function write(note: BriefingNote, money: (amount: string) => string): Written {
+function write(note: BriefingNote, money: (amount: string) => string, t: Messages): Written {
   const product = note.product && <strong className="font-medium">{note.product.name}</strong>
   const quantity = (value: string) => (note.product ? formatExpected(value, note.product.unit) : value)
   const go = (to: string, label: string) => (
@@ -74,68 +74,61 @@ function write(note: BriefingNote, money: (amount: string) => string): Written {
   switch (note.kind) {
     case 'expired':
       return {
-        tag: 'Expired',
+        tag: t.briefing.tags.expired,
         tone: 'loss',
-        text: note.batches === 1
-          ? '1 batch has expired but still counts as stock.'
-          : `${plural(note.batches ?? 0, 'batch', 'batches')} have expired but still count as stock.`,
+        text: t.briefing.expired(note.batches ?? 0),
         amount: money(note.at_stake),
-        meaning: 'to write off',
-        action: go('/inventory?status=expired', 'Write off'),
+        meaning: t.briefing.meanings.toWriteOff,
+        action: go('/inventory?status=expired', t.briefing.actions.writeOff),
       }
     case 'late_delivery': {
       const late = -daysUntil(note.day ?? today())
       return {
-        tag: 'Late',
+        tag: t.briefing.tags.late,
         tone: 'loss',
-        text: (
-          <>
-            <strong className="font-medium">{note.supplier?.name}</strong> is {plural(late, 'day', 'days')} late
-            {note.deliveries && note.deliveries > 1
-              ? ` with ${note.deliveries} deliveries.`
-              : ` with delivery #${note.delivery_id}.`}
-          </>
-        ),
+        text: sentence(t.briefing.late(
+          <strong className="font-medium">{note.supplier?.name}</strong>, late, note.deliveries, note.delivery_id,
+        )),
         amount: money(note.at_stake),
-        meaning: 'ordered',
+        meaning: t.briefing.meanings.ordered,
         action: note.supplier?.phone ? (
           <Button size="sm" className="bg-destructive text-primary-foreground hover:bg-destructive/90" asChild>
-            <a href={`tel:${note.supplier.phone}`}><Phone />Call {note.supplier.phone}</a>
+            <a href={`tel:${note.supplier.phone}`}><Phone />{t.briefing.actions.call(note.supplier.phone)}</a>
           </Button>
-        ) : go('/deliveries', 'Open'),
+        ) : go('/deliveries', t.briefing.actions.open),
       }
     }
     case 'runs_out':
       return {
-        tag: 'Runs out',
+        tag: t.briefing.tags.runsOut,
         tone: 'soon',
-        text: note.delivery_day
-          ? <>{product} runs out {when(note.day ?? today())}, but the next delivery comes {when(note.delivery_day)}.</>
-          : <>{product} runs out {when(note.day ?? today())} and nothing is on the way.</>,
+        text: sentence(t.briefing.runsOut(
+          product, when(note.day ?? today(), t), note.delivery_day ? when(note.delivery_day, t) : null,
+        )),
         amount: `~${money(note.at_stake)}`,
-        meaning: 'in missed sales',
-        action: go('/orders', 'Order'),
+        meaning: t.briefing.meanings.missedSales,
+        action: go('/orders', t.briefing.actions.order),
       }
     case 'expires_unsold':
       return {
-        tag: 'Will expire',
+        tag: t.briefing.tags.willExpire,
         tone: 'soon',
-        text: <>About {quantity(note.quantity ?? '0')} of {product} will expire before it sells, the first {when(note.day ?? today())}.</>,
+        text: sentence(t.briefing.expiresUnsold(quantity(note.quantity ?? '0'), product, when(note.day ?? today(), t))),
         amount: money(note.at_stake),
-        meaning: 'at purchase price',
-        action: go(`/inventory?q=${encodeURIComponent(note.product?.name ?? '')}`, 'See batches'),
+        meaning: t.briefing.meanings.atPurchasePrice,
+        action: go(`/inventory?q=${encodeURIComponent(note.product?.name ?? '')}`, t.briefing.actions.seeBatches),
       }
     case 'above_forecast': {
       const sold = Number(note.quantity)
       const expected = Number(note.expected)
       const more = expected > 0 ? Math.round(((sold - expected) / expected) * 100) : 0
       return {
-        tag: 'Selling fast',
+        tag: t.briefing.tags.sellingFast,
         tone: 'good',
-        text: <>{product} sold {quantity(note.quantity ?? '0')} last week, {more}% more than the forecast of {quantity(note.expected ?? '0')}.</>,
+        text: sentence(t.briefing.aboveForecast(product, quantity(note.quantity ?? '0'), more, quantity(note.expected ?? '0'))),
         amount: money(note.at_stake),
-        meaning: 'more in sales',
-        action: go('/forecast', 'Forecast'),
+        meaning: t.briefing.meanings.moreSales,
+        action: go('/forecast', t.briefing.actions.forecast),
       }
     }
   }
@@ -143,6 +136,7 @@ function write(note: BriefingNote, money: (amount: string) => string): Written {
 
 export function TodaysBriefing() {
   const { store } = useCurrentUser()
+  const t = useT()
   const money = (amount: string) => formatMoney(amount, store.currency)
   const [showAll, setShowAll] = useState(false)
   const briefing = useQuery({
@@ -182,12 +176,12 @@ export function TodaysBriefing() {
   )
 
   return (
-    <section aria-label="Today's briefing" className="flex flex-col gap-3">
+    <section aria-label={t.briefing.regionLabel} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-2xl font-bold">Needs you today</h3>
+        <h3 className="text-2xl font-bold">{t.briefing.title}</h3>
         {notes.length > 0 && (
           <p className="figures text-sm text-muted-foreground">
-            {money(String(atRisk))} at risk · {plural(notes.length, 'note', 'notes')}
+            {t.briefing.atRisk(money(String(atRisk)), notes.length)}
           </p>
         )}
       </div>
@@ -196,8 +190,8 @@ export function TodaysBriefing() {
         {briefing.isError ? (
           <Alert variant="destructive" className="m-4 w-auto">
             <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-              {briefing.error.message}
-              <Button size="sm" variant="outline" onClick={() => void briefing.refetch()}>Try again</Button>
+              {toApiError(briefing.error).message}
+              <Button size="sm" variant="outline" onClick={() => void briefing.refetch()}>{t.common.tryAgain}</Button>
             </AlertDescription>
           </Alert>
         ) : !briefing.data ? (
@@ -209,22 +203,17 @@ export function TodaysBriefing() {
           // No notes means every check came back clean, so each of these sentences is true.
           <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
             <CaughtUpDrawing className="h-28 text-foreground" />
-            <p className="mt-2 font-hand text-4xl text-good">All caught up!</p>
-            <p className="max-w-lg text-[1.0625rem] leading-relaxed">
-              Nothing needs you today. Nothing has expired, every delivery is on time, and nothing runs out
-              before more arrives.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Checked again every minute, so a new note shows up here on its own.
-            </p>
+            <p className="mt-2 font-hand text-4xl text-good">{t.briefing.caughtUp}</p>
+            <p className="max-w-lg text-[1.0625rem] leading-relaxed">{t.briefing.caughtUpText}</p>
+            <p className="text-sm text-muted-foreground">{t.briefing.checkedAgain}</p>
             <Button variant="link" asChild className="mt-1 font-bold text-good">
-              <Link to="/inventory?status=expiring">See what expires this week</Link>
+              <Link to="/inventory?status=expiring">{t.briefing.seeExpiring}</Link>
             </Button>
           </div>
         ) : (
           <ol ref={list} className="flex flex-col divide-y divide-border/70">
             {shown.map((note, index) => {
-              const { tag, tone, text, amount, meaning, action } = write(note, money)
+              const { tag, tone, text, amount, meaning, action } = write(note, money, t)
               return (
                 <li key={`${note.kind}-${note.product?.id ?? note.delivery_id ?? index}`}
                   className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
@@ -249,13 +238,12 @@ export function TodaysBriefing() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         {(hidden > 0 || canShowFewer) ? (
           <Button variant="ghost" size="sm" aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
-            {showAll ? 'Show fewer' : `Show ${hidden} more`}
+            {showAll ? t.briefing.showFewer : t.briefing.showMore(hidden)}
           </Button>
         ) : <span />}
         {briefing.data && notes.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            Found in your stock, deliveries and sales. Forecast model: {briefing.data.method}.
-            The most money involved comes first.
+            {t.briefing.footer(t.common.models[briefing.data.method] ?? briefing.data.method)}
           </p>
         )}
       </div>

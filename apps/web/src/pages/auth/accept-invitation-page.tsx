@@ -14,10 +14,12 @@ import { Spinner } from '@/components/ui/spinner'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { ApiError, toApiError } from '@/lib/api'
 import { authApi } from '@/lib/auth-api'
+import { useT } from '@/i18n/language-context'
 
 // Opened from the link in an invitation email: /accept-invitation?token=...
 export function AcceptInvitationPage() {
-  useDocumentTitle('Join your store')
+  const t = useT()
+  useDocumentTitle(t.auth.joinTitle)
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const { state, logout } = useAuth()
@@ -30,7 +32,7 @@ export function AcceptInvitationPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (password !== confirmation) {
-      setError(new ApiError(0, 'mismatch', 'The two passwords are not the same'))
+      setError(new ApiError(0, 'mismatch', t.auth.passwordsDiffer))
       return
     }
     setSubmitting(true)
@@ -52,14 +54,12 @@ export function AcceptInvitationPage() {
       <AuthCard animationKey="done">
         <CardHeader>
           <CircleCheck data-pop className="mb-2 size-9 text-good" />
-          <CardTitle className="text-3xl font-semibold tracking-tight">You're in</CardTitle>
-          <CardDescription className="text-base">
-            Your account is ready. Log in with your email and the password you just chose.
-          </CardDescription>
+          <CardTitle className="text-3xl font-semibold tracking-tight">{t.auth.youreIn}</CardTitle>
+          <CardDescription className="text-base">{t.auth.accountReady}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button data-animate asChild className="w-full">
-            <Link to="/login">Log in</Link>
+            <Link to="/login">{t.auth.logIn}</Link>
           </Button>
         </CardContent>
       </AuthCard>
@@ -71,15 +71,14 @@ export function AcceptInvitationPage() {
       <AuthCard animationKey="invalid">
         <CardHeader>
           <CircleX data-pop className="mb-2 size-9 text-destructive" />
-          <CardTitle className="text-3xl font-semibold tracking-tight">The link did not work</CardTitle>
+          <CardTitle className="text-3xl font-semibold tracking-tight">{t.auth.linkDidNotWork}</CardTitle>
           <CardDescription className="text-base">
-            {error?.message ?? 'This link has no token.'} An invitation works once, for 7 days. The
-            store's owner can send you a new one.
+            {error ? error.message : t.auth.noToken} {t.auth.invitationRule}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button data-animate asChild variant="outline" className="w-full">
-            <Link to="/login">Back to log in</Link>
+            <Link to="/login">{t.auth.backToLogIn}</Link>
           </Button>
         </CardContent>
       </AuthCard>
@@ -89,10 +88,8 @@ export function AcceptInvitationPage() {
   return (
     <AuthCard shakeKey={error}>
       <CardHeader data-animate>
-        <CardTitle className="text-3xl font-semibold tracking-tight">Join your store</CardTitle>
-        <CardDescription className="text-base">
-          You were invited to Inventra. Choose a password to finish setting up your account.
-        </CardDescription>
+        <CardTitle className="text-3xl font-semibold tracking-tight">{t.auth.joinTitle}</CardTitle>
+        <CardDescription className="text-base">{t.auth.joinSubtitle}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -102,21 +99,21 @@ export function AcceptInvitationPage() {
             </Alert>
           )}
           <div data-animate className="flex flex-col gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t.auth.password}</Label>
             <PasswordInput id="password" autoComplete="new-password" required minLength={8}
               maxLength={128} aria-describedby="password-hint"
               value={password} onChange={(event) => setPassword(event.target.value)} />
             <PasswordStrengthMeter password={password} />
-            <p id="password-hint" className="text-xs text-muted-foreground">At least 8 characters.</p>
+            <p id="password-hint" className="text-xs text-muted-foreground">{t.auth.atLeast8}</p>
           </div>
           <div data-animate className="flex flex-col gap-2">
-            <Label htmlFor="confirmation">Repeat the password</Label>
+            <Label htmlFor="confirmation">{t.auth.repeatPassword}</Label>
             <PasswordInput id="confirmation" autoComplete="new-password" required maxLength={128}
               value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
           </div>
           <Button data-animate type="submit" disabled={submitting} className="mt-1">
             {submitting && <Spinner />}
-            Join the store
+            {t.auth.joinButton}
           </Button>
         </form>
       </CardContent>

@@ -10,10 +10,12 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { toApiError } from '@/lib/api'
 import { teamApi } from '@/lib/team-api'
+import { useT } from '@/i18n/language-context'
 
 export function StoreSection({ editable }: { editable: boolean }) {
   const { store } = useCurrentUser()
   const { refresh } = useAuth()
+  const t = useT()
   const [name, setName] = useState(store.name)
 
   const rename = useMutation({
@@ -22,7 +24,7 @@ export function StoreSection({ editable }: { editable: boolean }) {
       // The sidebar shows the name too, and it comes from who is logged in.
       await refresh()
       setName(saved.name)
-      toast.success('The store was renamed')
+      toast.success(t.settings.renamed)
     },
   })
 
@@ -36,23 +38,22 @@ export function StoreSection({ editable }: { editable: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Store</CardTitle>
+        <CardTitle>{t.settings.store}</CardTitle>
         <CardDescription>
-          Prices are in {store.currency}. The currency can't be changed, because every price and
-          every past sale is recorded in it.
+          {t.settings.currency(store.currency)}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {editable ? (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:max-w-md">
-            <FormField id="store_name" label="Name" required error={error?.fieldErrors.name ?? error?.message}>
+            <FormField id="store_name" label={t.settings.name} required error={error?.fieldErrors.name ?? error?.message}>
               <Input id="store_name" required maxLength={120} aria-invalid={Boolean(error)}
                 value={name} onChange={(event) => { setName(event.target.value); if (rename.isError) rename.reset() }} />
             </FormField>
             <Button type="submit" variant="outline" className="self-start"
               disabled={rename.isPending || name.trim() === store.name}>
               {rename.isPending && <Spinner />}
-              Save name
+              {t.settings.saveName}
             </Button>
           </form>
         ) : (

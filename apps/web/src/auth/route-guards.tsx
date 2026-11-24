@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router'
 
 import { useAuth } from '@/auth/use-auth'
 import { Spinner } from '@/components/ui/spinner'
+import { currentMessages } from '@/i18n/language'
 
 type RedirectState = { from?: string } | null
 
@@ -34,7 +35,7 @@ export function GuestOnly() {
 
 function FullPageSpinner() {
   return (
-    <div className="flex min-h-svh items-center justify-center" aria-label="Loading">
+    <div className="flex min-h-svh items-center justify-center" aria-label={currentMessages().common.loading}>
       <Spinner className="size-6 text-muted-foreground" />
     </div>
   )

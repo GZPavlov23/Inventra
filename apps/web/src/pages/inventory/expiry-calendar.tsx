@@ -15,14 +15,15 @@ import {
   formatMoney,
   formatMonthDay,
   formatQuantity,
+  formatShortWeekday,
   startOfWeek,
   today,
 } from '@/lib/format'
 import { type ExpiryCalendar, inventoryApi } from '@/lib/inventory-api'
+import { useT } from '@/i18n/language-context'
 
 // Five weeks: about a month, starting on this week's Monday, so today is always in the first row.
 const WEEKS = 5
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 // The same rule as the inventory list's "Expiring soon": today and the next 7 days.
 const SOON_DAYS = 7
 // Product lines written in a day's square; the rest are one click away.
@@ -45,6 +46,7 @@ const TONES = {
 // heavy day can be seen coming and those goods put at the front, or ordered less of.
 export function ExpiryCalendarView() {
   const { store } = useCurrentUser()
+  const t = useT()
   const money = (amount: string) => formatMoney(amount, store.currency)
   const [offset, setOffset] = useState(0)
   const [openDay, setOpenDay] = useState<Day | undefined>()
@@ -52,6 +54,8 @@ export function ExpiryCalendarView() {
 
   const first = addDays(startOfWeek(today()), offset * WEEKS * 7)
   const last = addDays(first, WEEKS * 7 - 1)
+  // Mon, Tue… or пн, вт…, from the first week's own days.
+  const weekdays = Array.from({ length: 7 }, (_, index) => formatShortWeekday(addDays(first, index)))
   const calendar = useQuery({
     // Starts with 'batches', so receiving, selling or writing off refreshes it too.
     queryKey: ['batches', 'expiry-calendar', first, last],
@@ -71,22 +75,22 @@ export function ExpiryCalendarView() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="icon-sm" aria-label="Earlier weeks" onClick={() => setOffset(offset - 1)}>
+          <Button variant="secondary" size="icon-sm" aria-label={t.calendar.earlier} onClick={() => setOffset(offset - 1)}>
             <ChevronLeft />
           </Button>
           <p className="figures min-w-36 text-center font-bold" aria-live="polite">
             {formatMonthDay(first)} – {formatMonthDay(last)}
           </p>
-          <Button variant="secondary" size="icon-sm" aria-label="Later weeks" onClick={() => setOffset(offset + 1)}>
+          <Button variant="secondary" size="icon-sm" aria-label={t.calendar.later} onClick={() => setOffset(offset + 1)}>
             <ChevronRight />
           </Button>
           {offset !== 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setOffset(0)}>This week</Button>
+            <Button variant="ghost" size="sm" onClick={() => setOffset(0)}>{t.common.thisWeek}</Button>
           )}
         </div>
         {calendar.data && (
           <p className="figures text-sm text-muted-foreground">
-            {money(calendar.data.total)} expires in these {WEEKS} weeks, at purchase prices
+            {t.calendar.total(money(calendar.data.total), WEEKS)}
           </p>
         )}
       </div>
@@ -95,12 +99,10 @@ export function ExpiryCalendarView() {
         <Alert variant="destructive">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             <span className="figures">
-              {calendar.data.overdue.length === 1 ? '1 batch' : `${calendar.data.overdue.length} batches`} expired
-              before {formatMonthDay(first)} and {calendar.data.overdue.length === 1 ? 'is' : 'are'} still on the
-              shelf: {money(calendar.data.overdue_value)}.
+              {t.calendar.overdue(calendar.data.overdue.length, formatMonthDay(first), money(calendar.data.overdue_value))}
             </span>
             <Button size="sm" variant="outline" asChild>
-              <Link to="/inventory?status=expired">See them</Link>
+              <Link to="/inventory?status=expired">{t.calendar.seeThem}</Link>
             </Button>
           </AlertDescription>
         </Alert>
@@ -110,7 +112,7 @@ export function ExpiryCalendarView() {
         <Alert variant="destructive">
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             {calendar.error.message}
-            <Button size="sm" variant="outline" onClick={() => void calendar.refetch()}>Try again</Button>
+            <Button size="sm" variant="outline" onClick={() => void calendar.refetch()}>{t.common.tryAgain}</Button>
           </AlertDescription>
         </Alert>
       ) : !calendar.data ? (
@@ -120,14 +122,14 @@ export function ExpiryCalendarView() {
           {/* Wide screens: the month as a grid of days. */}
           <div className="hidden md:block">
             <div aria-hidden className="mb-2 grid grid-cols-7 gap-2 px-1 text-xs font-bold text-muted-foreground">
-              {WEEKDAYS.map((weekday) => <span key={weekday}>{weekday}</span>)}
+              {weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}
             </div>
-            <ol aria-label="Expiry calendar" className="grid grid-cols-7 gap-2">
+            <ol aria-label={t.calendar.label} className="grid grid-cols-7 gap-2">
               {Array.from({ length: WEEKS * 7 }, (_, index) => {
                 const date = addDays(first, index)
                 const day = byDay.get(date)
                 const isToday = date === today()
-                const label = `${index === 0 || date.endsWith('-01') ? formatMonthDay(date) : Number(date.slice(8))}${isToday ? ' · today' : ''}`
+                const label = `${index === 0 || date.endsWith('-01') ? formatMonthDay(date) : Number(date.slice(8))}${isToday ? ` · ${t.calendar.today}` : ''}`
                 const past = daysUntil(date) < 0
                 if (!day) {
                   return (
@@ -142,7 +144,7 @@ export function ExpiryCalendarView() {
                     <button
                       type="button"
                       onClick={() => show(day)}
-                      aria-label={`${formatLongDay(date)}: ${money(day.value)}, ${day.batches.length === 1 ? '1 batch' : `${day.batches.length} batches`}`}
+                      aria-label={t.calendar.dayLabel(formatLongDay(date), money(day.value), day.batches.length)}
                       className={`flex size-full min-h-28 flex-col items-start rounded-2xl p-2.5 text-left transition-transform hover:-translate-y-0.5 ${colors.square} ${isToday ? 'outline-2 -outline-offset-2 outline-foreground' : ''}`}
                     >
                       <span className="figures text-xs font-bold">{label}</span>
@@ -155,7 +157,7 @@ export function ExpiryCalendarView() {
                         </span>
                       ))}
                       {day.batches.length > LINES_IN_A_DAY && (
-                        <span className="text-[0.6875rem] font-bold">+{day.batches.length - LINES_IN_A_DAY} more</span>
+                        <span className="text-[0.6875rem] font-bold">{t.calendar.more(day.batches.length - LINES_IN_A_DAY)}</span>
                       )}
                     </button>
                   </li>
@@ -165,10 +167,10 @@ export function ExpiryCalendarView() {
           </div>
 
           {/* Phones: seven columns don't fit, so only the days that have something, as a list. */}
-          <ol aria-label="Days with goods expiring" className="flex flex-col gap-2 md:hidden">
+          <ol aria-label={t.calendar.phoneLabel} className="flex flex-col gap-2 md:hidden">
             {calendar.data.days.length === 0 && (
               <li className="rounded-2xl bg-card p-5 text-center text-muted-foreground shadow-soft">
-                Nothing expires in these weeks.
+                {t.calendar.nothing}
               </li>
             )}
             {calendar.data.days.map((day) => {
@@ -191,14 +193,14 @@ export function ExpiryCalendarView() {
           </ol>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <ul aria-label="What the colours mean" className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3 rounded bg-destructive/40" />Expired, still on the shelf</li>
-              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3 rounded bg-signal" />Today and the next {SOON_DAYS} days</li>
-              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3 rounded bg-good/50" />Later</li>
+            <ul aria-label={t.calendar.legend} className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3 rounded bg-destructive/40" />{t.calendar.legendExpired}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3 rounded bg-signal" />{t.calendar.legendSoon(SOON_DAYS)}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden className="size-3 rounded bg-good/50" />{t.calendar.legendLater}</li>
             </ul>
             {heaviest && (
               <p className="font-hand text-2xl text-warning-foreground">
-                the heaviest day: {formatLongDay(heaviest.day)}, {money(heaviest.value)}
+                {t.calendar.heaviest(formatLongDay(heaviest.day), money(heaviest.value))}
               </p>
             )}
           </div>
@@ -209,7 +211,7 @@ export function ExpiryCalendarView() {
         open={panelOpen}
         onOpenChange={setPanelOpen}
         title={openDay ? formatLongDay(openDay.day) : ''}
-        description={openDay && `${money(openDay.value)} expires this day, at purchase prices`}
+        description={openDay && t.calendar.dayText(money(openDay.value))}
       >
         {openDay && (
           <ul className="flex flex-col divide-y divide-border/70">
@@ -218,15 +220,15 @@ export function ExpiryCalendarView() {
                 <div className="min-w-0">
                   <p className="font-bold">{batch.product.name}</p>
                   <p className="figures text-sm text-muted-foreground">
-                    {formatQuantity(batch.remaining_quantity, batch.product.unit)} left
-                    {batch.lot_code && ` · lot ${batch.lot_code}`}
+                    {t.calendar.left(formatQuantity(batch.remaining_quantity, batch.product.unit))}
+                    {batch.lot_code && t.calendar.lot(batch.lot_code)}
                   </p>
                   <Link
                     to={`/inventory?q=${encodeURIComponent(batch.product.barcode ?? batch.product.name)}`}
                     className="text-sm font-bold underline-offset-4 hover:underline"
                     onClick={() => setPanelOpen(false)}
                   >
-                    Show in the list
+                    {t.calendar.showInList}
                   </Link>
                 </div>
                 <span className="figures font-bold">{money(batch.value)}</span>

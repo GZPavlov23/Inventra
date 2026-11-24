@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { toApiError } from '@/lib/api'
 import { deliveriesApi, type Delivery, type DeliveryLine } from '@/lib/deliveries-api'
 import { formatDay, formatMoney, formatQuantity, lineCents, today } from '@/lib/format'
+import { useT } from '@/i18n/language-context'
 
 type ArrivedLine = {
   quantity: string
@@ -38,6 +39,7 @@ type ReceiveDeliveryDialogProps = {
 }
 
 export function ReceiveDeliveryDialog({ delivery, currency, open, onOpenChange }: ReceiveDeliveryDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -45,9 +47,9 @@ export function ReceiveDeliveryDialog({ delivery, currency, open, onOpenChange }
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Receive delivery #{delivery?.id}</DialogTitle>
+          <DialogTitle>{t.deliveries.receiveNumber(delivery?.id ?? '')}</DialogTitle>
           <DialogDescription>
-            Enter what really arrived. Every product becomes a new batch, all at once.
+            {t.deliveries.receiveText}
           </DialogDescription>
         </DialogHeader>
         {delivery && (
@@ -69,6 +71,7 @@ function ReceiveForm({ delivery, currency, onClose }: {
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
+  const t = useT()
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [arrived, setArrived] = useState<Record<number, ArrivedLine>>(() =>
     Object.fromEntries(delivery.items.map((line) => [line.id, asArrivedInFull(line)])),
@@ -93,7 +96,7 @@ function ReceiveForm({ delivery, currency, onClose }: {
       void queryClient.invalidateQueries({ queryKey: ['deliveries'] })
       void queryClient.invalidateQueries({ queryKey: ['batches'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success(`Delivery #${delivery.id} was received`)
+      toast.success(t.deliveries.wasReceived(delivery.id))
       onClose()
     },
     // A refusal can mean someone else already received it, so the list should show the truth.
@@ -125,26 +128,26 @@ function ReceiveForm({ delivery, currency, onClose }: {
 
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-dashed border-foreground/25 pb-4">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
-          <dt className="text-muted-foreground">From</dt>
+          <dt className="text-muted-foreground">{t.deliveries.from}</dt>
           <dd className="font-medium">{delivery.supplier.name}</dd>
-          <dt className="text-muted-foreground">Ordered</dt>
+          <dt className="text-muted-foreground">{t.deliveries.ordered}</dt>
           <dd className="figures">{formatDay(delivery.created_at.slice(0, 10))}</dd>
           {delivery.expected_on && (
             <>
-              <dt className="text-muted-foreground">Expected</dt>
+              <dt className="text-muted-foreground">{t.deliveries.expected}</dt>
               <dd className="figures">{formatDay(delivery.expected_on)}</dd>
             </>
           )}
         </dl>
         <div className="w-full sm:w-56">
-          <FormField id="invoice_number" label="Invoice number">
+          <FormField id="invoice_number" label={t.deliveries.invoiceNumber}>
             <Input id="invoice_number" maxLength={64} autoComplete="off" className="figures"
               value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} />
           </FormField>
         </div>
       </div>
 
-      <ul className="flex flex-col divide-y divide-dashed" aria-label="Products in this delivery">
+      <ul className="flex flex-col divide-y divide-dashed" aria-label={t.deliveries.inThisDelivery}>
         {delivery.items.map((line, index) => (
           <ArrivedRow
             key={line.id}
@@ -157,23 +160,23 @@ function ReceiveForm({ delivery, currency, onClose }: {
       </ul>
 
       <div className="flex items-center justify-between border-t pt-3">
-        <span className="text-sm text-muted-foreground">Total at these prices</span>
-        <span className="text-lg font-semibold" aria-label="Received total">
+        <span className="text-sm text-muted-foreground">{t.deliveries.totalAtPrices}</span>
+        <span className="text-lg font-semibold" aria-label={t.deliveries.receivedTotal}>
           {formatMoney(totalCents / 100, currency)}
         </span>
       </div>
 
       {nothingArrived && (
         <p className="text-sm text-muted-foreground">
-          If nothing arrived, close this and cancel the delivery instead.
+          {t.deliveries.nothingArrived}
         </p>
       )}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Back</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.deliveries.back}</Button>
         <Button type="submit" disabled={receive.isPending || nothingArrived}>
           {receive.isPending && <Spinner />}
-          Receive goods
+          {t.deliveries.receiveGoods}
         </Button>
       </DialogFooter>
     </form>
@@ -190,6 +193,7 @@ function ArrivedRow({ number, line, arrived, onChange }: {
   // The browser refuses half a piece before the form is even sent.
   const smallestAmount = product.unit === 'pcs' ? '1' : '0.001'
   const missing = Number(arrived.quantity) === 0
+  const t = useT()
 
   return (
     <li className="flex flex-col gap-2 py-3 first:pt-0">
@@ -199,30 +203,30 @@ function ArrivedRow({ number, line, arrived, onChange }: {
           {product.name}
         </p>
         <p className="text-xs text-muted-foreground figures">
-          Ordered {formatQuantity(line.ordered_quantity, product.unit)}
+          {t.deliveries.orderedAmount(formatQuantity(line.ordered_quantity, product.unit))}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-[6rem_6rem_1fr_1fr]">
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Arrived</span>
-          <Input type="number" inputMode="decimal" required aria-label={`Arrived of ${product.name}`}
+          <span className="text-xs text-muted-foreground">{t.deliveries.arrived}</span>
+          <Input type="number" inputMode="decimal" required aria-label={t.shared.fieldOf(t.deliveries.arrived, product.name)}
             min="0" step={smallestAmount} max="100000"
             value={arrived.quantity} onChange={(event) => onChange({ quantity: event.target.value })} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Cost</span>
-          <Input type="number" inputMode="decimal" required aria-label={`Cost of ${product.name}`}
+          <span className="text-xs text-muted-foreground">{t.deliveries.cost}</span>
+          <Input type="number" inputMode="decimal" required aria-label={t.shared.fieldOf(t.deliveries.cost, product.name)}
             min="0" step="0.01" disabled={missing}
             value={arrived.unitCost} onChange={(event) => onChange({ unitCost: event.target.value })} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Expiry date</span>
-          <Input type="date" min={today()} aria-label={`Expiry date of ${product.name}`} disabled={missing}
+          <span className="text-xs text-muted-foreground">{t.deliveries.expiryDate}</span>
+          <Input type="date" min={today()} aria-label={t.shared.fieldOf(t.deliveries.expiryDate, product.name)} disabled={missing}
             value={arrived.expiryDate} onChange={(event) => onChange({ expiryDate: event.target.value })} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Lot</span>
-          <Input maxLength={64} autoComplete="off" aria-label={`Lot of ${product.name}`} disabled={missing}
+          <span className="text-xs text-muted-foreground">{t.deliveries.lotLabel}</span>
+          <Input maxLength={64} autoComplete="off" aria-label={t.shared.fieldOf(t.deliveries.lotLabel, product.name)} disabled={missing}
             value={arrived.lotCode} onChange={(event) => onChange({ lotCode: event.target.value })} />
         </label>
       </div>

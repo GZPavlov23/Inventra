@@ -18,17 +18,20 @@ import {
 } from '@/components/ui/empty'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PAGE_SIZE, useListParams, useReturnToLastPage } from '@/hooks/use-list-params'
-import { daysAgo, formatMoney, today } from '@/lib/format'
+import { daysAgo, formatMoney, formatPercent, today } from '@/lib/format'
 import { type Sale, type SalePeriod, salesApi } from '@/lib/sales-api'
 import { ImportDialog } from '@/pages/sales/import-dialog'
 import { SaleDetailsDialog } from '@/pages/sales/sale-details-dialog'
 import { SalesTable, SalesTableSkeleton } from '@/pages/sales/sales-table'
+import { currentLocale } from '@/i18n/language'
+import type { Messages } from '@/i18n/en'
+import { useT } from '@/i18n/language-context'
 
-const PERIODS: { value: string; label: string; period: () => SalePeriod }[] = [
-  { value: 'today', label: 'Today', period: () => ({ dateFrom: today(), dateTo: today() }) },
-  { value: '7d', label: 'Last 7 days', period: () => ({ dateFrom: daysAgo(6), dateTo: today() }) },
-  { value: '30d', label: 'Last 30 days', period: () => ({ dateFrom: daysAgo(29), dateTo: today() }) },
-  { value: 'all', label: 'All', period: () => ({}) },
+const PERIODS: { value: string; period: () => SalePeriod }[] = [
+  { value: 'today', period: () => ({ dateFrom: today(), dateTo: today() }) },
+  { value: '7d', period: () => ({ dateFrom: daysAgo(6), dateTo: today() }) },
+  { value: '30d', period: () => ({ dateFrom: daysAgo(29), dateTo: today() }) },
+  { value: 'all', period: () => ({}) },
 ]
 
 function readPeriod(value: string | null) {
@@ -42,22 +45,22 @@ export function SalesPage() {
 
 // For staff: sales go straight into the stock, but the list with its money isn't theirs to see.
 function TillOnly() {
+  const t = useT()
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Sales</h2>
-          <p className="text-sm text-muted-foreground">Record what a customer buys.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.sales}</h2>
+          <p className="text-sm text-muted-foreground">{t.sales.tillSubtitle}</p>
         </div>
         <NewSaleButton />
       </div>
       <Empty className="rounded-2xl bg-card shadow-soft">
         <EmptyHeader>
           <EmptyMedia variant="icon"><ShoppingCart /></EmptyMedia>
-          <EmptyTitle>Ready for the next customer</EmptyTitle>
+          <EmptyTitle>{t.sales.ready}</EmptyTitle>
           <EmptyDescription>
-            Every sale leaves the stock from the batch that expires first. The list of sales, with
-            revenue and profit, is for the store's owner and managers.
+            {t.sales.readyText}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -67,6 +70,7 @@ function TillOnly() {
 
 function SalesOverview({ canImport }: { canImport: boolean }) {
   const { store } = useCurrentUser()
+  const t = useT()
   const { searchParams, page, updateParams } = useListParams()
   const selected = readPeriod(searchParams.get('period'))
   const period = selected.period()
@@ -96,8 +100,8 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Sales</h2>
-          <p className="text-sm text-muted-foreground">What you sold, and what you earned from it.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.sales}</h2>
+          <p className="text-sm text-muted-foreground">{t.sales.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {canImport && <ImportButton />}
@@ -110,24 +114,24 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
         onValueChange={(value) => updateParams({ period: value === 'today' ? null : value, page: null })}
       >
         <TabsList>
-          {PERIODS.map(({ value, label }) => (
+          {PERIODS.map(({ value }) => (
             <TabsTrigger key={value} value={value}>
-              {label}
+              {t.sales.periods[value]}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
 
       <StatPanel className="sm:grid-cols-3">
-        <StatTile label="Sales" value={summary.data?.sales.toLocaleString()} />
+        <StatTile label={t.sales.sales} value={summary.data?.sales.toLocaleString(currentLocale())} />
         <StatTile
-          label="Revenue"
+          label={t.sales.revenue}
           value={summary.data && formatMoney(summary.data.revenue, store.currency)}
         />
         <StatTile
-          label="Profit"
+          label={t.sales.profit}
           value={summary.data && formatMoney(summary.data.profit, store.currency)}
-          note={marginNote(summary.data?.revenue, summary.data?.profit)}
+          note={marginNote(t, summary.data?.revenue, summary.data?.profit)}
         />
       </StatPanel>
 
@@ -136,7 +140,7 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             {sales.error.message}
             <Button size="sm" variant="outline" onClick={() => void sales.refetch()}>
-              Try again
+              {t.common.tryAgain}
             </Button>
           </AlertDescription>
         </Alert>
@@ -148,8 +152,8 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
         <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><ReceiptText /></EmptyMedia>
-            <EmptyTitle>No sales in this period</EmptyTitle>
-            <EmptyDescription>Record a sale to take it out of your stock.</EmptyDescription>
+            <EmptyTitle>{t.sales.noSales}</EmptyTitle>
+            <EmptyDescription>{t.sales.noSalesText}</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <NewSaleButton />
@@ -182,18 +186,19 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
   )
 }
 
-function marginNote(revenue?: string, profit?: string): string | undefined {
+function marginNote(t: Messages, revenue?: string, profit?: string): string | undefined {
   if (!revenue || !profit || Number(revenue) === 0) return undefined
-  return `Margin ${((Number(profit) / Number(revenue)) * 100).toFixed(1)}%`
+  return t.sales.margin(formatPercent((Number(profit) / Number(revenue)) * 100))
 }
 
 function ImportButton() {
   const [open, setOpen] = useState(false)
+  const t = useT()
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         <FileUp />
-        Import CSV
+        {t.sales.importCsv}
       </Button>
       <ImportDialog open={open} onOpenChange={setOpen} />
     </>
@@ -202,10 +207,11 @@ function ImportButton() {
 
 function NewSaleButton() {
   const openNewSale = useOpenNewSale()
+  const t = useT()
   return (
     <Button onClick={openNewSale}>
       <Plus />
-      New sale
+      {t.newSale.button}
     </Button>
   )
 }

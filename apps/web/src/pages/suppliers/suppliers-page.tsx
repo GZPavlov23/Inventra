@@ -22,18 +22,16 @@ import { toApiError } from '@/lib/api'
 import { type Supplier, suppliersApi, type SupplierStatus } from '@/lib/suppliers-api'
 import { SupplierFormDialog } from '@/pages/suppliers/supplier-form-dialog'
 import { SuppliersTable, SuppliersTableSkeleton } from '@/pages/suppliers/suppliers-table'
+import { useT } from '@/i18n/language-context'
 
-const STATUSES: { value: SupplierStatus; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'archived', label: 'Archived' },
-  { value: 'all', label: 'All' },
-]
+const STATUSES: SupplierStatus[] = ['active', 'archived', 'all']
 
 function readStatus(value: string | null): SupplierStatus {
-  return STATUSES.some((status) => status.value === value) ? (value as SupplierStatus) : 'active'
+  return STATUSES.some((status) => status === value) ? (value as SupplierStatus) : 'active'
 }
 
 export function SuppliersPage() {
+  const t = useT()
   const can = useCan()
   const editable = can('manage_catalog')
   const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
@@ -56,10 +54,10 @@ export function SuppliersPage() {
       void queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       if (active) {
-        toast.success(`${supplier.name} was restored`)
+        toast.success(t.products.restored(supplier.name))
       } else {
-        toast.success(`${supplier.name} was archived`, {
-          action: { label: 'Undo', onClick: () => setActive.mutate({ supplier, active: true }) },
+        toast.success(t.products.archived(supplier.name), {
+          action: { label: t.products.undo, onClick: () => setActive.mutate({ supplier, active: true }) },
         })
       }
     },
@@ -83,8 +81,8 @@ export function SuppliersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Suppliers</h2>
-          <p className="text-sm text-muted-foreground">The companies you buy from.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.suppliers}</h2>
+          <p className="text-sm text-muted-foreground">{t.suppliers.subtitle}</p>
         </div>
         {editable && <AddSupplierButton />}
       </div>
@@ -94,8 +92,8 @@ export function SuppliersPage() {
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
-            aria-label="Search suppliers"
-            placeholder="Search by company or contact"
+            aria-label={t.suppliers.searchLabel}
+            placeholder={t.suppliers.searchPlaceholder}
             className="pl-9"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -106,9 +104,9 @@ export function SuppliersPage() {
           onValueChange={(value) => updateParams({ status: value === 'active' ? null : value, page: null })}
         >
           <TabsList>
-            {STATUSES.map(({ value, label }) => (
+            {STATUSES.map((value) => (
               <TabsTrigger key={value} value={value}>
-                {label}
+                {t.products.statuses[value]}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -120,7 +118,7 @@ export function SuppliersPage() {
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             {suppliers.error.message}
             <Button size="sm" variant="outline" onClick={() => void suppliers.refetch()}>
-              Try again
+              {t.common.tryAgain}
             </Button>
           </AlertDescription>
         </Alert>
@@ -133,24 +131,24 @@ export function SuppliersPage() {
           <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
-              <EmptyTitle>No suppliers found</EmptyTitle>
+              <EmptyTitle>{t.suppliers.noneFound}</EmptyTitle>
               <EmptyDescription>
-                {search ? `Nothing matches “${search}”.` : 'There are no suppliers in this list.'}
+                {search ? t.inventory.nothingMatches(search) : t.suppliers.noneInList}
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Button variant="outline" onClick={clearFilters}>Show all active suppliers</Button>
+              <Button variant="outline" onClick={clearFilters}>{t.suppliers.showAllActive}</Button>
             </EmptyContent>
           </Empty>
         ) : (
           <Empty className="rounded-2xl bg-card shadow-soft">
             <EmptyHeader>
               <EmptyMedia variant="icon"><Building2 /></EmptyMedia>
-              <EmptyTitle>No suppliers yet</EmptyTitle>
+              <EmptyTitle>{t.suppliers.noSuppliers}</EmptyTitle>
               <EmptyDescription>
                 {editable
-                  ? 'Add the companies you buy from, then link your products to them.'
-                  : "The store's owner or a manager adds suppliers here."}
+                  ? t.suppliers.addFirst
+                  : t.suppliers.ownerAdds}
               </EmptyDescription>
             </EmptyHeader>
             {editable && (
@@ -189,11 +187,12 @@ export function SuppliersPage() {
 
 function AddSupplierButton() {
   const [open, setOpen] = useState(false)
+  const t = useT()
   return (
     <>
       <Button onClick={() => setOpen(true)}>
         <Plus />
-        Add supplier
+        {t.suppliers.add}
       </Button>
       <SupplierFormDialog open={open} onOpenChange={setOpen} />
     </>

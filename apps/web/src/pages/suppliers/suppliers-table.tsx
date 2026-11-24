@@ -19,17 +19,19 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { Supplier } from '@/lib/suppliers-api'
+import { useT } from '@/i18n/language-context'
 
 function TableHeadings() {
+  const t = useT()
   return (
     <TableHeader>
       <TableRow>
-        <TableHead>Name</TableHead>
-        <TableHead>Contact</TableHead>
-        <TableHead>Phone</TableHead>
-        <TableHead>Email</TableHead>
-        <TableHead className="text-right">Products</TableHead>
-        <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
+        <TableHead>{t.suppliers.name}</TableHead>
+        <TableHead>{t.suppliers.contact}</TableHead>
+        <TableHead>{t.suppliers.phone}</TableHead>
+        <TableHead>{t.suppliers.email}</TableHead>
+        <TableHead className="text-right">{t.suppliers.products}</TableHead>
+        <TableHead className="w-10"><span className="sr-only">{t.inventory.actions}</span></TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -45,9 +47,10 @@ type SuppliersTableProps = {
 }
 
 export function SuppliersTable({ suppliers, actions }: SuppliersTableProps) {
+  const t = useT()
   return (
     <Table>
-      <TableCaption className="sr-only">Suppliers of your store</TableCaption>
+      <TableCaption className="sr-only">{t.suppliers.caption}</TableCaption>
       <TableHeadings />
       <TableBody>
         {suppliers.map((supplier) => (
@@ -61,7 +64,7 @@ export function SuppliersTable({ suppliers, actions }: SuppliersTableProps) {
                     {supplier.name}
                   </button>
                 ) : supplier.name}
-                {!supplier.active && <Badge variant="outline">Archived</Badge>}
+                {!supplier.active && <Badge variant="outline">{t.products.archivedBadge}</Badge>}
               </div>
               {supplier.notes && (
                 <div className="max-w-64 truncate text-xs text-muted-foreground" title={supplier.notes}>
@@ -81,24 +84,24 @@ export function SuppliersTable({ suppliers, actions }: SuppliersTableProps) {
               {actions && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${supplier.name}`}>
+                    <Button variant="ghost" size="icon-sm" aria-label={t.inventory.actionsFor(supplier.name)}>
                       <Ellipsis />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={() => actions.onEdit(supplier)}>
                       <Pencil />
-                      Edit
+                      {t.products.edit}
                     </DropdownMenuItem>
                     {supplier.active ? (
                       <DropdownMenuItem onSelect={() => actions.onSetActive(supplier, false)}>
                         <Archive />
-                        Archive
+                        {t.products.archive}
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem onSelect={() => actions.onSetActive(supplier, true)}>
                         <ArchiveRestore />
-                        Restore
+                        {t.products.restore}
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -113,9 +116,10 @@ export function SuppliersTable({ suppliers, actions }: SuppliersTableProps) {
 }
 
 export function SuppliersTableSkeleton({ rows = 4 }: { rows?: number }) {
+  const t = useT()
   return (
     <Table aria-busy="true">
-      <TableCaption className="sr-only">Loading suppliers</TableCaption>
+      <TableCaption className="sr-only">{t.suppliers.loading}</TableCaption>
       <TableHeadings />
       <TableBody>
         {Array.from({ length: rows }, (_, index) => (

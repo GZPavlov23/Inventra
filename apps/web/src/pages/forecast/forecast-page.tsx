@@ -21,11 +21,14 @@ import { forecastsApi, type ProductForecast } from '@/lib/forecasts-api'
 import { AccuracyCard } from '@/pages/forecast/accuracy-card'
 import { ForecastDetailsDialog } from '@/pages/forecast/forecast-details-dialog'
 import { ForecastTable } from '@/pages/forecast/forecast-table'
+import { currentLocale } from '@/i18n/language'
+import { useT } from '@/i18n/language-context'
 
 const HORIZONS = [7, 14]
 
 export function ForecastPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const t = useT()
   const horizon = searchParams.get('days') === '14' ? 14 : 7
 
   const forecast = useQuery({
@@ -58,9 +61,9 @@ export function ForecastPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Forecast</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t.nav.forecast}</h2>
         <p className="text-sm text-muted-foreground">
-          What you can expect to sell, and what will run short before then.
+          {t.forecast.subtitle}
         </p>
       </div>
 
@@ -73,7 +76,7 @@ export function ForecastPage() {
                 void forecast.refetch()
                 void accuracy.refetch()
               }}>
-              Try again
+              {t.common.tryAgain}
             </Button>
           </AlertDescription>
         </Alert>
@@ -81,15 +84,14 @@ export function ForecastPage() {
         <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><TrendingUp /></EmptyMedia>
-            <EmptyTitle>Not enough sales yet</EmptyTitle>
+            <EmptyTitle>{t.forecast.notEnough}</EmptyTitle>
             <EmptyDescription>
-              A forecast needs at least 14 days of sales for a product. Record your sales, or import
-              your old history from a CSV file.
+              {t.forecast.notEnoughText}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <Button variant="outline" asChild>
-              <Link to="/sales">Go to Sales</Link>
+              <Link to="/sales">{t.forecast.goToSales}</Link>
             </Button>
           </EmptyContent>
         </Empty>
@@ -97,19 +99,19 @@ export function ForecastPage() {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatTile
-              label="Running short"
-              value={short?.toLocaleString()}
-              note={`Products, within ${horizon} days`}
+              label={t.forecast.runningShort}
+              value={short?.toLocaleString(currentLocale())}
+              note={t.forecast.withinDays(horizon)}
             />
             <StatTile
-              label="Enough stock"
-              value={items && short !== undefined ? (items.length - short).toLocaleString() : undefined}
-              note={`Products, for ${horizon} days`}
+              label={t.forecast.enoughStock}
+              value={items && short !== undefined ? (items.length - short).toLocaleString(currentLocale()) : undefined}
+              note={t.forecast.forDays(horizon)}
             />
             <StatTile
-              label="Error per week"
+              label={t.forecast.errorPerWeek}
               value={accuracy.data && formatShare(weeklyError)}
-              note="Measured on your last 4 weeks"
+              note={t.forecast.measured}
             />
           </div>
 
@@ -120,12 +122,12 @@ export function ForecastPage() {
             >
               <TabsList>
                 {HORIZONS.map((days) => (
-                  <TabsTrigger key={days} value={String(days)}>Next {days} days</TabsTrigger>
+                  <TabsTrigger key={days} value={String(days)}>{t.forecast.nextDays(days)}</TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
             {forecast.data && (
-              <p className="text-sm text-muted-foreground">Model: {forecast.data.method}</p>
+              <p className="text-sm text-muted-foreground">{t.forecast.model(t.common.models[forecast.data.method] ?? forecast.data.method)}</p>
             )}
           </div>
 
@@ -142,10 +144,7 @@ export function ForecastPage() {
 
           {forecast.data && forecast.data.not_enough_history > 0 && (
             <p className="text-sm text-muted-foreground">
-              {forecast.data.not_enough_history === 1
-                ? '1 more product has'
-                : `${forecast.data.not_enough_history} more products have`}{' '}
-              less than 14 days of sales, which is too little to forecast.
+              {t.forecast.tooLittle(forecast.data.not_enough_history)}
             </p>
           )}
 

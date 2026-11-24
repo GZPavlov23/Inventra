@@ -20,9 +20,13 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Sparkline } from '@/components/sparkline'
-import { formatExpected, formatMoney, formatQuantity, marginPercent } from '@/lib/format'
+import { formatExpected, formatMoney, formatPercent, formatQuantity, marginPercent } from '@/lib/format'
 import type { Product, ProductSort, SortOrder } from '@/lib/products-api'
 import type { SalesTrend } from '@/lib/reports-api'
+import { useT } from '@/i18n/language-context'
+
+// The same stretch as the products page asks for.
+const TREND_DAYS = 14
 
 export type SortState = {
   sort: ProductSort
@@ -62,17 +66,18 @@ function SortableHead({ column, label, numeric, sorting }: {
 }
 
 function TableHeadings({ sorting }: { sorting?: SortState }) {
+  const t = useT()
   return (
     <TableHeader>
       <TableRow>
-        <SortableHead column="name" label="Name" sorting={sorting} />
-        <SortableHead column="category" label="Category" sorting={sorting} />
-        <SortableHead column="purchase_price" label="Purchase price" numeric sorting={sorting} />
-        <SortableHead column="sale_price" label="Sale price" numeric sorting={sorting} />
-        <SortableHead column="margin" label="Margin" numeric sorting={sorting} />
-        <SortableHead column="stock" label="Stock" numeric sorting={sorting} />
-        <TableHead className="text-right">Last 14 days</TableHead>
-        <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
+        <SortableHead column="name" label={t.products.name} sorting={sorting} />
+        <SortableHead column="category" label={t.products.category} sorting={sorting} />
+        <SortableHead column="purchase_price" label={t.products.purchasePrice} numeric sorting={sorting} />
+        <SortableHead column="sale_price" label={t.products.salePrice} numeric sorting={sorting} />
+        <SortableHead column="margin" label={t.products.margin} numeric sorting={sorting} />
+        <SortableHead column="stock" label={t.products.stock} numeric sorting={sorting} />
+        <TableHead className="text-right">{t.products.lastDays(TREND_DAYS)}</TableHead>
+        <TableHead className="w-10"><span className="sr-only">{t.inventory.actions}</span></TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -95,9 +100,10 @@ type ProductsTableProps = {
 export function ProductsTable({
   products, currency, actions, sorting, justSaved, trends,
 }: ProductsTableProps) {
+  const t = useT()
   return (
     <Table>
-      <TableCaption className="sr-only">Products of your store</TableCaption>
+      <TableCaption className="sr-only">{t.products.caption}</TableCaption>
       <TableHeadings sorting={sorting} />
       <TableBody>
         {products.map((product) => {
@@ -113,7 +119,7 @@ export function ProductsTable({
                     className="text-left underline-offset-4 outline-offset-2 hover:underline">
                     {product.name}
                   </Link>
-                  {!product.active && <Badge variant="outline">Archived</Badge>}
+                  {!product.active && <Badge variant="outline">{t.products.archivedBadge}</Badge>}
                 </div>
                 {(product.brand || product.barcode) && (
                   <div className="text-xs text-muted-foreground">
@@ -135,7 +141,7 @@ export function ProductsTable({
               <TableCell
                 className={`text-right figures ${margin !== null && margin < 0 ? 'text-destructive' : ''}`}
               >
-                {margin === null ? <Dash /> : `${margin.toFixed(1)}%`}
+                {margin === null ? <Dash /> : formatPercent(margin)}
               </TableCell>
               <TableCell
                 className={`text-right figures ${Number(product.stock) === 0 ? 'text-muted-foreground' : ''}`}
@@ -150,24 +156,24 @@ export function ProductsTable({
                 {actions && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${product.name}`}>
+                      <Button variant="ghost" size="icon-sm" aria-label={t.inventory.actionsFor(product.name)}>
                         <Ellipsis />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onSelect={() => actions.onEdit(product)}>
                         <Pencil />
-                        Edit
+                        {t.products.edit}
                       </DropdownMenuItem>
                       {product.active ? (
                         <DropdownMenuItem onSelect={() => actions.onSetActive(product, false)}>
                           <Archive />
-                          Archive
+                          {t.products.archive}
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem onSelect={() => actions.onSetActive(product, true)}>
                           <ArchiveRestore />
-                          Restore
+                          {t.products.restore}
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -184,9 +190,10 @@ export function ProductsTable({
 
 // Grey placeholder rows with the table's real layout, shown while the first page loads.
 export function ProductsTableSkeleton({ rows = 6 }: { rows?: number }) {
+  const t = useT()
   return (
     <Table aria-busy="true">
-      <TableCaption className="sr-only">Loading products</TableCaption>
+      <TableCaption className="sr-only">{t.products.loading}</TableCaption>
       <TableHeadings />
       <TableBody>
         {Array.from({ length: rows }, (_, index) => (
@@ -207,12 +214,13 @@ export function ProductsTableSkeleton({ rows = 6 }: { rows?: number }) {
 }
 
 function TrendCell({ product, trend }: { product: Product; trend?: SalesTrend }) {
+  const t = useT()
   if (!trend) return null
   // Rounded like a forecast: 22.787 kg of bananas reads better as 22.8 kg in a narrow column.
   const sold = formatExpected(trend.total, product.unit)
   return (
     <div className="flex items-center justify-end gap-2">
-      <Sparkline values={trend.quantities.map(Number)} label={`${sold} sold in the last 14 days`} />
+      <Sparkline values={trend.quantities.map(Number)} label={t.products.soldIn(sold, TREND_DAYS)} />
       <span className="figures min-w-12 text-xs text-muted-foreground">{sold}</span>
     </div>
   )

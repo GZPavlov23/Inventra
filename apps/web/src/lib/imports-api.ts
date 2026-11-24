@@ -1,5 +1,6 @@
 import { api } from '@/lib/api'
 import { downloadCsv } from '@/lib/csv'
+import { currentMessages } from '@/i18n/language'
 
 // Shapes match the backend schemas in apps/api/app/schemas/sale_import.py.
 
@@ -43,7 +44,7 @@ export async function readTextFile(file: File): Promise<string> {
 // A template to fill in: one line with a barcode, and one sold by weight without a barcode.
 export function downloadTemplate() {
   downloadCsv('inventra-sales-template.csv', [
-    ['receipt', 'date', 'barcode', 'product', 'quantity', 'unit_price'],
+    currentMessages().sales.templateColumns,
     ['R-1001', '30.10.2026', '2000000000015', '', '2', '1,59'],
     ['R-1001', '30.10.2026', '', 'Банани', '1,250', ''],
   ])

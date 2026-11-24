@@ -8,21 +8,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { daysAgo, formatMoney, formatQuantity, today } from '@/lib/format'
+import { daysAgo, formatMoney, formatPercent, formatQuantity, today } from '@/lib/format'
 import type { WasteReason } from '@/lib/inventory-api'
 import { reportsApi } from '@/lib/reports-api'
 import { type RankedRow, RankedBars } from '@/pages/dashboard/ranked-bars'
+import { useT } from '@/i18n/language-context'
+import type { Messages } from '@/i18n/en'
+import { toApiError } from '@/lib/api'
 
 const REPORT_DAYS = 30
 const RUNNING_OUT_ROWS = 6
 // Anything past this many categories is folded into "Other", so the list stays readable.
 const CATEGORY_ROWS = 6
 
-const WASTE_REASONS: Record<WasteReason, string> = {
-  expired: 'Expired',
-  damaged: 'Damaged',
-  other: 'Other reason',
-}
 
 const reportPeriod = () => ({ from: daysAgo(REPORT_DAYS - 1), to: today() })
 
@@ -30,12 +28,13 @@ function ReportState({ query, children }: {
   query: { isError: boolean; error: Error | null; isPending: boolean; refetch: () => unknown }
   children: ReactNode
 }) {
+  const t = useT()
   if (query.isError) {
     return (
       <Alert variant="destructive">
         <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-          {query.error?.message}
-          <Button size="sm" variant="outline" onClick={() => void query.refetch()}>Try again</Button>
+          {query.error && toApiError(query.error).message}
+          <Button size="sm" variant="outline" onClick={() => void query.refetch()}>{t.common.tryAgain}</Button>
         </AlertDescription>
       </Alert>
     )
@@ -63,6 +62,7 @@ function Nothing({ children }: { children: ReactNode }) {
 
 export function WastePanel() {
   const { store } = useCurrentUser()
+  const t = useT()
   const { from, to } = reportPeriod()
   const waste = useQuery({
     // Starts with 'batches', so a write-off refreshes this report too.
@@ -73,23 +73,23 @@ export function WastePanel() {
   return (
     <ReportState query={waste}>
       {waste.data?.reasons.length === 0 ? (
-        <Nothing>No goods were written off in the last {REPORT_DAYS} days.</Nothing>
+        <Nothing>{t.reports.noWaste(REPORT_DAYS)}</Nothing>
       ) : waste.data && (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             <span className="text-2xl font-semibold tracking-tight text-foreground">
               {formatMoney(waste.data.total, store.currency)}
-            </span>{' '}
-            written off in the last {REPORT_DAYS} days, at purchase prices
+            </span>
+            {t.reports.writtenOff(REPORT_DAYS)}
           </p>
           <RankedBars
-            label="Written off goods by reason"
+            label={t.reports.wasteLabel}
             rows={waste.data.reasons.map(({ reason, value, write_offs: writeOffs }) => ({
               key: reason,
-              label: WASTE_REASONS[reason],
+              label: t.reports.reasons[reason as WasteReason],
               amount: Number(value),
               value: formatMoney(value, store.currency),
-              detail: writeOffs === 1 ? '1 write-off' : `${writeOffs} write-offs`,
+              detail: t.reports.writeOffs(writeOffs),
             }))}
           />
         </div>
@@ -98,14 +98,14 @@ export function WastePanel() {
   )
 }
 
-function daysLeftText(days: number): string {
-  if (days === 0) return 'None left to sell'
-  if (days < 1) return 'Less than a day'
-  const rounded = Math.round(days)
-  return rounded === 1 ? 'About 1 day left' : `About ${rounded} days left`
+function daysLeftText(days: number, t: Messages): string {
+  if (days === 0) return t.reports.noneLeft
+  if (days < 1) return t.reports.lessThanDay
+  return t.reports.aboutDays(Math.round(days))
 }
 
 export function RunningOutPanel() {
+  const t = useT()
   const running = useQuery({
     // Sales and stock both change this list, so it is asked for again on every visit.
     queryKey: ['sales', 'report', 'running-out'],
@@ -117,14 +117,11 @@ export function RunningOutPanel() {
   return (
     <ReportState query={running}>
       {items.length === 0 ? (
-        <Nothing>No product will run out within a week.</Nothing>
+        <Nothing>{t.reports.noRunningOut}</Nothing>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
-            Stock that can still be sold, divided by average daily sales of the last 14 days. A
-            simple average, not a forecast.
-          </p>
-          <ul aria-label="Products running out" className="flex flex-col divide-y">
+          <p className="text-sm text-muted-foreground">{t.reports.runningOutExplained}</p>
+          <ul aria-label={t.reports.runningOutLabel} className="flex flex-col divide-y">
             {items.slice(0, RUNNING_OUT_ROWS).map(({ product, stock, average_daily_sales: average, days_left: days }) => (
               <li key={product.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                 <div className="min-w-0">
@@ -135,21 +132,20 @@ export function RunningOutPanel() {
                     {product.name}
                   </Link>
                   <p className="text-xs text-muted-foreground figures">
-                    {formatQuantity(stock, product.unit)} left to sell,{' '}
-                    {formatQuantity(Number(average).toFixed(1), product.unit)} a day on average
+                    {t.reports.leftToSell(formatQuantity(stock, product.unit), formatQuantity(Number(average).toFixed(1), product.unit))}
                   </p>
                 </div>
                 <Badge
                   variant={Number(days) === 0 ? 'destructive' : 'secondary'}
                   className={Number(days) === 0 ? '' : 'bg-warning text-warning-foreground'}
                 >
-                  {daysLeftText(Number(days))}
+                  {daysLeftText(Number(days), t)}
                 </Badge>
               </li>
             ))}
           </ul>
           {items.length > RUNNING_OUT_ROWS && (
-            <p className="text-xs text-muted-foreground">And {items.length - RUNNING_OUT_ROWS} more</p>
+            <p className="text-xs text-muted-foreground">{t.reports.andMore(items.length - RUNNING_OUT_ROWS)}</p>
           )}
         </div>
       )}
@@ -159,6 +155,7 @@ export function RunningOutPanel() {
 
 export function TopProductsPanel() {
   const { store } = useCurrentUser()
+  const t = useT()
   const { from, to } = reportPeriod()
   const top = useQuery({
     queryKey: ['sales', 'report', 'top-products', from, to],
@@ -169,18 +166,18 @@ export function TopProductsPanel() {
   return (
     <ReportState query={top}>
       {items.length === 0 ? (
-        <Nothing>No sales in the last {REPORT_DAYS} days yet.</Nothing>
+        <Nothing>{t.reports.noSales(REPORT_DAYS)}</Nothing>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">Profit in the last {REPORT_DAYS} days</p>
+          <p className="text-sm text-muted-foreground">{t.reports.profitIn(REPORT_DAYS)}</p>
           <RankedBars
-            label="Most profitable products"
+            label={t.reports.topLabel}
             rows={items.map(({ product, quantity, profit }) => ({
               key: String(product.id),
               label: product.name,
               amount: Number(profit),
               value: formatMoney(profit, store.currency),
-              detail: `${formatQuantity(quantity, product.unit)} sold`,
+              detail: t.reports.sold(formatQuantity(quantity, product.unit)),
             }))}
           />
         </div>
@@ -191,6 +188,7 @@ export function TopProductsPanel() {
 
 export function CategoriesPanel() {
   const { store } = useCurrentUser()
+  const t = useT()
   const { from, to } = reportPeriod()
   const categories = useQuery({
     queryKey: ['sales', 'report', 'categories', from, to],
@@ -204,22 +202,22 @@ export function CategoriesPanel() {
     label,
     amount: revenue,
     value: formatMoney(revenue, store.currency),
-    detail: `${((revenue / total) * 100).toFixed(1)}%`,
+    detail: formatPercent((revenue / total) * 100),
   })
   const rows = items
     .slice(0, CATEGORY_ROWS)
-    .map(({ category, revenue }) => toRow(category ?? 'none', category ?? 'No category', Number(revenue)))
+    .map(({ category, revenue }) => toRow(category ?? 'none', category ?? t.reports.noCategory, Number(revenue)))
   const rest = items.slice(CATEGORY_ROWS).reduce((sum, item) => sum + Number(item.revenue), 0)
-  if (rest > 0) rows.push(toRow('other', 'Other categories', rest))
+  if (rest > 0) rows.push(toRow('other', t.reports.otherCategories, rest))
 
   return (
     <ReportState query={categories}>
       {items.length === 0 ? (
-        <Nothing>No sales in the last {REPORT_DAYS} days yet.</Nothing>
+        <Nothing>{t.reports.noSales(REPORT_DAYS)}</Nothing>
       ) : (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">Revenue in the last {REPORT_DAYS} days</p>
-          <RankedBars label="Revenue by category" rows={rows} />
+          <p className="text-sm text-muted-foreground">{t.reports.revenueIn(REPORT_DAYS)}</p>
+          <RankedBars label={t.reports.categoriesLabel} rows={rows} />
         </div>
       )}
     </ReportState>

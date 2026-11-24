@@ -18,6 +18,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
 import { formatChange, formatQuantity } from '@/lib/format'
 import { type Batch, inventoryApi } from '@/lib/inventory-api'
+import { useT } from '@/i18n/language-context'
 
 type CorrectionDialogProps = {
   batch?: Batch
@@ -26,6 +27,7 @@ type CorrectionDialogProps = {
 }
 
 export function CorrectionDialog({ batch, open, onOpenChange }: CorrectionDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -33,9 +35,9 @@ export function CorrectionDialog({ batch, open, onOpenChange }: CorrectionDialog
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Correct the count</DialogTitle>
+          <DialogTitle>{t.inventory.correct}</DialogTitle>
           <DialogDescription>
-            {batch && `${batch.product.name}: the system shows ${formatQuantity(batch.remaining_quantity, batch.product.unit)}.`}
+            {batch && t.inventory.systemShows(batch.product.name, formatQuantity(batch.remaining_quantity, batch.product.unit))}
           </DialogDescription>
         </DialogHeader>
         {batch && <CorrectionForm key={batch.id} batch={batch} onClose={() => onOpenChange(false)} />}
@@ -46,6 +48,7 @@ export function CorrectionDialog({ batch, open, onOpenChange }: CorrectionDialog
 
 function CorrectionForm({ batch, onClose }: { batch: Batch; onClose: () => void }) {
   const queryClient = useQueryClient()
+  const t = useT()
   const [counted, setCounted] = useState('')
   const [reason, setReason] = useState('')
   const { unit, name } = batch.product
@@ -69,7 +72,7 @@ function CorrectionForm({ batch, onClose }: { batch: Batch; onClose: () => void 
       }),
     onSuccess: () => {
       refreshStock()
-      toast.success(`${name}: stock corrected to ${formatQuantity(counted, unit)}`)
+      toast.success(t.inventory.correctedTo(name, formatQuantity(counted, unit)))
       onClose()
     },
     // Refused because a colleague changed this batch: show the new number and the new difference.
@@ -91,19 +94,19 @@ function CorrectionForm({ batch, onClose }: { batch: Batch; onClose: () => void 
       {showGeneralError && (
         <Alert variant="destructive">
           <AlertDescription>
-            {error.code === 'stock_changed' ? `${error.message}. Check your count and try again.` : error.message}
+            {error.code === 'stock_changed' ? t.inventory.checkCount(error.message) : error.message}
           </AlertDescription>
         </Alert>
       )}
 
-      <FormField id="counted" label={`Counted quantity (${unit})`} required error={fieldErrors.counted}>
+      <FormField id="counted" label={t.inventory.countedIn(t.units[unit])} required error={fieldErrors.counted}>
         <Input id="counted" type="number" inputMode="decimal" required min="0" step={smallestAmount}
           aria-invalid={Boolean(fieldErrors.counted)}
           value={counted} onChange={(event) => setCounted(event.target.value)} />
       </FormField>
 
-      <FormField id="correction_reason" label="Reason" required error={fieldErrors.reason}>
-        <Input id="correction_reason" required maxLength={200} placeholder="Stocktaking"
+      <FormField id="correction_reason" label={t.inventory.reason} required error={fieldErrors.reason}>
+        <Input id="correction_reason" required maxLength={200} placeholder={t.inventory.stocktaking}
           aria-invalid={Boolean(fieldErrors.reason)}
           value={reason} onChange={(event) => setReason(event.target.value)} />
       </FormField>
@@ -111,18 +114,18 @@ function CorrectionForm({ batch, onClose }: { batch: Batch; onClose: () => void 
       {difference !== null && (
         <p className="text-sm text-muted-foreground">
           {changed ? (
-            <>Difference: <span className="font-medium figures">{formatChange(difference, unit)}</span></>
+            <>{t.inventory.difference} <span className="font-medium figures">{formatChange(difference, unit)}</span></>
           ) : (
-            'This is the same as the system shows, so there is nothing to correct.'
+            t.inventory.nothingToCorrect
           )}
         </p>
       )}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={correct.isPending || !changed}>
           {correct.isPending && <Spinner />}
-          Save correction
+          {t.inventory.saveCorrection}
         </Button>
       </DialogFooter>
     </form>

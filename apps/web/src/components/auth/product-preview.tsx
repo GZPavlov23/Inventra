@@ -4,6 +4,7 @@ import { Plus, Search } from 'lucide-react'
 import { useRef } from 'react'
 
 import logoMark from '@/assets/logo-mark.png'
+import { useT } from '@/i18n/language-context'
 
 gsap.registerPlugin(useGSAP)
 
@@ -20,7 +21,7 @@ const PREVIEW_PRODUCTS = [
   { name: 'Банани', category: 'Плодове и зеленчуци', barcode: '—', price: '1.89 / kg' },
 ]
 
-const PREVIEW_NAV = ['Dashboard', 'Products', 'Inventory', 'Deliveries', 'Sales']
+const PREVIEW_NAV = ['dashboard', 'products', 'inventory', 'deliveries', 'sales'] as const
 
 // Background circles: size in rem, seconds per full turn of their orbiting dot, and direction.
 const ORBITS = [
@@ -31,6 +32,7 @@ const ORBITS = [
 
 export function ProductPreview() {
   const root = useRef<HTMLElement>(null)
+  const t = useT()
 
   useGSAP(
     () => {
@@ -64,7 +66,7 @@ export function ProductPreview() {
     <aside
       ref={root}
       role="img"
-      aria-label="Illustration of the Inventra platform with demo products"
+      aria-label={t.preview.label}
       className="relative hidden items-center overflow-hidden border-l bg-muted/40 lg:flex"
     >
       {/* Faint concentric circles behind the frame, each with a small orbiting dot.
@@ -96,35 +98,35 @@ export function ProductPreview() {
             <img src={logoMark} alt="" className="size-7" />
             <span className="font-heading text-lg font-bold">Inventra</span>
             <div className="flex gap-1 rounded-full bg-secondary p-1 text-xs font-bold text-muted-foreground">
-              {PREVIEW_NAV.map((title) => (
+              {PREVIEW_NAV.map((page) => (
                 <span
-                  key={title}
-                  className={title === 'Products' ? 'rounded-full bg-card px-3 py-1 text-foreground shadow-sm' : 'px-3 py-1'}
+                  key={page}
+                  className={page === 'products' ? 'rounded-full bg-card px-3 py-1 text-foreground shadow-sm' : 'px-3 py-1'}
                 >
-                  {title}
+                  {t.nav[page]}
                 </span>
               ))}
             </div>
           </div>
           <div className="flex-1 px-8 py-6">
-            <h3 className="text-2xl font-bold">Products</h3>
+            <h3 className="text-2xl font-bold">{t.nav.products}</h3>
 
             <div className="mt-5 flex items-center gap-3">
               <div className="flex h-9 w-64 items-center gap-2 rounded-full border bg-card px-3 text-sm text-muted-foreground">
-                <Search className="size-4" /> Search products…
+                <Search className="size-4" /> {t.preview.searchProducts}
               </div>
               <div className="flex h-9 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
-                <Plus className="size-4" /> Add product
+                <Plus className="size-4" /> {t.preview.addProduct}
               </div>
             </div>
 
             <table className="mt-6 w-full text-left text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr className="border-b">
-                  <th className="py-2.5 font-medium">Name</th>
-                  <th className="py-2.5 font-medium">Category</th>
-                  <th className="py-2.5 font-medium">Barcode</th>
-                  <th className="py-2.5 text-right font-medium">Price (EUR)</th>
+                  <th className="py-2.5 font-medium">{t.preview.name}</th>
+                  <th className="py-2.5 font-medium">{t.preview.category}</th>
+                  <th className="py-2.5 font-medium">{t.preview.barcode}</th>
+                  <th className="py-2.5 text-right font-medium">{t.preview.price}</th>
                 </tr>
               </thead>
               <tbody>

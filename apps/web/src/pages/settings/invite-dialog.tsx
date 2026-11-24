@@ -18,20 +18,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner'
 import { toApiError } from '@/lib/api'
 import { type InvitationInput, teamApi } from '@/lib/team-api'
+import { useT } from '@/i18n/language-context'
 
-const ROLES: { value: InvitationInput['role']; label: string; meaning: string }[] = [
-  { value: 'staff', label: 'Staff', meaning: 'The till and the shelves: sales, receiving goods, write-offs.' },
-  { value: 'manager', label: 'Manager', meaning: 'Everything except people and the store’s settings.' },
-]
+const ROLES: InvitationInput['role'][] = ['staff', 'manager']
 
 export function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Invite someone</DialogTitle>
+          <DialogTitle>{t.settings.invite}</DialogTitle>
           <DialogDescription>
-            They get an email with a link to choose their own password. You never see it.
+            {t.settings.inviteText}
           </DialogDescription>
         </DialogHeader>
         <InviteForm onClose={() => onOpenChange(false)} />
@@ -42,13 +41,14 @@ export function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
 function InviteForm({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
+  const t = useT()
   const [form, setForm] = useState<InvitationInput>({ email: '', full_name: '', role: 'staff' })
 
   const invite = useMutation({
     mutationFn: () => teamApi.invite(form),
     onSuccess: (member) => {
       void queryClient.invalidateQueries({ queryKey: ['team'] })
-      toast.success(`Invitation sent to ${member.email}`)
+      toast.success(t.settings.invitationSent(member.email))
       onClose()
     },
   })
@@ -71,29 +71,29 @@ function InviteForm({ onClose }: { onClose: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {showGeneral && <Alert variant="destructive"><AlertDescription>{error.message}</AlertDescription></Alert>}
-      <FormField id="invite_name" label="Name" required error={fieldErrors.full_name}>
+      <FormField id="invite_name" label={t.settings.name} required error={fieldErrors.full_name}>
         <Input id="invite_name" required maxLength={120} aria-invalid={Boolean(fieldErrors.full_name)}
           value={form.full_name} onChange={(event) => update('full_name', event.target.value)} />
       </FormField>
-      <FormField id="invite_email" label="Email" required error={fieldErrors.email}>
+      <FormField id="invite_email" label={t.settings.email} required error={fieldErrors.email}>
         <Input id="invite_email" type="email" required maxLength={254} autoComplete="off"
           aria-invalid={Boolean(fieldErrors.email)}
           value={form.email} onChange={(event) => update('email', event.target.value)} />
       </FormField>
-      <FormField id="invite_role" label="Role" required
-        hint={ROLES.find((role) => role.value === form.role)?.meaning}>
+      <FormField id="invite_role" label={t.settings.role} required
+        hint={t.settings.roleMeanings[form.role]}>
         <Select value={form.role} onValueChange={(value) => update('role', value as InvitationInput['role'])}>
           <SelectTrigger id="invite_role" className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {ROLES.map((role) => <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>)}
+            {ROLES.map((role) => <SelectItem key={role} value={role}>{t.roles[role]}</SelectItem>)}
           </SelectContent>
         </Select>
       </FormField>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={invite.isPending}>
           {invite.isPending && <Spinner />}
-          Send invitation
+          {t.settings.sendInvitation}
         </Button>
       </DialogFooter>
     </form>

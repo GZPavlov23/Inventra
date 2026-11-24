@@ -22,12 +22,14 @@ import { formatQuantity, today } from '@/lib/format'
 import { inventoryApi } from '@/lib/inventory-api'
 import type { Batch } from '@/lib/inventory-api'
 import type { Product } from '@/lib/products-api'
+import { useT } from '@/i18n/language-context'
 
 export function ReceiveDialog({ open, onOpenChange, onReceived }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onReceived?: (batch: Batch) => void
 }) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A click outside doesn't close it, so a filled-in form isn't lost by accident.
@@ -37,8 +39,8 @@ export function ReceiveDialog({ open, onOpenChange, onReceived }: {
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Receive goods</DialogTitle>
-          <DialogDescription>Every delivery becomes a new batch with its own expiry date.</DialogDescription>
+          <DialogTitle>{t.inventory.receive}</DialogTitle>
+          <DialogDescription>{t.inventory.receiveText}</DialogDescription>
         </DialogHeader>
         <ReceiveForm onReceived={onReceived} onClose={() => onOpenChange(false)} />
       </DialogContent>
@@ -51,6 +53,7 @@ function ReceiveForm({ onReceived, onClose }: {
   onClose: () => void
 }) {
   const { store } = useCurrentUser()
+  const t = useT()
   const queryClient = useQueryClient()
   const [product, setProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState('')
@@ -72,7 +75,7 @@ function ReceiveForm({ onReceived, onClose }: {
       void queryClient.invalidateQueries({ queryKey: ['batches'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
       const amount = formatQuantity(batch.received_quantity, batch.product.unit)
-      toast.success(`${amount} of ${batch.product.name} received`)
+      toast.success(t.inventory.received(amount, batch.product.name))
       onReceived?.(batch)
       onClose()
     },
@@ -102,20 +105,20 @@ function ReceiveForm({ onReceived, onClose }: {
         </Alert>
       )}
 
-      <FormField id="product" label="Product" required>
+      <FormField id="product" label={t.inventory.product} required>
         <ProductPicker id="product" value={product} onChange={setProduct} />
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="quantity" label={product ? `Quantity (${product.unit})` : 'Quantity'} required
+        <FormField id="quantity" label={product ? t.inventory.quantityIn(t.units[product.unit]) : t.inventory.quantity} required
           error={fieldErrors.quantity}>
           <Input id="quantity" type="number" inputMode="decimal" required
             min={smallestAmount} step={smallestAmount} max="100000"
             aria-invalid={Boolean(fieldErrors.quantity)}
             value={quantity} onChange={(event) => setQuantity(event.target.value)} />
         </FormField>
-        <FormField id="expiry_date" label="Expiry date" error={fieldErrors.expiry_date}
-          hint="Leave empty if the goods don't expire.">
+        <FormField id="expiry_date" label={t.inventory.expiryDate} error={fieldErrors.expiry_date}
+          hint={t.inventory.expiryHint}>
           <Input id="expiry_date" type="date" min={today()}
             aria-invalid={Boolean(fieldErrors.expiry_date)}
             value={expiryDate} onChange={(event) => setExpiryDate(event.target.value)} />
@@ -123,12 +126,12 @@ function ReceiveForm({ onReceived, onClose }: {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="lot_code" label="Lot number" error={fieldErrors.lot_code}>
+        <FormField id="lot_code" label={t.inventory.lotNumber} error={fieldErrors.lot_code}>
           <Input id="lot_code" maxLength={64} autoComplete="off"
             aria-invalid={Boolean(fieldErrors.lot_code)}
             value={lotCode} onChange={(event) => setLotCode(event.target.value)} />
         </FormField>
-        <FormField id="purchase_price" label={`Purchase price (${store.currency})`}
+        <FormField id="purchase_price" label={t.inventory.purchasePriceIn(store.currency)}
           error={fieldErrors.purchase_price}>
           <Input id="purchase_price" type="number" inputMode="decimal" min="0" step="0.01"
             placeholder={product?.purchase_price}
@@ -138,10 +141,10 @@ function ReceiveForm({ onReceived, onClose }: {
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={receive.isPending || !product}>
           {receive.isPending && <Spinner />}
-          Receive goods
+          {t.inventory.receive}
         </Button>
       </DialogFooter>
     </form>

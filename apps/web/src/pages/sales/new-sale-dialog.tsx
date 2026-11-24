@@ -20,11 +20,13 @@ import { type ApiError, toApiError } from '@/lib/api'
 import { formatMoney, lineCents } from '@/lib/format'
 import type { Product } from '@/lib/products-api'
 import { salesApi } from '@/lib/sales-api'
+import { useT } from '@/i18n/language-context'
 
 export function NewSaleDialog({ open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A click outside doesn't close it, so a filled-in cart isn't lost by accident.
@@ -34,9 +36,9 @@ export function NewSaleDialog({ open, onOpenChange }: {
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>New sale</DialogTitle>
+          <DialogTitle>{t.newSale.button}</DialogTitle>
           <DialogDescription>
-            Stock leaves from the batches that expire first. Expired goods can't be sold.
+            {t.sales.newText}
           </DialogDescription>
         </DialogHeader>
         <SaleForm onClose={() => onOpenChange(false)} />
@@ -47,6 +49,7 @@ export function NewSaleDialog({ open, onOpenChange }: {
 
 function SaleForm({ onClose }: { onClose: () => void }) {
   const { store } = useCurrentUser()
+  const t = useT()
   const queryClient = useQueryClient()
   const [cart, setCart] = useState<ProductLine[]>([])
 
@@ -67,7 +70,7 @@ function SaleForm({ onClose }: { onClose: () => void }) {
     onSuccess: (sale) => {
       void queryClient.invalidateQueries({ queryKey: ['sales'] })
       refreshStock()
-      toast.success(`Sale of ${formatMoney(sale.total, store.currency)} recorded`)
+      toast.success(t.sales.recorded(formatMoney(sale.total, store.currency)))
       onClose()
     },
     // A refusal can mean the stock changed, so the picker should show the real numbers.
@@ -116,15 +119,15 @@ function SaleForm({ onClose }: { onClose: () => void }) {
         </Alert>
       )}
 
-      <ProductPicker id="sale_product" value={null} onChange={addProduct} placeholder="Add a product" />
+      <ProductPicker id="sale_product" value={null} onChange={addProduct} placeholder={t.sales.addProduct} />
 
       {cart.length > 0 && (
-        <ul className="flex flex-col divide-y" aria-label="Products in this sale">
+        <ul className="flex flex-col divide-y" aria-label={t.sales.inThisSale}>
           {cart.map((line) => (
             <ProductLineRow
               key={line.product.id}
               line={line}
-              priceLabel="Price"
+              priceLabel={t.sales.price}
               currency={store.currency}
               onChange={(changes) => updateLine(line.product.id, changes)}
               onRemove={() => removeLine(line.product.id)}
@@ -134,17 +137,17 @@ function SaleForm({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="flex items-center justify-between border-t pt-3">
-        <span className="text-sm text-muted-foreground">Total</span>
-        <span className="text-lg font-semibold" aria-label="Sale total">
+        <span className="text-sm text-muted-foreground">{t.sales.total}</span>
+        <span className="text-lg font-semibold" aria-label={t.sales.saleTotal}>
           {formatMoney(totalCents / 100, store.currency)}
         </span>
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={record.isPending || cart.length === 0}>
           {record.isPending && <Spinner />}
-          Record sale
+          {t.sales.record}
         </Button>
       </DialogFooter>
     </form>

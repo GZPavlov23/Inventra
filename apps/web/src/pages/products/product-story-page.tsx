@@ -17,6 +17,7 @@ import {
   formatLongDay,
   formatMoney,
   formatMonthDay,
+  formatPercent,
   formatQuantity,
   formatTime,
   marginPercent,
@@ -24,6 +25,9 @@ import {
 import { type ProductUnit, productsApi, type StoryEvent } from '@/lib/products-api'
 import { reportsApi } from '@/lib/reports-api'
 import { NotFoundPage } from '@/pages/not-found-page'
+import type { Messages } from '@/i18n/en'
+import { useT } from '@/i18n/language-context'
+import { sentence } from '@/i18n/sentence'
 
 const TREND_DAYS = 14
 
@@ -35,42 +39,40 @@ const DOTS: Record<StoryEvent['kind'], string> = {
   ordered: 'bg-muted-foreground',
 }
 
-const WASTE_REASONS: Record<string, string> = { expired: 'expired', damaged: 'damaged', other: 'another reason' }
-
 // "Today", "Yesterday", or the date written out.
-function dayTitle(day: string): string {
+function dayTitle(day: string, t: Messages): string {
   const days = daysUntil(day)
-  return days === 0 ? 'Today' : days === -1 ? 'Yesterday' : formatLongDay(day)
+  return days === 0 ? t.story.today : days === -1 ? t.story.yesterday : formatLongDay(day)
 }
 
 // One line of the story, in words.
-function tell(event: StoryEvent, unit: ProductUnit): ReactNode {
-  const amount = formatQuantity(event.quantity, unit)
-  const by = event.actor && <span className="text-muted-foreground"> · by {event.actor}</span>
+function tell(event: StoryEvent, unit: ProductUnit, t: Messages): ReactNode {
+  const amount = <b>{formatQuantity(event.quantity, unit)}</b>
+  const by = event.actor && <span className="text-muted-foreground">{t.story.by(event.actor)}</span>
   switch (event.kind) {
     case 'received':
       return (
         <>
-          Received <b>{amount}</b>
-          {event.supplier && <> from {event.supplier}, delivery #{event.delivery_id}</>}
-          {event.expiry_date ? <>, expiring {formatDay(event.expiry_date)}</> : <>, no expiry date</>}
-          {event.lot_code && <>, lot {event.lot_code}</>}
+          {sentence(t.story.received(amount))}
+          {event.supplier && t.story.fromSupplier(event.supplier, event.delivery_id ?? 0)}
+          {event.expiry_date ? t.story.expiring(formatDay(event.expiry_date)) : t.story.noExpiry}
+          {event.lot_code && t.story.lot(event.lot_code)}
           {by}
         </>
       )
     case 'sold':
-      return <>Sold <b>{amount}</b> in {event.sales === 1 ? '1 sale' : `${event.sales} sales`}</>
+      return sentence(t.story.sold(amount, event.sales ?? 0))
     case 'written_off':
-      return <>Wrote off <b>{amount}</b>: {WASTE_REASONS[event.reason ?? 'other'] ?? event.reason}{by}</>
+      return <>{sentence(t.story.wroteOff(amount, t.story.wasteReasons[event.reason ?? 'other'] ?? event.reason ?? ''))}{by}</>
     case 'corrected':
-      return <>Count corrected by <b>{formatChange(event.quantity, unit)}</b>: “{event.reason}”{by}</>
+      return <>{sentence(t.story.corrected(<b>{formatChange(event.quantity, unit)}</b>, event.reason ?? ''))}{by}</>
     case 'ordered':
       return (
         <>
-          Ordered <b>{amount}</b> from {event.supplier}, delivery #{event.delivery_id}
-          {event.expected_on && <>, expected {formatDay(event.expected_on)}</>}
-          {event.status === 'received' && <Badge variant="secondary" className="ml-2 bg-good/12 text-good">Arrived</Badge>}
-          {event.status === 'cancelled' && <Badge variant="secondary" className="ml-2">Cancelled</Badge>}
+          {sentence(t.story.ordered(amount, event.supplier ?? '', event.delivery_id ?? 0))}
+          {event.expected_on && t.story.expected(formatDay(event.expected_on))}
+          {event.status === 'received' && <Badge variant="secondary" className="ml-2 bg-good/12 text-good">{t.story.arrived}</Badge>}
+          {event.status === 'cancelled' && <Badge variant="secondary" className="ml-2">{t.story.cancelled}</Badge>}
         </>
       )
   }
@@ -81,6 +83,7 @@ function tell(event: StoryEvent, unit: ProductUnit): ReactNode {
 export function ProductStoryPage() {
   const productId = Number(useParams().productId)
   const { store } = useCurrentUser()
+  const t = useT()
   const can = useCan()
   const money = (amount: string) => formatMoney(amount, store.currency)
 
@@ -126,11 +129,11 @@ export function ProductStoryPage() {
     <div className="flex flex-col gap-6">
       <Link to="/products" className="flex w-fit items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden />
-        Products
+        {t.story.back}
       </Link>
 
       <div className="flex flex-wrap items-start gap-6">
-        <section aria-label="Where it stands now" className="flex flex-[1_1_18rem] flex-col gap-4 rounded-3xl bg-card p-6 shadow-soft">
+        <section aria-label={t.story.nowLabel} className="flex flex-[1_1_18rem] flex-col gap-4 rounded-3xl bg-card p-6 shadow-soft">
           {!item ? (
             <Skeleton className="h-56 w-full" />
           ) : (
@@ -143,37 +146,36 @@ export function ProductStoryPage() {
                   {item.barcode && item.supplier && ' · '}
                   {item.supplier?.name}
                 </p>
-                {!item.active && <Badge variant="outline" className="mt-2">Archived</Badge>}
+                {!item.active && <Badge variant="outline" className="mt-2">{t.story.archived}</Badge>}
               </div>
               <dl className="grid grid-cols-2 gap-4">
-                <Fact label="Sale price">{money(item.sale_price)}</Fact>
-                <Fact label="Margin">{margin === null || margin === undefined ? '—' : `${margin.toFixed(1)}%`}</Fact>
-                <Fact label="On the shelf">{formatQuantity(item.stock, item.unit)}</Fact>
-                <Fact label={`Sold, ${TREND_DAYS} days`}>
+                <Fact label={t.story.salePrice}>{money(item.sale_price)}</Fact>
+                <Fact label={t.story.margin}>{margin === null || margin === undefined ? '—' : formatPercent(margin)}</Fact>
+                <Fact label={t.story.onShelf}>{formatQuantity(item.stock, item.unit)}</Fact>
+                <Fact label={t.story.soldDays(TREND_DAYS)}>
                   {sold ? formatQuantity(sold.total, item.unit) : '…'}
                 </Fact>
               </dl>
               {sold && (
-                <Sparkline values={sold.quantities.map(Number)} label={`${formatQuantity(sold.total, item.unit)} sold in the last ${TREND_DAYS} days`} />
+                <Sparkline values={sold.quantities.map(Number)} label={t.story.soldIn(formatQuantity(sold.total, item.unit), TREND_DAYS)} />
               )}
             </>
           )}
         </section>
 
         <section aria-labelledby="story-title" className="flex flex-[2_1_26rem] flex-col gap-4">
-          <h3 id="story-title" className="text-2xl font-bold">Its story, newest first</h3>
+          <h3 id="story-title" className="text-2xl font-bold">{t.story.title}</h3>
 
           {item && attention && (attention.expired.length > 0 || attention.late.length > 0) && (
-            <ul aria-label="Needs doing now" className="flex flex-col gap-2">
+            <ul aria-label={t.story.needsDoing} className="flex flex-col gap-2">
               {attention.expired.map((batch) => (
                 <li key={batch.batch_id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-destructive/12 px-4 py-3">
                   <p className="figures min-w-0 flex-[1_1_16rem]">
-                    <b>{formatQuantity(batch.quantity, item.unit)}</b> expired on {formatMonthDay(batch.expiry_date)} and
-                    still count as stock.
+                    {sentence(t.story.expiredOn(<b>{formatQuantity(batch.quantity, item.unit)}</b>, formatMonthDay(batch.expiry_date)))}
                   </p>
                   {can('handle_stock') && (
                     <Button size="sm" variant="secondary" asChild>
-                      <Link to={`/inventory?status=expired&q=${encodeURIComponent(item.barcode ?? item.name)}`}>Write off</Link>
+                      <Link to={`/inventory?status=expired&q=${encodeURIComponent(item.barcode ?? item.name)}`}>{t.story.writeOff}</Link>
                     </Button>
                   )}
                 </li>
@@ -181,11 +183,11 @@ export function ProductStoryPage() {
               {attention.late.map((delivery) => (
                 <li key={delivery.delivery_id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-warning px-4 py-3 text-warning-foreground">
                   <p className="min-w-0 flex-[1_1_16rem]">
-                    Delivery #{delivery.delivery_id} from {delivery.supplier} was due {formatMonthDay(delivery.expected_on)}.
+                    {t.story.lateDelivery(delivery.delivery_id, delivery.supplier, formatMonthDay(delivery.expected_on))}
                   </p>
                   {delivery.phone && (
                     <Button size="sm" variant="secondary" asChild>
-                      <a href={`tel:${delivery.phone.replace(/\s/g, '')}`}><Phone />Call {delivery.phone}</a>
+                      <a href={`tel:${delivery.phone.replace(/\s/g, '')}`}><Phone />{t.story.call(delivery.phone)}</a>
                     </Button>
                   )}
                 </li>
@@ -197,20 +199,20 @@ export function ProductStoryPage() {
             <Alert variant="destructive">
               <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                 {story.error.message}
-                <Button size="sm" variant="outline" onClick={() => void story.refetch()}>Try again</Button>
+                <Button size="sm" variant="outline" onClick={() => void story.refetch()}>{t.common.tryAgain}</Button>
               </AlertDescription>
             </Alert>
           ) : !story.data || !item ? (
             <Skeleton className="h-72 w-full rounded-3xl" />
           ) : days.length === 0 ? (
             <p className="rounded-3xl bg-card p-6 text-center text-muted-foreground shadow-soft">
-              Nothing has happened to this product yet. Receiving goods starts its story.
+              {t.story.empty}
             </p>
           ) : (
-            <ol aria-label="Story" className="flex flex-col gap-5 border-l-2 border-dashed border-border pl-6">
+            <ol aria-label={t.story.label} className="flex flex-col gap-5 border-l-2 border-dashed border-border pl-6">
               {days.map((day) => (
                 <li key={day.day} className="relative">
-                  <h4 className="font-sans text-sm font-extrabold text-muted-foreground">{dayTitle(day.day)}</h4>
+                  <h4 className="font-sans text-sm font-extrabold text-muted-foreground">{dayTitle(day.day, t)}</h4>
                   <ul className="mt-2 flex flex-col gap-2">
                     {day.events.map((event, index) => (
                       <li key={`${event.kind}-${event.at}-${index}`} className="relative rounded-2xl bg-card px-4 py-3 shadow-soft">
@@ -219,7 +221,7 @@ export function ProductStoryPage() {
                           {event.kind !== 'sold' && (
                             <span className="mr-2 text-xs text-muted-foreground">{formatTime(event.at)}</span>
                           )}
-                          {tell(event, item.unit)}
+                          {tell(event, item.unit, t)}
                         </p>
                       </li>
                     ))}
@@ -232,11 +234,11 @@ export function ProductStoryPage() {
           {story.hasNextPage && (
             <Button variant="secondary" className="self-start" disabled={story.isFetchingNextPage}
               onClick={() => void story.fetchNextPage()}>
-              {story.isFetchingNextPage ? 'Loading…' : 'Show earlier'}
+              {story.isFetchingNextPage ? t.common.loading : t.common.showEarlier}
             </Button>
           )}
           {story.data && !story.hasNextPage && days.length > 0 && (
-            <p className="font-hand text-2xl text-muted-foreground">that's where it all began</p>
+            <p className="font-hand text-2xl text-muted-foreground">{t.story.began}</p>
           )}
         </section>
       </div>

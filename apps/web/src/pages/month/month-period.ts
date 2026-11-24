@@ -1,3 +1,4 @@
+import { currentLocale } from '@/i18n/language'
 import { today } from '@/lib/format'
 
 // A calendar month as the dates the API asks for, plus the stretch of the month before it that
@@ -24,7 +25,7 @@ const shift = (year: number, month: number, by: number) => {
 }
 
 function monthLabel(year: number, month: number, withYear: boolean): string {
-  return new Intl.DateTimeFormat('en', withYear ? { month: 'long', year: 'numeric' } : { month: 'long' })
+  return new Intl.DateTimeFormat(currentLocale(), withYear ? { month: 'long', year: 'numeric' } : { month: 'long' })
     .format(new Date(year, month - 1, 1))
 }
 

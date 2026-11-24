@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table'
 import { formatExpected, formatQuantity, formatShortage } from '@/lib/format'
 import type { ProductForecast } from '@/lib/forecasts-api'
+import { useT } from '@/i18n/language-context'
 
 // One small bar per day. Only a shape to glance at: the numbers are in the details.
 function DayBars({ days }: { days: ProductForecast['days'] }) {
@@ -33,17 +34,18 @@ type ForecastTableProps = {
 }
 
 export function ForecastTable({ items, onOpen }: ForecastTableProps) {
+  const t = useT()
   return (
     <Table>
-      <TableCaption className="sr-only">Expected sales per product, the biggest shortage first</TableCaption>
+      <TableCaption className="sr-only">{t.forecast.caption}</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead>Product</TableHead>
+          <TableHead>{t.forecast.product}</TableHead>
           {/* On a phone the two less important columns go, so the shortage stays on screen. */}
-          <TableHead className="hidden md:table-cell">By day</TableHead>
-          <TableHead className="text-right">Expected sales</TableHead>
-          <TableHead className="hidden text-right md:table-cell">Can be sold now</TableHead>
-          <TableHead className="text-right">Shortage</TableHead>
+          <TableHead className="hidden md:table-cell">{t.forecast.byDay}</TableHead>
+          <TableHead className="text-right">{t.forecast.expectedSales}</TableHead>
+          <TableHead className="hidden text-right md:table-cell">{t.forecast.canBeSold}</TableHead>
+          <TableHead className="text-right">{t.forecast.shortage}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -69,10 +71,10 @@ export function ForecastTable({ items, onOpen }: ForecastTableProps) {
               <TableCell className="text-right">
                 {short ? (
                   <Badge variant="secondary" className="bg-warning text-warning-foreground">
-                    {formatShortage(item.shortage, product.unit)} short
+                    {t.forecast.short(formatShortage(item.shortage, product.unit))}
                   </Badge>
                 ) : (
-                  <span className="text-sm text-muted-foreground">Enough</span>
+                  <span className="text-sm text-muted-foreground">{t.forecast.enough}</span>
                 )}
               </TableCell>
             </TableRow>

@@ -18,10 +18,11 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
-import { formatMoney, marginPercent } from '@/lib/format'
+import { formatMoney, formatPercent, marginPercent } from '@/lib/format'
 import { type Product, productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
 import { suppliersApi } from '@/lib/suppliers-api'
 import { CategoryCombobox } from '@/pages/products/category-combobox'
+import { useT } from '@/i18n/language-context'
 
 const EMPTY_PRODUCT: ProductInput = {
   name: '',
@@ -37,11 +38,7 @@ const EMPTY_PRODUCT: ProductInput = {
 // A Select can't hold an empty value, so "no supplier" needs a name of its own.
 const NO_SUPPLIER = 'none'
 
-const UNITS: { value: ProductUnit; label: string }[] = [
-  { value: 'pcs', label: 'Pieces' },
-  { value: 'kg', label: 'Kilograms' },
-  { value: 'l', label: 'Liters' },
-]
+const UNITS: ProductUnit[] = ['pcs', 'kg', 'l']
 
 function toFormValues(product: Product): ProductInput {
   return {
@@ -65,6 +62,7 @@ type ProductFormDialogProps = {
 }
 
 export function ProductFormDialog({ product, open, onOpenChange, onSaved }: ProductFormDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* A click outside doesn't close it, so a filled-in form isn't lost by accident.
@@ -74,11 +72,11 @@ export function ProductFormDialog({ product, open, onOpenChange, onSaved }: Prod
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{product ? 'Edit product' : 'Add product'}</DialogTitle>
+          <DialogTitle>{product ? t.products.editTitle : t.products.add}</DialogTitle>
           <DialogDescription>
             {product
-              ? 'Change the details of this product.'
-              : 'Add a product to your catalog. Only the marked fields are required.'}
+              ? t.products.editText
+              : t.products.addText}
           </DialogDescription>
         </DialogHeader>
         {/* The form only exists while the dialog is open, so it always starts from fresh values. */}
@@ -94,6 +92,7 @@ function ProductForm({ product, onSaved, onClose }: {
   onClose: () => void
 }) {
   const { store } = useCurrentUser()
+  const t = useT()
   const queryClient = useQueryClient()
   const initialValues = product ? toFormValues(product) : EMPTY_PRODUCT
   const [form, setForm] = useState<ProductInput>(initialValues)
@@ -111,7 +110,7 @@ function ProductForm({ product, onSaved, onClose }: {
     onSuccess: (saved) => {
       // Marks every product list as out of date, so the table refetches and shows the change.
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success(product ? `${saved.name} was saved` : `${saved.name} was added`)
+      toast.success(product ? t.products.saved(saved.name) : t.products.added(saved.name))
       onSaved?.(saved)
       onClose()
     },
@@ -151,44 +150,44 @@ function ProductForm({ product, onSaved, onClose }: {
         </Alert>
       )}
 
-      <FormField id="name" label="Name" required error={fieldErrors.name}>
+      <FormField id="name" label={t.products.name} required error={fieldErrors.name}>
         <Input id="name" required maxLength={200} aria-invalid={Boolean(fieldErrors.name)}
-          placeholder="Fresh milk 3% 1 l"
+          placeholder={t.products.namePlaceholder}
           value={form.name} onChange={(event) => update('name', event.target.value)} />
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="brand" label="Brand" error={fieldErrors.brand}>
+        <FormField id="brand" label={t.products.brand} error={fieldErrors.brand}>
           <Input id="brand" maxLength={120} aria-invalid={Boolean(fieldErrors.brand)}
             value={form.brand} onChange={(event) => update('brand', event.target.value)} />
         </FormField>
-        <FormField id="category" label="Category" error={fieldErrors.category}>
+        <FormField id="category" label={t.products.category} error={fieldErrors.category}>
           <CategoryCombobox id="category" invalid={Boolean(fieldErrors.category)}
             value={form.category} onChange={(category) => update('category', category)} />
         </FormField>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="barcode" label="Barcode" error={fieldErrors.barcode}>
+        <FormField id="barcode" label={t.products.barcode} error={fieldErrors.barcode}>
           <Input id="barcode" inputMode="numeric" maxLength={14} autoComplete="off"
             aria-invalid={Boolean(fieldErrors.barcode)}
             value={form.barcode} onChange={(event) => update('barcode', event.target.value)} />
         </FormField>
-        <FormField id="unit" label="Sold by" required error={fieldErrors.unit}>
+        <FormField id="unit" label={t.products.soldBy} required error={fieldErrors.unit}>
           <Select value={form.unit} onValueChange={(value) => update('unit', value as ProductUnit)}>
             <SelectTrigger id="unit" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {UNITS.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
+              {UNITS.map((value) => (
+                <SelectItem key={value} value={value}>{t.products.units[value]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </FormField>
       </div>
 
-      <FormField id="supplier" label="Supplier" error={fieldErrors.supplier_id}>
+      <FormField id="supplier" label={t.products.supplier} error={fieldErrors.supplier_id}>
         <Select
           value={form.supplier_id === null ? NO_SUPPLIER : String(form.supplier_id)}
           onValueChange={(value) => update('supplier_id', value === NO_SUPPLIER ? null : Number(value))}
@@ -197,10 +196,10 @@ function ProductForm({ product, onSaved, onClose }: {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_SUPPLIER}>No supplier</SelectItem>
+            <SelectItem value={NO_SUPPLIER}>{t.products.noSupplier}</SelectItem>
             {keepCurrentChoice && (
               <SelectItem value={String(currentSupplier.id)}>
-                {currentSupplier.name}{currentSupplier.active ? '' : ' (archived)'}
+                {currentSupplier.name}{currentSupplier.active ? '' : t.products.archivedSuffix}
               </SelectItem>
             )}
             {supplierChoices.map((choice) => (
@@ -211,13 +210,13 @@ function ProductForm({ product, onSaved, onClose }: {
       </FormField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField id="purchase_price" label={`Purchase price (${store.currency})`} required
+        <FormField id="purchase_price" label={t.products.purchasePriceIn(store.currency)} required
           error={fieldErrors.purchase_price}>
           <Input id="purchase_price" type="number" inputMode="decimal" required min="0" step="0.01"
             aria-invalid={Boolean(fieldErrors.purchase_price)}
             value={form.purchase_price} onChange={(event) => update('purchase_price', event.target.value)} />
         </FormField>
-        <FormField id="sale_price" label={`Sale price (${store.currency})`} required
+        <FormField id="sale_price" label={t.products.salePriceIn(store.currency)} required
           error={fieldErrors.sale_price}>
           <Input id="sale_price" type="number" inputMode="decimal" required min="0" step="0.01"
             aria-invalid={Boolean(fieldErrors.sale_price)}
@@ -232,16 +231,16 @@ function ProductForm({ product, onSaved, onClose }: {
 
       {margin !== null && (
         <p className={`text-sm ${margin < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-          {margin < 0 ? 'The sale price is below the purchase price. ' : ''}
-          Margin: <span className="font-medium figures">{margin.toFixed(1)}%</span>
+          {margin < 0 ? t.products.belowPurchase : ''}
+          {t.products.marginLabel} <span className="font-medium figures">{formatPercent(margin)}</span>
         </p>
       )}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="submit" disabled={saveProduct.isPending || (Boolean(product) && !hasChanges)}>
           {saveProduct.isPending && <Spinner />}
-          {product ? 'Save changes' : 'Add product'}
+          {product ? t.products.saveChanges : t.products.add}
         </Button>
       </DialogFooter>
     </form>
@@ -256,18 +255,19 @@ function ShelfLabel({ name, barcode, price, unit, currency }: {
   unit: ProductUnit
   currency: string
 }) {
+  const t = useT()
   return (
-    <figure aria-label="Shelf label preview"
+    <figure aria-label={t.products.labelPreview}
       className="flex items-stretch overflow-hidden rounded-md border bg-card shadow-xs">
       <div className="w-1.5 shrink-0 bg-primary" />
       <div className="flex min-w-0 flex-1 items-end justify-between gap-4 px-3 py-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{name || 'Product name'}</p>
+          <p className="truncate text-sm font-medium">{name || t.products.productName}</p>
           <p className="figures text-xs text-muted-foreground">{barcode || '—'}</p>
         </div>
         <p className="figures shrink-0 text-xl font-medium">
           {formatMoney(price, currency)}
-          <span className="ml-1 text-xs text-muted-foreground">/ {unit}</span>
+          <span className="ml-1 text-xs text-muted-foreground">/ {t.units[unit]}</span>
         </p>
       </div>
     </figure>

@@ -2,10 +2,12 @@ import { ArrowBigUpDash, Eye, EyeOff } from 'lucide-react'
 import { type ComponentProps, type KeyboardEvent, useState } from 'react'
 
 import { Input } from '@/components/ui/input'
+import { useT } from '@/i18n/language-context'
 
 // A password field with a button to show or hide what was typed, and a warning when Caps Lock
 // is on (a common cause of "wrong password", which counts towards the account lock).
 export function PasswordInput(props: Omit<ComponentProps<'input'>, 'type'>) {
+  const t = useT()
   const [visible, setVisible] = useState(false)
   const [capsLock, setCapsLock] = useState(false)
   const Icon = visible ? EyeOff : Eye
@@ -37,7 +39,7 @@ export function PasswordInput(props: Omit<ComponentProps<'input'>, 'type'>) {
         <button
           type="button"
           onClick={() => setVisible((current) => !current)}
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? t.auth.hidePassword : t.auth.showPassword}
           aria-pressed={visible}
           className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
         >
@@ -47,7 +49,7 @@ export function PasswordInput(props: Omit<ComponentProps<'input'>, 'type'>) {
       {capsLock && (
         <p role="status" className="flex items-center gap-1 text-xs font-medium text-warning-foreground">
           <ArrowBigUpDash className="size-3.5" />
-          Caps Lock is on
+          {t.auth.capsLock}
         </p>
       )}
     </div>

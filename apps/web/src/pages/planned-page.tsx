@@ -1,10 +1,12 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { NavItem } from '@/config/navigation'
+import { useT } from '@/i18n/language-context'
 
 // Placeholder for modules that are not built yet. It deliberately shows no numbers or charts,
 // so nobody mistakes it for working functionality.
 export function PlannedPage({ item }: { item: NavItem }) {
+  const t = useT()
   return (
     <div className="mx-auto max-w-2xl">
       <Card>
@@ -13,13 +15,13 @@ export function PlannedPage({ item }: { item: NavItem }) {
             <item.icon className="size-5" />
           </div>
           <CardTitle className="flex items-center gap-2">
-            {item.title}
-            <Badge variant="secondary">Planned</Badge>
+            {t.nav[item.key]}
+            <Badge variant="secondary">{t.pages.planned}</Badge>
           </CardTitle>
-          <CardDescription>{item.description}</CardDescription>
+          <CardDescription>{t.navText[item.key]}</CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          This module is not built yet. Nothing on this page uses real or sample data.
+          {t.pages.plannedText}
         </CardContent>
       </Card>
     </div>

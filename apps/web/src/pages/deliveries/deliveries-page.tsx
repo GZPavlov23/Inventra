@@ -21,20 +21,17 @@ import { DeliveriesTable, DeliveriesTableSkeleton } from '@/pages/deliveries/del
 import { DeliveryDetailsDialog } from '@/pages/deliveries/delivery-details-dialog'
 import { NewDeliveryDialog } from '@/pages/deliveries/new-delivery-dialog'
 import { ReceiveDeliveryDialog } from '@/pages/deliveries/receive-delivery-dialog'
+import { useT } from '@/i18n/language-context'
 
-const STATUSES: { value: DeliveryFilter; label: string }[] = [
-  { value: 'ordered', label: 'On the way' },
-  { value: 'received', label: 'Received' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'all', label: 'All' },
-]
+const STATUSES: DeliveryFilter[] = ['ordered', 'received', 'cancelled', 'all']
 
 function readStatus(value: string | null): DeliveryFilter {
-  return STATUSES.some((status) => status.value === value) ? (value as DeliveryFilter) : 'ordered'
+  return STATUSES.some((status) => status === value) ? (value as DeliveryFilter) : 'ordered'
 }
 
 export function DeliveriesPage() {
   const { store } = useCurrentUser()
+  const t = useT()
   const can = useCan()
   const { searchParams, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
@@ -67,8 +64,8 @@ export function DeliveriesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Deliveries</h2>
-          <p className="text-sm text-muted-foreground">What you ordered and what really arrived.</p>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.deliveries}</h2>
+          <p className="text-sm text-muted-foreground">{t.deliveries.subtitle}</p>
         </div>
         {can('plan') && <NewDeliveryButton onCreated={(delivery) => setJustAdded(delivery.id)} />}
       </div>
@@ -78,9 +75,9 @@ export function DeliveriesPage() {
         onValueChange={(value) => updateParams({ status: value === 'ordered' ? null : value, page: null })}
       >
         <TabsList>
-          {STATUSES.map(({ value, label }) => (
+          {STATUSES.map((value) => (
             <TabsTrigger key={value} value={value}>
-              {label}
+              {t.deliveries.statuses[value]}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -91,7 +88,7 @@ export function DeliveriesPage() {
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
             {deliveries.error.message}
             <Button size="sm" variant="outline" onClick={() => void deliveries.refetch()}>
-              Try again
+              {t.common.tryAgain}
             </Button>
           </AlertDescription>
         </Alert>
@@ -103,13 +100,13 @@ export function DeliveriesPage() {
         <Empty className="rounded-2xl bg-card shadow-soft">
           <EmptyHeader>
             <EmptyMedia variant="icon"><Truck /></EmptyMedia>
-            <EmptyTitle>{status === 'ordered' ? 'Nothing on the way' : 'No deliveries here'}</EmptyTitle>
+            <EmptyTitle>{status === 'ordered' ? t.deliveries.nothingOnTheWay : t.deliveries.noneHere}</EmptyTitle>
             <EmptyDescription>
               {status !== 'ordered'
-                ? 'There are no deliveries in this list.'
+                ? t.deliveries.noneInList
                 : can('plan')
-                  ? 'Add a delivery when you order goods from a supplier.'
-                  : 'Deliveries the store orders show up here, ready to receive.'}
+                  ? t.deliveries.addWhenOrdering
+                  : t.deliveries.showUpHere}
             </EmptyDescription>
           </EmptyHeader>
           {status === 'ordered' && can('plan') && (
@@ -159,11 +156,12 @@ export function DeliveriesPage() {
 
 function NewDeliveryButton({ onCreated }: { onCreated: (delivery: Delivery) => void }) {
   const [open, setOpen] = useState(false)
+  const t = useT()
   return (
     <>
       <Button onClick={() => setOpen(true)}>
         <Plus />
-        New delivery
+        {t.deliveries.new}
       </Button>
       <NewDeliveryDialog open={open} onOpenChange={setOpen} onCreated={onCreated} />
     </>

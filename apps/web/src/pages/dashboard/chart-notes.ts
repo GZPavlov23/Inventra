@@ -40,7 +40,3 @@ export function chartNotes(days: Day[]): ChartNotes {
 
   return { best: best.revenue > 0 ? best : null, quiet }
 }
-
-export function quietLabel(days: number): string {
-  return days >= 7 ? 'a quiet week' : `${days} quiet days`
-}

@@ -8,8 +8,6 @@ export type UserRole = 'owner' | 'manager' | 'staff'
 // to leave out what a role can't use.
 export type Permission = 'sell' | 'handle_stock' | 'manage_catalog' | 'plan' | 'see_finances' | 'manage_team'
 
-export const ROLE_LABELS: Record<UserRole, string> = { owner: 'Owner', manager: 'Manager', staff: 'Staff' }
-
 export type CurrentUser = {
   id: number
   email: string

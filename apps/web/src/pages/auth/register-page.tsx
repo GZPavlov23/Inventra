@@ -14,11 +14,13 @@ import { Spinner } from '@/components/ui/spinner'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { type ApiError, toApiError } from '@/lib/api'
 import { authApi, type RegisterData } from '@/lib/auth-api'
+import { useT } from '@/i18n/language-context'
 
 const EMPTY_FORM: RegisterData = { full_name: '', store_name: '', email: '', password: '' }
 
 export function RegisterPage() {
-  useDocumentTitle('Create an account')
+  const t = useT()
+  useDocumentTitle(t.auth.createAccountLink)
   const [form, setForm] = useState<RegisterData>(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
@@ -43,18 +45,15 @@ export function RegisterPage() {
 
   if (sentTo) {
     return (
-      <CheckEmailCard>
-        If <span className="font-medium text-foreground">{sentTo}</span> can be used, we have sent a
-        confirmation link to it. Open it to activate your account.
-      </CheckEmailCard>
+      <CheckEmailCard>{t.auth.registerSent(sentTo)}</CheckEmailCard>
     )
   }
 
   return (
     <AuthCard shakeKey={error}>
       <CardHeader data-animate>
-        <CardTitle className="text-3xl font-semibold tracking-tight">Create your store account</CardTitle>
-        <CardDescription className="text-base">Register your store. You will be its owner.</CardDescription>
+        <CardTitle className="text-3xl font-semibold tracking-tight">{t.auth.registerTitle}</CardTitle>
+        <CardDescription className="text-base">{t.auth.registerSubtitle}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -66,42 +65,40 @@ export function RegisterPage() {
 
           <div data-animate className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="full_name">Your name</Label>
+              <Label htmlFor="full_name">{t.auth.yourName}</Label>
               <Input id="full_name" autoComplete="name" required maxLength={120}
                 value={form.full_name} onChange={update('full_name')} />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="store_name">Store name</Label>
+              <Label htmlFor="store_name">{t.auth.storeName}</Label>
               <Input id="store_name" autoComplete="organization" required maxLength={120}
                 value={form.store_name} onChange={update('store_name')} />
             </div>
           </div>
           <div data-animate className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="email" required placeholder="you@store.com"
+            <Label htmlFor="email">{t.auth.email}</Label>
+            <Input id="email" type="email" autoComplete="email" required placeholder={t.auth.emailPlaceholder}
               value={form.email} onChange={update('email')} />
           </div>
           <div data-animate className="flex flex-col gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t.auth.password}</Label>
             <PasswordInput id="password" autoComplete="new-password" required
               minLength={8} maxLength={128} aria-describedby="password-hint"
               value={form.password} onChange={update('password')} />
             <PasswordStrengthMeter password={form.password} email={form.email} />
-            <p id="password-hint" className="text-xs text-muted-foreground">
-              At least 8 characters. A longer passphrase is safer than a short complex password.
-            </p>
+            <p id="password-hint" className="text-xs text-muted-foreground">{t.auth.passwordHint}</p>
           </div>
 
           <Button data-animate type="submit" disabled={submitting} className="mt-1">
             {submitting && <Spinner />}
-            Create account
+            {t.auth.createAccount}
           </Button>
         </form>
 
         <p data-animate className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{' '}
+          {t.auth.haveAccount}{' '}
           <Link to="/login" className="font-medium text-primary hover:underline">
-            Log in
+            {t.auth.logIn}
           </Link>
         </p>
       </CardContent>

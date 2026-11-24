@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-import { API_PORT, OUTBOX_FILE, WEB_PORT } from './e2e/config.ts'
+import { API_PORT, ENGLISH, OUTBOX_FILE, WEB_PORT } from './e2e/config.ts'
 
 const python = process.platform === 'win32' ? '.venv\\Scripts\\python' : '.venv/bin/python'
 
@@ -14,6 +14,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
+    storageState: ENGLISH,
     // On a failure, keep a step-by-step recording: npx playwright show-report
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

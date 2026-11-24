@@ -11,20 +11,20 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import type { NavItem } from '@/config/navigation'
+import { useT } from '@/i18n/language-context'
 
 // For an address opened directly, by someone whose role doesn't include that page.
 export function NoAccessPage({ item, startPath }: { item: NavItem; startPath: string }) {
+  const t = useT()
   return (
     <Empty className="rounded-2xl bg-card shadow-soft">
       <EmptyHeader>
         <EmptyMedia variant="icon"><Lock /></EmptyMedia>
-        <EmptyTitle>{item.title} isn't part of your role</EmptyTitle>
-        <EmptyDescription>
-          Ask the store's owner if you need it. Everything else in the menu is yours to use.
-        </EmptyDescription>
+        <EmptyTitle>{t.pages.noAccessTitle(t.nav[item.key])}</EmptyTitle>
+        <EmptyDescription>{t.pages.noAccessText}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button variant="outline" asChild><Link to={startPath}>Go to your start page</Link></Button>
+        <Button variant="outline" asChild><Link to={startPath}>{t.pages.goToStart}</Link></Button>
       </EmptyContent>
     </Empty>
   )

@@ -1,12 +1,16 @@
 import { estimatePasswordStrength } from '@/lib/password-strength'
+import { useT } from '@/i18n/language-context'
 
 const SEGMENT_COLORS = ['', 'bg-destructive', 'bg-signal', 'bg-good', 'bg-good']
 const LABEL_COLORS = ['text-muted-foreground', 'text-destructive', 'text-warning-foreground', 'text-good', 'text-good']
 
 // Four bars that fill up as the password gets stronger, plus a one-word label.
 export function PasswordStrengthMeter({ password, email }: { password: string; email?: string }) {
+  const t = useT()
   if (!password) return null
-  const { score, label } = estimatePasswordStrength(password, email)
+  // The score decides; the word for it comes in the chosen language.
+  const { score } = estimatePasswordStrength(password, email)
+  const label = t.auth.strength[score]
 
   return (
     <div className="flex items-center gap-3">
@@ -21,8 +25,8 @@ export function PasswordStrengthMeter({ password, email }: { password: string; e
         ))}
       </div>
       {/* aria-live: screen readers announce the new strength while typing. */}
-      <p aria-live="polite" className={`w-16 text-right text-xs font-medium ${LABEL_COLORS[score]}`}>
-        <span className="sr-only">Password strength: </span>
+      <p aria-live="polite" className={`min-w-16 text-right text-xs font-medium whitespace-nowrap ${LABEL_COLORS[score]}`}>
+        <span className="sr-only">{t.auth.strengthLabel}</span>
         {label}
       </p>
     </div>

@@ -7,23 +7,27 @@ import { useCurrentUser } from '@/auth/use-auth'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatMoney, formatMonthDay, formatQuantity, formatShare } from '@/lib/format'
+import { formatMoney, formatMonthDay, formatPercent, formatQuantity, formatShare } from '@/lib/format'
 import { forecastsApi } from '@/lib/forecasts-api'
 import type { WasteReason } from '@/lib/inventory-api'
 import { reportsApi } from '@/lib/reports-api'
 import { salesApi } from '@/lib/sales-api'
 import { monthPeriod } from '@/pages/month/month-period'
+import { currentLocale } from '@/i18n/language'
+import { useT } from '@/i18n/language-context'
+import { sentence } from '@/i18n/sentence'
 
-const REASONS: Record<WasteReason, { label: string; color: string }> = {
-  expired: { label: 'Expired', color: 'bg-destructive' },
-  damaged: { label: 'Damaged', color: 'bg-signal' },
-  other: { label: 'Other', color: 'bg-muted-foreground' },
+const REASON_COLORS: Record<WasteReason, string> = {
+  expired: 'bg-destructive',
+  damaged: 'bg-signal',
+  other: 'bg-muted-foreground',
 }
 
 // The month told as a short story: what came in, what was lost, what sold best and how it
 // compares. Everything comes from the same reports as the dashboard, for one calendar month.
 export function MonthPage() {
   const { store } = useCurrentUser()
+  const t = useT()
   const money = (amount: string | number) => formatMoney(amount, store.currency)
   const [searchParams] = useSearchParams()
   const month = monthPeriod(searchParams.get('month'))
@@ -63,10 +67,10 @@ export function MonthPage() {
           <p className="font-hand text-2xl text-destructive">
             {formatMonthDay(month.dateFrom)} – {formatMonthDay(month.dateTo)}
           </p>
-          <h2 className="text-4xl leading-tight font-bold md:text-5xl">Your {month.label}</h2>
-          <p className="mt-1 text-muted-foreground">at {store.name}</p>
+          <h2 className="text-4xl leading-tight font-bold md:text-5xl">{t.month.title(month.label)}</h2>
+          <p className="mt-1 text-muted-foreground">{t.month.at(store.name)}</p>
         </div>
-        <nav aria-label="Months" className="flex gap-2">
+        <nav aria-label={t.month.months} className="flex gap-2">
           <Button variant="secondary" asChild>
             <Link to={`/month?month=${month.previous.month}`}><ChevronLeft />{month.previous.label}</Link>
           </Button>
@@ -86,7 +90,7 @@ export function MonthPage() {
             {failed.error?.message}
             <Button size="sm" variant="outline"
               onClick={() => queries.filter((query) => query.isError).forEach((query) => void query.refetch())}>
-              Try again
+              {t.common.tryAgain}
             </Button>
           </AlertDescription>
         </Alert>
@@ -96,8 +100,8 @@ export function MonthPage() {
         </div>
       ) : summary.data.sales === 0 ? (
         <div className="rounded-3xl bg-card p-10 text-center shadow-soft">
-          <p className="font-hand text-3xl">A quiet page.</p>
-          <p className="mt-1 text-muted-foreground">No sales were recorded in {month.label}.</p>
+          <p className="font-hand text-3xl">{t.month.quiet}</p>
+          <p className="mt-1 text-muted-foreground">{t.month.noSales(month.label)}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -114,83 +118,84 @@ export function MonthPage() {
             const reasons = [...waste.data.reasons].sort((a, b) => Number(b.value) - Number(a.value))
             const star = top.data[0]
             const model = accuracy.data?.models.find((item) => item.method === accuracy.data?.chosen)
-            const compared = month.isCurrent ? `the same days of ${month.previous.label}` : month.previous.label
+            const compared = month.isCurrent ? t.month.sameDaysOf(month.previous.label) : month.previous.label
             const change = comparable && previousRevenue > 0 ? ((revenue - previousRevenue) / previousRevenue) * 100 : null
 
             return (
               <>
-                <Story title="You sold" tone="ink">
+                <Story title={t.month.youSold} tone="ink">
                   <Big>{money(revenue)}</Big>
                   <p>
-                    and kept <strong className="text-signal">{money(profit)}</strong> of it as profit. That's about{' '}
-                    {Math.round((profit / revenue) * 100)} cents on every euro, from{' '}
-                    {summary.data.sales.toLocaleString()} sales.
+                    {sentence(t.month.kept(
+                      <strong className="text-signal">{money(profit)}</strong>,
+                      Math.round((profit / revenue) * 100),
+                      summary.data.sales.toLocaleString(currentLocale()),
+                    ))}
                   </p>
                 </Story>
 
-                <Story title="Thrown away">
+                <Story title={t.month.thrownAway}>
                   <Big className="text-destructive">{money(lost)}</Big>
                   {lost === 0 ? (
-                    <p>Nothing was written off. Every batch left the shelf in time.</p>
+                    <p>{t.month.nothingWasted}</p>
                   ) : (
                     <>
-                      <p>Mostly {REASONS[reasons[0].reason].label.toLowerCase()}. Each euro here was paid to a supplier and never sold.</p>
+                      <p>{t.month.mostlyText(t.month.mostly[reasons[0].reason])}</p>
                       <div aria-hidden className="mt-4 flex h-3 overflow-hidden rounded-full">
                         {reasons.map((reason) => (
-                          <span key={reason.reason} className={REASONS[reason.reason].color} style={{ flex: Number(reason.value) }} />
+                          <span key={reason.reason} className={REASON_COLORS[reason.reason]} style={{ flex: Number(reason.value) }} />
                         ))}
                       </div>
                       <p className="figures mt-2 text-sm text-muted-foreground">
-                        {reasons.map((reason) => `${REASONS[reason.reason].label} ${money(reason.value)}`).join(' · ')}
+                        {reasons.map((reason) => `${t.month.reasons[reason.reason]} ${money(reason.value)}`).join(' · ')}
                       </p>
                     </>
                   )}
                 </Story>
 
                 {star && (
-                  <Story title="The star of the month" tone="good">
+                  <Story title={t.month.star} tone="good">
                     <p className="font-heading text-3xl leading-tight font-bold">{star.product.name}</p>
                     <p className="figures">
-                      {money(star.profit)} profit from {formatQuantity(star.quantity, star.product.unit)} sold. More
-                      than any other product.
+                      {t.month.starText(money(star.profit), formatQuantity(star.quantity, star.product.unit))}
                     </p>
                   </Story>
                 )}
 
-                <Story title={`Compared with ${compared}`} tone="soon">
+                <Story title={t.month.comparedWith(compared)} tone="soon">
                   {change === null ? (
                     <p className="font-heading text-2xl font-bold">
-                      Nothing to compare with yet: your history here doesn't reach back that far.
+                      {t.month.nothingToCompare}
                     </p>
                   ) : (
                     <>
-                      <Big>{change >= 0 ? '+' : '−'}{Math.abs(change).toFixed(1)}%</Big>
+                      <Big>{change >= 0 ? '+' : '−'}{formatPercent(Math.abs(change))}</Big>
                       <p className="figures">
-                        {change >= 0 ? 'more' : 'less'} sold ({money(previousRevenue)} then), and{' '}
+                        {t.month.soldChange(change >= 0, money(previousRevenue))}
                         {lost === previousLost
-                          ? 'the same thrown away.'
-                          : `${money(Math.abs(lost - previousLost))} ${lost < previousLost ? 'less' : 'more'} thrown away.`}
+                          ? t.month.sameWaste
+                          : t.month.wasteChange(money(Math.abs(lost - previousLost)), lost < previousLost)}
                       </p>
                     </>
                   )}
                 </Story>
 
                 {month.isCurrent && model && (
-                  <Story title="How close the forecast was">
+                  <Story title={t.month.forecastTitle}>
                     <Big>{formatShare(model.weekly_wape)}</Big>
-                    <p>off per week, measured on your last 4 weeks{model.weekly_wape && Number(model.weekly_wape) > 0
-                      && `: roughly one unit in ${Math.round(1 / Number(model.weekly_wape))}, up or down`}.</p>
+                    <p>{t.month.offPerWeek}{model.weekly_wape && Number(model.weekly_wape) > 0
+                      && t.month.roughly(Math.round(1 / Number(model.weekly_wape)))}.</p>
                   </Story>
                 )}
 
-                <section aria-label="In short" className="flex items-center rounded-3xl border-2 border-dashed border-border p-7">
+                <section aria-label={t.month.inShort} className="flex items-center rounded-3xl border-2 border-dashed border-border p-7">
                   <p className="font-hand text-3xl leading-tight">
                     {change !== null && (change >= 0 && lost <= previousLost
-                      ? `A better month than ${month.previous.shortLabel}. `
-                      : change < 0 ? `A quieter month than ${month.previous.shortLabel}. ` : '')}
-                    {star && `${star.product.name} earned the most. `}
-                    {reasons[0]?.reason === 'expired' && lost > 0 && 'Keep an eye on what expires: that is where most of the waste came from.'}
-                    {reasons[0]?.reason === 'damaged' && lost > 0 && 'Handle with care: most of the waste was damaged goods.'}
+                      ? t.month.better(month.previous.shortLabel)
+                      : change < 0 ? t.month.quieter(month.previous.shortLabel) : '')}
+                    {star && t.month.earnedMost(star.product.name)}
+                    {reasons[0]?.reason === 'expired' && lost > 0 && t.month.watchExpiry}
+                    {reasons[0]?.reason === 'damaged' && lost > 0 && t.month.handleWithCare}
                   </p>
                 </section>
               </>

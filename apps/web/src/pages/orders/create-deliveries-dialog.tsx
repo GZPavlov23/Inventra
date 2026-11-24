@@ -21,6 +21,7 @@ import { deliveriesApi } from '@/lib/deliveries-api'
 import { formatMoney, lineCents, today } from '@/lib/format'
 import type { OrderLine } from '@/lib/forecasts-api'
 import type { SupplierRef } from '@/lib/suppliers-api'
+import { useT } from '@/i18n/language-context'
 
 type CreateDeliveriesDialogProps = {
   // Only the lines with something to order.
@@ -33,13 +34,14 @@ type CreateDeliveriesDialogProps = {
 }
 
 export function CreateDeliveriesDialog({ open, onOpenChange, ...form }: CreateDeliveriesDialogProps) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create deliveries</DialogTitle>
+          <DialogTitle>{t.orders.create}</DialogTitle>
           <DialogDescription>
-            One delivery for each supplier. Stock changes only when the goods arrive.
+            {t.orders.dialogText}
           </DialogDescription>
         </DialogHeader>
         <DeliveriesForm {...form} onClose={() => onOpenChange(false)} />
@@ -69,6 +71,7 @@ function DeliveriesForm({ lines, quantityOf, currency, onClose, onCreated }: {
   onCreated: () => void
 }) {
   const queryClient = useQueryClient()
+  const t = useT()
   const navigate = useNavigate()
   const [expectedOn, setExpectedOn] = useState('')
 
@@ -92,8 +95,8 @@ function DeliveriesForm({ lines, quantityOf, currency, onClose, onCreated }: {
       void queryClient.invalidateQueries({ queryKey: ['deliveries'] })
       // What is on the way now doesn't need ordering again.
       void queryClient.invalidateQueries({ queryKey: ['sales', 'orders'] })
-      toast.success(deliveries.length === 1 ? '1 delivery was created' : `${deliveries.length} deliveries were created`, {
-        action: { label: 'View', onClick: () => void navigate('/deliveries') },
+      toast.success(t.orders.created(deliveries.length), {
+        action: { label: t.orders.view, onClick: () => void navigate('/deliveries') },
       })
       onCreated()
       onClose()
@@ -109,7 +112,7 @@ function DeliveriesForm({ lines, quantityOf, currency, onClose, onCreated }: {
       )}
 
       {groups.length > 0 && (
-        <ul className="flex flex-col divide-y" aria-label="Deliveries to create">
+        <ul className="flex flex-col divide-y" aria-label={t.orders.toCreate}>
           {groups.map((group) => (
             <li key={group.supplier.id} className="flex items-start justify-between gap-4 py-2.5 first:pt-0">
               <div className="min-w-0">
@@ -128,23 +131,22 @@ function DeliveriesForm({ lines, quantityOf, currency, onClose, onCreated }: {
 
       {leftOut.length > 0 && (
         <p className="text-sm text-warning-foreground" role="status">
-          Left out, without an active supplier: {leftOut.map((line) => line.product.name).join(', ')}.
-          Set a supplier on the Products page to include them.
+          {t.orders.leftOut(leftOut.map((line) => line.product.name).join(', '))}
         </p>
       )}
 
       {groups.length > 0 && (
-        <FormField id="order_expected_on" label="Expected on">
+        <FormField id="order_expected_on" label={t.orders.expectedOn}>
           <Input id="order_expected_on" type="date" min={today()}
             value={expectedOn} onChange={(event) => setExpectedOn(event.target.value)} />
         </FormField>
       )}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button disabled={create.isPending || groups.length === 0} onClick={() => create.mutate()}>
           {create.isPending && <Spinner />}
-          {groups.length === 1 ? 'Create 1 delivery' : `Create ${groups.length} deliveries`}
+          {t.orders.createCount(groups.length)}
         </Button>
       </DialogFooter>
     </div>

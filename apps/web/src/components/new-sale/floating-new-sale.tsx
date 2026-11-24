@@ -4,6 +4,7 @@ import { useLocation } from 'react-router'
 
 import { useCan } from '@/auth/use-auth'
 import { useOpenNewSale } from '@/components/new-sale/new-sale-context'
+import { useT } from '@/i18n/language-context'
 
 const OPEN_WINDOW = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"]'
 
@@ -18,6 +19,7 @@ function isTyping(target: EventTarget | null): boolean {
 export function FloatingNewSale() {
   const can = useCan()
   const openNewSale = useOpenNewSale()
+  const t = useT()
   const { pathname } = useLocation()
   const shown = can('sell') && pathname !== '/sales'
 
@@ -45,7 +47,7 @@ export function FloatingNewSale() {
         className="pointer-events-auto inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 font-extrabold text-primary-foreground shadow-[0_12px_28px_rgb(45_42_38/0.28)] transition-transform outline-offset-4 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-ring"
       >
         <Plus className="size-5" strokeWidth={2.6} aria-hidden />
-        New sale
+        {t.newSale.button}
         <kbd aria-hidden className="hidden rounded-md bg-primary-foreground/15 px-1.5 font-sans text-xs sm:inline">N</kbd>
       </button>
     </div>

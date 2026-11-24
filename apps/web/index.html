@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="bg">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
@@ -13,6 +13,8 @@
         if (saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark')
         }
+        // Bulgarian unless English was chosen (same rule as src/i18n/language.ts).
+        document.documentElement.lang = localStorage.getItem('inventra-language') === 'en' ? 'en' : 'bg'
       } catch (error) {}
     </script>
   </head>

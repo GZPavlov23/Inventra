@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { productsApi } from '@/lib/products-api'
+import { useT } from '@/i18n/language-context'
 
 type CategoryComboboxProps = {
   id: string
@@ -24,6 +25,7 @@ type CategoryComboboxProps = {
 // Pick one of the store's categories or add a new one. Offering the existing ones keeps people
 // from typing a slightly different name; the server also unifies upper/lower case spellings.
 export function CategoryCombobox({ id, value, onChange, invalid }: CategoryComboboxProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const categories = useQuery({
@@ -60,7 +62,7 @@ export function CategoryCombobox({ id, value, onChange, invalid }: CategoryCombo
           className="w-full justify-between font-normal"
         >
           <span className={`truncate ${value ? '' : 'text-muted-foreground'}`}>
-            {value || 'Choose or add'}
+            {value || t.products.chooseOrAdd}
           </span>
           <ChevronsUpDown className="text-muted-foreground" />
         </Button>
@@ -70,13 +72,13 @@ export function CategoryCombobox({ id, value, onChange, invalid }: CategoryCombo
             so Enter would create a near-duplicate instead of picking the existing category. */}
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Search or add a category"
+            placeholder={t.products.categorySearch}
             maxLength={80}
             value={query}
             onValueChange={setQuery}
           />
           <CommandList>
-            <CommandEmpty>No categories yet. Type one to add it.</CommandEmpty>
+            <CommandEmpty>{t.products.noCategories}</CommandEmpty>
             <CommandGroup>
               {matches.map((option) => (
                 <CommandItem
@@ -91,13 +93,13 @@ export function CategoryCombobox({ id, value, onChange, invalid }: CategoryCombo
               {isNew && (
                 <CommandItem value={`add:${typed}`} onSelect={() => choose(typed)}>
                   <Plus />
-                  Add “{typed}”
+                  {t.products.addCategory(typed)}
                 </CommandItem>
               )}
               {value && typed === '' && (
                 <CommandItem value="clear" onSelect={() => choose('')}>
                   <X />
-                  No category
+                  {t.products.noCategory}
                 </CommandItem>
               )}
             </CommandGroup>

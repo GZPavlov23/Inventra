@@ -181,6 +181,36 @@
     }
 }
 
+/* Switching language: the new language spreads from the button like ink. The old page opens a
+   hole that grows from the button, the new page shows through a slightly smaller circle, and the
+   gap between them is a ring of mustard, the colour of the greeting's underline. The browser
+   takes the pictures of both pages (View Transitions); --wipe-now is how far the ink has run. */
+@property --wipe-now {
+    syntax: '<length>';
+    inherits: true;
+    initial-value: 0px;
+}
+::view-transition-image-pair(root) {
+    background: var(--signal);
+    animation: language-ink 0.85s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+    mask-image: radial-gradient(circle at var(--wipe-x) var(--wipe-y),
+        transparent var(--wipe-now), #000 calc(var(--wipe-now) + 1px));
+}
+::view-transition-new(root) {
+    clip-path: circle(max(0px, calc(var(--wipe-now) - 14px)) at var(--wipe-x) var(--wipe-y));
+}
+@keyframes language-ink {
+    from { --wipe-now: 0px; }
+    to { --wipe-now: calc(var(--wipe-r) + 14px); }
+}
+
 @keyframes just-added {
     from { background-color: color-mix(in oklch, var(--primary) 16%, transparent); }
     to { background-color: transparent; }

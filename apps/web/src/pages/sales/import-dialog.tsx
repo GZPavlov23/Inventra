@@ -26,25 +26,16 @@ import {
   readTextFile,
   type SalesImportReport,
 } from '@/lib/imports-api'
+import { useT } from '@/i18n/language-context'
+import { serverText } from '@/i18n/server-text'
 
-const MODES: { value: ImportMode; label: string; explanation: string }[] = [
-  {
-    value: 'current',
-    label: 'Current sales',
-    explanation: 'What your till sold. Takes the goods out of your stock, from the batches that expire first.',
-  },
-  {
-    value: 'history',
-    label: 'Old history',
-    explanation:
-      'Past sales for the demand forecast. Your stock stays as it is, and they don’t show in Sales or in your profit, because old sales have no batches to take a real cost from.',
-  },
-]
+const MODES: ImportMode[] = ['current', 'history']
 
 export function ImportDialog({ open, onOpenChange }: {
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const t = useT()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -52,9 +43,9 @@ export function ImportDialog({ open, onOpenChange }: {
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Import sales</DialogTitle>
+          <DialogTitle>{t.sales.importTitle}</DialogTitle>
           <DialogDescription>
-            Upload a CSV file from your till. It is checked first, and nothing is saved until you confirm.
+            {t.sales.importText}
           </DialogDescription>
         </DialogHeader>
         <ImportForm onClose={() => onOpenChange(false)} />
@@ -65,6 +56,7 @@ export function ImportDialog({ open, onOpenChange }: {
 
 function ImportForm({ onClose }: { onClose: () => void }) {
   const { store } = useCurrentUser()
+  const t = useT()
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<ImportMode>('current')
@@ -84,7 +76,7 @@ function ImportForm({ onClose }: { onClose: () => void }) {
       void queryClient.invalidateQueries({ queryKey: ['sales'] })
       void queryClient.invalidateQueries({ queryKey: ['batches'] })
       void queryClient.invalidateQueries({ queryKey: ['products'] })
-      toast.success(`${report.rows} rows imported`)
+      toast.success(t.sales.imported(report.rows))
       onClose()
     },
   })
@@ -103,7 +95,7 @@ function ImportForm({ onClose }: { onClose: () => void }) {
     startOver()
     setFile(null)
     if (chosen.size > MAX_FILE_BYTES) {
-      setFileProblem('This file is too big. The limit is 10 MB.')
+      setFileProblem(t.sales.tooBig)
       return
     }
     setFileProblem(null)
@@ -129,13 +121,13 @@ function ImportForm({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-2">
         <Tabs value={mode} onValueChange={changeMode}>
           <TabsList>
-            {MODES.map(({ value, label }) => (
-              <TabsTrigger key={value} value={value}>{label}</TabsTrigger>
+            {MODES.map((value) => (
+              <TabsTrigger key={value} value={value}>{t.sales.modes[value]}</TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
         <p className="text-sm text-muted-foreground">
-          {MODES.find(({ value }) => value === mode)?.explanation}
+          {t.sales.modeTexts[mode]}
         </p>
       </div>
 
@@ -144,26 +136,25 @@ function ImportForm({ onClose }: { onClose: () => void }) {
           ref={fileInput}
           type="file"
           accept=".csv,text/csv"
-          aria-label="CSV file"
+          aria-label={t.sales.csvFile}
           className="sr-only"
           onChange={(event) => void chooseFile(event)}
         />
         <Button type="button" variant="outline" onClick={() => fileInput.current?.click()}>
           <FileUp />
-          Choose a file
+          {t.sales.chooseFile}
         </Button>
         <span className="min-w-0 truncate text-sm text-muted-foreground">
-          {file?.name ?? 'No file chosen'}
+          {file?.name ?? t.sales.noFile}
         </span>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Columns: {mode === 'current' && 'receipt, '}date, barcode or product, quantity, and optionally
-        unit_price. Bulgarian column names work too.{' '}
+        {t.sales.columns(mode === 'current')}{' '}
         <button type="button" onClick={downloadTemplate}
           className="inline-flex cursor-pointer items-center gap-1 font-medium text-foreground underline underline-offset-2">
           <Download className="size-3" />
-          Download a template
+          {t.sales.template}
         </button>
       </p>
 
@@ -178,7 +169,7 @@ function ImportForm({ onClose }: { onClose: () => void }) {
         </Alert>
       )}
       {check.isPending && (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner /> Checking the file</p>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner /> {t.sales.checking}</p>
       )}
       {report && !check.isPending && (
         report.error_count > 0
@@ -187,10 +178,10 @@ function ImportForm({ onClose }: { onClose: () => void }) {
       )}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={onClose}>{t.common.cancel}</Button>
         <Button type="button" disabled={!ready || busy} onClick={() => file && save.mutate(file.content)}>
           {save.isPending && <Spinner />}
-          {report && ready ? `Import ${report.rows} rows` : 'Import'}
+          {report && ready ? t.sales.importRows(report.rows) : t.sales.import}
         </Button>
       </DialogFooter>
     </div>
@@ -198,19 +189,20 @@ function ImportForm({ onClose }: { onClose: () => void }) {
 }
 
 function Preview({ report, currency }: { report: SalesImportReport; currency: string }) {
+  const t = useT()
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-3" role="status" aria-label="Check result">
+    <div className="flex flex-col gap-2 rounded-lg border p-3" role="status" aria-label={t.sales.checkResult}>
       <p className="flex items-center gap-2 text-sm font-medium">
         <CircleCheck className="size-4 text-good" />
-        The file is fine. Nothing is saved yet.
+        {t.sales.fileFine}
       </p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        <Fact label="Rows">{report.rows}</Fact>
-        {report.mode === 'current' && <Fact label="Sales">{report.sales}</Fact>}
-        <Fact label="Products">{report.products}</Fact>
-        <Fact label="Revenue">{formatMoney(report.revenue, currency)}</Fact>
+        <Fact label={t.sales.rows}>{report.rows}</Fact>
+        {report.mode === 'current' && <Fact label={t.sales.sales}>{report.sales}</Fact>}
+        <Fact label={t.sales.products}>{report.products}</Fact>
+        <Fact label={t.sales.revenue}>{formatMoney(report.revenue, currency)}</Fact>
         {report.first_day && report.last_day && (
-          <Fact label="Period" wide>
+          <Fact label={t.sales.period} wide>
             {report.first_day === report.last_day
               ? formatDay(report.first_day)
               : `${formatDay(report.first_day)} – ${formatDay(report.last_day)}`}
@@ -233,22 +225,23 @@ function Fact({ label, wide, children }: { label: string; wide?: boolean; childr
 function ErrorList({ report }: { report: SalesImportReport }) {
   const { error_count: count, errors } = report
   const hidden = count - errors.length
+  const t = useT()
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-destructive/40 p-3" role="alert">
       <p className="flex items-center gap-2 text-sm font-medium">
         <CircleAlert className="size-4 text-destructive" />
-        {count === 1 ? '1 problem' : `${count} problems`} found. Nothing was saved.
+        {t.sales.problems(count)}
       </p>
-      <ul aria-label="Problems in the file" className="flex max-h-48 flex-col gap-1 overflow-y-auto text-sm">
+      <ul aria-label={t.sales.problemsLabel} className="flex max-h-48 flex-col gap-1 overflow-y-auto text-sm">
         {errors.map(({ row, message }) => (
           <li key={`${row}-${message}`}>
-            <span className="font-medium figures">Row {row}:</span>{' '}
-            <span className="text-muted-foreground">{message}</span>
+            <span className="font-medium figures">{t.sales.row(row)}</span>{' '}
+            <span className="text-muted-foreground">{serverText('import', message, true)}</span>
           </li>
         ))}
       </ul>
-      {hidden > 0 && <p className="text-xs text-muted-foreground">And {hidden} more</p>}
+      {hidden > 0 && <p className="text-xs text-muted-foreground">{t.sales.more(hidden)}</p>}
     </div>
   )
 }

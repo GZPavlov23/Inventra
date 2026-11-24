@@ -21,19 +21,21 @@ import { formatDay, formatMoney, formatQuantity } from '@/lib/format'
 import type { Batch } from '@/lib/inventory-api'
 import { ExpiryBadge } from '@/pages/inventory/expiry-badge'
 import { ShelfLifeBar } from '@/pages/inventory/shelf-life-bar'
+import { useT } from '@/i18n/language-context'
 
 export type BatchAction = 'write-off' | 'correct' | 'history'
 
 function TableHeadings() {
+  const t = useT()
   return (
     <TableHeader>
       <TableRow>
-        <TableHead>Product</TableHead>
-        <TableHead>Lot</TableHead>
-        <TableHead>Expires</TableHead>
-        <TableHead className="text-right">Remaining</TableHead>
-        <TableHead className="text-right">Purchase price</TableHead>
-        <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
+        <TableHead>{t.inventory.product}</TableHead>
+        <TableHead>{t.inventory.lot}</TableHead>
+        <TableHead>{t.inventory.expires}</TableHead>
+        <TableHead className="text-right">{t.inventory.remaining}</TableHead>
+        <TableHead className="text-right">{t.inventory.purchasePrice}</TableHead>
+        <TableHead className="w-10"><span className="sr-only">{t.inventory.actions}</span></TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -61,9 +63,10 @@ type BatchesTableProps = {
 }
 
 export function BatchesTable({ batches, currency, onAction, justAdded }: BatchesTableProps) {
+  const t = useT()
   return (
     <Table>
-      <TableCaption className="sr-only">Batches of your store, the earliest expiry date first</TableCaption>
+      <TableCaption className="sr-only">{t.inventory.caption}</TableCaption>
       <TableHeadings />
       <TableBody>
         {batches.map((batch) => {
@@ -84,7 +87,7 @@ export function BatchesTable({ batches, currency, onAction, justAdded }: Batches
                   {formatQuantity(batch.remaining_quantity, product.unit)}
                 </span>
                 <div className="text-xs text-muted-foreground">
-                  of {formatQuantity(batch.received_quantity, product.unit)}
+                  {t.inventory.of(formatQuantity(batch.received_quantity, product.unit))}
                 </div>
               </TableCell>
               <TableCell className="text-right text-muted-foreground figures">
@@ -93,7 +96,7 @@ export function BatchesTable({ batches, currency, onAction, justAdded }: Batches
               <TableCell className="py-0 text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${product.name}`}>
+                    <Button variant="ghost" size="icon-sm" aria-label={t.inventory.actionsFor(product.name)}>
                       <Ellipsis />
                     </Button>
                   </DropdownMenuTrigger>
@@ -101,17 +104,17 @@ export function BatchesTable({ batches, currency, onAction, justAdded }: Batches
                     {!used && (
                       <DropdownMenuItem onSelect={() => onAction('write-off', batch)}>
                         <Trash2 />
-                        Write off
+                        {t.inventory.writeOff}
                       </DropdownMenuItem>
                     )}
                     {/* Also for empty batches: goods can turn up after everything was written off. */}
                     <DropdownMenuItem onSelect={() => onAction('correct', batch)}>
                       <ClipboardCheck />
-                      Correct the count
+                      {t.inventory.correct}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onAction('history', batch)}>
                       <History />
-                      History
+                      {t.inventory.history}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -126,9 +129,10 @@ export function BatchesTable({ batches, currency, onAction, justAdded }: Batches
 
 // Grey placeholder rows with the table's real layout, shown while the first page loads.
 export function BatchesTableSkeleton({ rows = 6 }: { rows?: number }) {
+  const t = useT()
   return (
     <Table aria-busy="true">
-      <TableCaption className="sr-only">Loading batches</TableCaption>
+      <TableCaption className="sr-only">{t.inventory.loadingBatches}</TableCaption>
       <TableHeadings />
       <TableBody>
         {Array.from({ length: rows }, (_, index) => (

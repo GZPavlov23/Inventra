@@ -14,9 +14,11 @@ import { DEMO_ACCOUNT } from '@/config/demo'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { type ApiError, toApiError } from '@/lib/api'
 import { authApi } from '@/lib/auth-api'
+import { useT } from '@/i18n/language-context'
 
 export function LoginPage() {
-  useDocumentTitle('Log in')
+  const t = useT()
+  useDocumentTitle(t.auth.logIn)
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -40,7 +42,8 @@ export function LoginPage() {
 
   async function resendLink() {
     try {
-      setNotice((await authApi.resendVerification(email)).detail)
+      await authApi.resendVerification(email)
+      setNotice(t.auth.newLinkSent)
       setError(null)
     } catch (caught) {
       setError(toApiError(caught))
@@ -50,8 +53,8 @@ export function LoginPage() {
   return (
     <AuthCard shakeKey={error}>
       <CardHeader data-animate>
-        <CardTitle className="text-3xl font-semibold tracking-tight">Welcome back</CardTitle>
-        <CardDescription className="text-base">Log in to manage your store.</CardDescription>
+        <CardTitle className="text-3xl font-semibold tracking-tight">{t.auth.loginTitle}</CardTitle>
+        <CardDescription className="text-base">{t.auth.loginSubtitle}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -61,7 +64,7 @@ export function LoginPage() {
                 {error.message}
                 {error.code === 'email_not_verified' && (
                   <Button type="button" variant="link" className="h-auto p-0" onClick={resendLink}>
-                    Send a new confirmation link
+                    {t.auth.resendConfirmation}
                   </Button>
                 )}
               </AlertDescription>
@@ -74,15 +77,15 @@ export function LoginPage() {
           )}
 
           <div data-animate className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="email" required placeholder="you@store.com"
+            <Label htmlFor="email">{t.auth.email}</Label>
+            <Input id="email" type="email" autoComplete="email" required placeholder={t.auth.emailPlaceholder}
               value={email} onChange={(event) => setEmail(event.target.value)} />
           </div>
           <div data-animate className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.auth.password}</Label>
               <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
+                {t.auth.forgotLink}
               </Link>
             </div>
             <PasswordInput id="password" autoComplete="current-password" required
@@ -91,7 +94,7 @@ export function LoginPage() {
 
           <Button data-animate type="submit" disabled={submitting} className="mt-1">
             {submitting && <Spinner />}
-            Log in
+            {t.auth.logIn}
           </Button>
 
           {import.meta.env.DEV && (
@@ -104,15 +107,15 @@ export function LoginPage() {
                 setPassword(DEMO_ACCOUNT.password)
               }}
             >
-              Fill demo account (development only)
+              {t.auth.fillDemo}
             </Button>
           )}
         </form>
 
         <p data-animate className="mt-6 text-center text-sm text-muted-foreground">
-          New to Inventra?{' '}
+          {t.auth.newHere}{' '}
           <Link to="/register" className="font-medium text-primary hover:underline">
-            Create an account
+            {t.auth.createAccountLink}
           </Link>
         </p>
       </CardContent>

@@ -13,9 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ROLE_LABELS } from '@/lib/auth-api'
 import type { ThemeChoice } from '@/theme/theme'
 import { useTheme } from '@/theme/use-theme'
+import { useT } from '@/i18n/language-context'
 
 function initials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/)
@@ -27,6 +27,7 @@ export function UserMenu() {
   const user = useCurrentUser()
   const { logout } = useAuth()
   const [theme, setTheme] = useTheme()
+  const t = useT()
 
   return (
     <DropdownMenu>
@@ -34,7 +35,7 @@ export function UserMenu() {
         {/* Just the initials on screen; the name is still read out, and shown inside the menu. */}
         <button
           type="button"
-          aria-label={`Account: ${user.full_name}`}
+          aria-label={t.header.account(user.full_name)}
           className="flex items-center gap-1 rounded-full py-1 pr-1.5 pl-1 outline-offset-2 hover:bg-secondary"
         >
           <Avatar className="size-8">
@@ -47,25 +48,25 @@ export function UserMenu() {
         <DropdownMenuLabel className="font-normal">
           <div className="text-sm font-bold">{user.full_name}</div>
           <div data-slot="menu-store" className="text-xs text-muted-foreground">
-            {ROLE_LABELS[user.role]} · {user.store.name}
+            {t.roles[user.role]} · {user.store.name}
           </div>
           <div className="text-xs text-muted-foreground">{user.email}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/settings"><Settings />Settings</Link>
+          <Link to="/settings"><Settings />{t.nav.settings}</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-xs font-bold text-muted-foreground">Theme</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs font-bold text-muted-foreground">{t.header.theme}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as ThemeChoice)}>
-          <DropdownMenuRadioItem value="system">Same as this computer</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">Dark, for the evening</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">{t.header.themeSystem}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="light">{t.header.themeLight}</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">{t.header.themeDark}</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void logout()}>
           <LogOut />
-          Log out
+          {t.header.logOut}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

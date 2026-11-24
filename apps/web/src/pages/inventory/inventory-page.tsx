@@ -24,20 +24,17 @@ import { ExpiryCalendarView } from '@/pages/inventory/expiry-calendar'
 import { HistoryDialog } from '@/pages/inventory/history-dialog'
 import { ReceiveDialog } from '@/pages/inventory/receive-dialog'
 import { WasteDialog } from '@/pages/inventory/waste-dialog'
+import { useT } from '@/i18n/language-context'
 
-const STATUSES: { value: BatchStatus; label: string }[] = [
-  { value: 'in_stock', label: 'In stock' },
-  { value: 'expiring', label: 'Expiring soon' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'all', label: 'All' },
-]
+const STATUSES: BatchStatus[] = ['in_stock', 'expiring', 'expired', 'all']
 
 function readStatus(value: string | null): BatchStatus {
-  return STATUSES.some((status) => status.value === value) ? (value as BatchStatus) : 'in_stock'
+  return STATUSES.some((status) => status === value) ? (value as BatchStatus) : 'in_stock'
 }
 
 export function InventoryPage() {
   const { store } = useCurrentUser()
+  const t = useT()
   const { searchParams, search, searchInput, setSearchInput, page, updateParams } = useListParams()
   const status = readStatus(searchParams.get('status'))
   // The same batches two ways: a list in shelf order, or a calendar of when they expire.
@@ -74,18 +71,18 @@ export function InventoryPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Inventory</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{t.nav.inventory}</h2>
           <p className="text-sm text-muted-foreground">
             {view === 'calendar'
-              ? 'When each batch expires, and what was paid for it.'
-              : 'Your batches, in the order they should leave the shelf.'}
+              ? t.inventory.calendarSubtitle
+              : t.inventory.listSubtitle}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={view} onValueChange={(value) => updateParams({ view: value === 'list' ? null : value })}>
-            <TabsList aria-label="Show as">
-              <TabsTrigger value="list">List</TabsTrigger>
-              <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsList aria-label={t.inventory.showAs}>
+              <TabsTrigger value="list">{t.inventory.list}</TabsTrigger>
+              <TabsTrigger value="calendar">{t.inventory.calendar}</TabsTrigger>
             </TabsList>
           </Tabs>
           <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
@@ -101,8 +98,8 @@ export function InventoryPage() {
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                aria-label="Search batches"
-                placeholder="Search by product, barcode or lot"
+                aria-label={t.inventory.searchLabel}
+                placeholder={t.inventory.searchPlaceholder}
                 className="pl-9"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
@@ -113,9 +110,9 @@ export function InventoryPage() {
               onValueChange={(value) => updateParams({ status: value === 'in_stock' ? null : value, page: null })}
             >
               <TabsList>
-                {STATUSES.map(({ value, label }) => (
+                {STATUSES.map((value) => (
                   <TabsTrigger key={value} value={value}>
-                    {label}
+                    {t.inventory.statuses[value]}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -127,7 +124,7 @@ export function InventoryPage() {
               <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                 {batches.error.message}
                 <Button size="sm" variant="outline" onClick={() => void batches.refetch()}>
-                  Try again
+                  {t.common.tryAgain}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -140,21 +137,21 @@ export function InventoryPage() {
               <Empty className="rounded-2xl bg-card shadow-soft">
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
-                  <EmptyTitle>No batches found</EmptyTitle>
+                  <EmptyTitle>{t.inventory.noneFound}</EmptyTitle>
                   <EmptyDescription>
-                    {search ? `Nothing matches “${search}”.` : 'There are no batches in this list.'}
+                    {search ? t.inventory.nothingMatches(search) : t.inventory.noneInList}
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button variant="outline" onClick={clearFilters}>Show all stock</Button>
+                  <Button variant="outline" onClick={clearFilters}>{t.inventory.showAll}</Button>
                 </EmptyContent>
               </Empty>
             ) : (
               <Empty className="rounded-2xl bg-card shadow-soft">
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><Boxes /></EmptyMedia>
-                  <EmptyTitle>No stock yet</EmptyTitle>
-                  <EmptyDescription>Receive your first delivery to see it here.</EmptyDescription>
+                  <EmptyTitle>{t.inventory.noStock}</EmptyTitle>
+                  <EmptyDescription>{t.inventory.noStockText}</EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
                   <ReceiveGoodsButton onReceived={(batch) => setJustAdded(batch.id)} />
@@ -190,11 +187,12 @@ export function InventoryPage() {
 
 function ReceiveGoodsButton({ onReceived }: { onReceived: (batch: Batch) => void }) {
   const [open, setOpen] = useState(false)
+  const t = useT()
   return (
     <>
       <Button onClick={() => setOpen(true)}>
         <PackagePlus />
-        Receive goods
+        {t.inventory.receive}
       </Button>
       <ReceiveDialog open={open} onOpenChange={setOpen} onReceived={onReceived} />
     </>

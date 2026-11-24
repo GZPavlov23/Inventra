@@ -22,6 +22,9 @@ SORT_COLUMNS = {
     "sale_price": Product.sale_price,
     # NULLIF avoids dividing by zero: a free product simply has no margin.
     "margin": (Product.sale_price - Product.purchase_price) / func.nullif(Product.sale_price, 0),
+    # Markup is the profit on top of what was paid; goods received for free have none.
+    "markup": (Product.sale_price - Product.purchase_price)
+    / func.nullif(Product.purchase_price, 0),
     "stock": Product.stock,
 }
 

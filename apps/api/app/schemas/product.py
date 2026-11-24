@@ -16,7 +16,9 @@ from app.models.product import ProductUnit
 from app.schemas.common import empty_to_none
 from app.schemas.supplier import SupplierRef
 
-ProductSort = Literal["name", "category", "purchase_price", "sale_price", "margin", "stock"]
+ProductSort = Literal[
+    "name", "category", "purchase_price", "sale_price", "margin", "markup", "stock"
+]
 SortOrder = Literal["asc", "desc"]
 
 ProductName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]

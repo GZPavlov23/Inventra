@@ -35,7 +35,7 @@ const STATUSES: ProductStatus[] = ['active', 'archived', 'all']
 
 const TREND_DAYS = 14
 
-const SORT_COLUMNS: ProductSort[] = ['name', 'category', 'purchase_price', 'sale_price', 'margin', 'stock']
+const SORT_COLUMNS: ProductSort[] = ['name', 'category', 'purchase_price', 'sale_price', 'markup', 'margin', 'stock']
 
 function readSort(value: string | null): ProductSort {
   return SORT_COLUMNS.includes(value as ProductSort) ? (value as ProductSort) : 'name'

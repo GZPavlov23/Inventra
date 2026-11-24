@@ -6,7 +6,7 @@ import type { SupplierRef } from '@/lib/suppliers-api'
 
 export type ProductUnit = 'pcs' | 'kg' | 'l'
 export type ProductStatus = 'active' | 'archived' | 'all'
-export type ProductSort = 'name' | 'category' | 'purchase_price' | 'sale_price' | 'margin' | 'stock'
+export type ProductSort = 'name' | 'category' | 'purchase_price' | 'sale_price' | 'markup' | 'margin' | 'stock'
 export type SortOrder = 'asc' | 'desc'
 
 export type Product = {

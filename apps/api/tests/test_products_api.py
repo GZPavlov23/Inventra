@@ -280,6 +280,23 @@ def test_free_product_does_not_break_margin_sorting(client: TestClient) -> None:
     assert [item["name"] for item in response.json()["items"]] == ["Paid", "Free"]
 
 
+def test_list_can_be_sorted_by_markup(client: TestClient) -> None:
+    # 5 -> 10 is a 100% markup but only a 50% margin: the same order, a different number.
+    create(client, name="Double", barcode=None, purchase_price="5.00", sale_price="10.00")
+    create(client, name="Small", barcode=None, purchase_price="9.00", sale_price="10.00")
+    create(client, name="Loss", barcode=None, purchase_price="12.00", sale_price="10.00")
+    assert sorted_names(client, "markup", "desc") == ["Double", "Small", "Loss"]
+    assert sorted_names(client, "markup") == ["Loss", "Small", "Double"]
+
+
+def test_goods_received_for_free_do_not_break_markup_sorting(client: TestClient) -> None:
+    create(client, name="Gift", barcode=None, purchase_price="0", sale_price="2.00")
+    create(client, name="Bought", barcode=None, purchase_price="1.00", sale_price="2.00")
+    response = client.get(URL, params={"sort": "markup"})
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["items"]] == ["Bought", "Gift"]
+
+
 def test_products_without_category_are_always_last(client: TestClient) -> None:
     create(client, name="None", barcode=None, category=None)
     create(client, name="Bread", barcode=None, category="Bread")

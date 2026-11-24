@@ -141,6 +141,14 @@ export function daysUntil(day: string): number {
   return Math.round((parseDay(day).getTime() - parseDay(today()).getTime()) / millisecondsPerDay)
 }
 
+// Markup: the profit on top of what the goods cost. Bought for 1.00 and sold for 1.50 is a 50%
+// markup but only a 33.3% margin. null for goods that cost nothing.
+export function markupPercent(purchasePrice: string, salePrice: string): number | null {
+  const purchase = Number(purchasePrice)
+  if (purchase === 0) return null
+  return ((Number(salePrice) - purchase) / purchase) * 100
+}
+
 // Gross margin: the share of the sale price that is profit. null when the price is 0.
 export function marginPercent(purchasePrice: string, salePrice: string): number | null {
   const sale = Number(salePrice)

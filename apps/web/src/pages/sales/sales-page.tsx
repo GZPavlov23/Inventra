@@ -186,9 +186,12 @@ function SalesOverview({ canImport }: { canImport: boolean }) {
   )
 }
 
+// Markup on what the goods cost, and margin on what they sold for.
 function marginNote(t: Messages, revenue?: string, profit?: string): string | undefined {
   if (!revenue || !profit || Number(revenue) === 0) return undefined
-  return t.sales.margin(formatPercent((Number(profit) / Number(revenue)) * 100))
+  const cost = Number(revenue) - Number(profit)
+  const margin = formatPercent((Number(profit) / Number(revenue)) * 100)
+  return cost > 0 ? t.sales.markupAndMargin(formatPercent((Number(profit) / cost) * 100), margin) : t.sales.margin(margin)
 }
 
 function ImportButton() {

@@ -21,6 +21,7 @@ import {
   formatQuantity,
   formatTime,
   marginPercent,
+  markupPercent,
 } from '@/lib/format'
 import { type ProductUnit, productsApi, type StoryEvent } from '@/lib/products-api'
 import { reportsApi } from '@/lib/reports-api'
@@ -123,6 +124,7 @@ export function ProductStoryPage() {
   const attention = story.data?.pages[0].attention
   const days = story.data?.pages.flatMap((page) => page.days) ?? []
   const sold = trend.data?.[0]
+  const markup = item && markupPercent(item.purchase_price, item.sale_price)
   const margin = item && marginPercent(item.purchase_price, item.sale_price)
 
   return (
@@ -149,7 +151,9 @@ export function ProductStoryPage() {
                 {!item.active && <Badge variant="outline" className="mt-2">{t.story.archived}</Badge>}
               </div>
               <dl className="grid grid-cols-2 gap-4">
+                <Fact label={t.story.purchasePrice}>{money(item.purchase_price)}</Fact>
                 <Fact label={t.story.salePrice}>{money(item.sale_price)}</Fact>
+                <Fact label={t.story.markup}>{markup === null || markup === undefined ? '—' : formatPercent(markup)}</Fact>
                 <Fact label={t.story.margin}>{margin === null || margin === undefined ? '—' : formatPercent(margin)}</Fact>
                 <Fact label={t.story.onShelf}>{formatQuantity(item.stock, item.unit)}</Fact>
                 <Fact label={t.story.soldDays(TREND_DAYS)}>

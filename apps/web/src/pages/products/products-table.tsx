@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Sparkline } from '@/components/sparkline'
-import { formatExpected, formatMoney, formatPercent, formatQuantity, marginPercent } from '@/lib/format'
+import { formatExpected, formatMoney, formatPercent, formatQuantity, marginPercent, markupPercent } from '@/lib/format'
 import type { Product, ProductSort, SortOrder } from '@/lib/products-api'
 import type { SalesTrend } from '@/lib/reports-api'
 import { useT } from '@/i18n/language-context'
@@ -74,6 +74,7 @@ function TableHeadings({ sorting }: { sorting?: SortState }) {
         <SortableHead column="category" label={t.products.category} sorting={sorting} />
         <SortableHead column="purchase_price" label={t.products.purchasePrice} numeric sorting={sorting} />
         <SortableHead column="sale_price" label={t.products.salePrice} numeric sorting={sorting} />
+        <SortableHead column="markup" label={t.products.markup} numeric sorting={sorting} />
         <SortableHead column="margin" label={t.products.margin} numeric sorting={sorting} />
         <SortableHead column="stock" label={t.products.stock} numeric sorting={sorting} />
         <TableHead className="text-right">{t.products.lastDays(TREND_DAYS)}</TableHead>
@@ -107,6 +108,7 @@ export function ProductsTable({
       <TableHeadings sorting={sorting} />
       <TableBody>
         {products.map((product) => {
+          const markup = markupPercent(product.purchase_price, product.sale_price)
           const margin = marginPercent(product.purchase_price, product.sale_price)
           return (
             <TableRow key={product.id} className={actions && 'cursor-pointer'} data-new={product.id === justSaved}
@@ -137,6 +139,11 @@ export function ProductsTable({
               </TableCell>
               <TableCell className="text-right font-medium figures">
                 {formatMoney(product.sale_price, currency)}
+              </TableCell>
+              <TableCell
+                className={`text-right figures ${markup !== null && markup < 0 ? 'text-destructive' : ''}`}
+              >
+                {markup === null ? <Dash /> : formatPercent(markup)}
               </TableCell>
               <TableCell
                 className={`text-right figures ${margin !== null && margin < 0 ? 'text-destructive' : ''}`}
@@ -202,6 +209,7 @@ export function ProductsTableSkeleton({ rows = 6 }: { rows?: number }) {
             <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-14" /></TableCell>
+            <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
             <TableCell><Skeleton className="ml-auto h-4 w-20" /></TableCell>

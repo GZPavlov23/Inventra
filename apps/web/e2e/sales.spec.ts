@@ -76,7 +76,7 @@ test('a sale takes the batch that expires first and shows what was earned', asyn
   await expect(tile(page, 'Sales')).toContainText(String(summary.sales))
   await expect(tile(page, 'Revenue')).toContainText(money(summary.revenue))
   await expect(tile(page, 'Profit')).toContainText(money(summary.profit))
-  await expect(tile(page, 'Profit')).toContainText('Margin')
+  await expect(tile(page, 'Profit')).toContainText(/Markup [\d.]+% · Margin [\d.]+%/)
 
   const row = page.locator('tbody tr').first()
   await expect(row).toContainText('Е2Е Продажба банани × 0.75 kg')

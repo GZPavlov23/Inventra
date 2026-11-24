@@ -67,6 +67,12 @@ test('columns sort the whole list in both directions', async ({ page }) => {
   }).toBe(true)
 })
 
+test('the markup column sorts by markup on the server', async ({ page }) => {
+  await page.getByRole('button', { name: 'Markup' }).click()
+  await expect(page).toHaveURL(/sort=markup/)
+  await expect(page.getByRole('columnheader', { name: 'Markup' })).toHaveAttribute('aria-sort', 'ascending')
+})
+
 test('adding a product: validation errors, then it appears in the table', async ({ page }) => {
   await page.getByRole('button', { name: 'Add product' }).click()
   await expect(dialog(page).getByLabel('Name')).toBeFocused()
@@ -74,7 +80,8 @@ test('adding a product: validation errors, then it appears in the table', async 
   await dialog(page).getByLabel('Name').fill('Е2Е Айрян')
   await dialog(page).getByLabel('Purchase price').fill('0.60')
   await dialog(page).getByLabel('Sale price').fill('0.95')
-  await expect(dialog(page).getByText('Margin:')).toContainText('36.8%')
+  // Bought for 0.60, sold for 0.95: 0.35 on top of 0.60 is the markup, 0.35 of 0.95 the margin.
+  await expect(dialog(page).getByText('Margin:')).toContainText('Markup: 58.3% · Margin: 36.8%')
 
   await dialog(page).getByLabel('Barcode').fill('2000000000016')
   await dialog(page).getByRole('button', { name: 'Add product' }).click()

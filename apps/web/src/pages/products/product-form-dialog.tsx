@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { type ApiError, toApiError } from '@/lib/api'
-import { formatMoney, formatPercent, marginPercent } from '@/lib/format'
+import { formatMoney, formatPercent, marginPercent, markupPercent } from '@/lib/format'
 import { type Product, productsApi, type ProductInput, type ProductUnit } from '@/lib/products-api'
 import { suppliersApi } from '@/lib/suppliers-api'
 import { CategoryCombobox } from '@/pages/products/category-combobox'
@@ -138,8 +138,9 @@ function ProductForm({ product, onSaved, onClose }: {
           : (error?.fieldErrors ?? {})
   const showGeneralError = error !== null && Object.keys(fieldErrors).length === 0
 
-  const margin =
-    form.purchase_price && form.sale_price ? marginPercent(form.purchase_price, form.sale_price) : null
+  const bothPrices = Boolean(form.purchase_price && form.sale_price)
+  const markup = bothPrices ? markupPercent(form.purchase_price, form.sale_price) : null
+  const margin = bothPrices ? marginPercent(form.purchase_price, form.sale_price) : null
   const hasChanges = JSON.stringify(form) !== JSON.stringify(initialValues)
 
   return (
@@ -232,6 +233,9 @@ function ProductForm({ product, onSaved, onClose }: {
       {margin !== null && (
         <p className={`text-sm ${margin < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
           {margin < 0 ? t.products.belowPurchase : ''}
+          {markup !== null && (
+            <>{t.products.markupLabel} <span className="font-medium figures">{formatPercent(markup)}</span> · </>
+          )}
           {t.products.marginLabel} <span className="font-medium figures">{formatPercent(margin)}</span>
         </p>
       )}

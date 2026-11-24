@@ -29,8 +29,8 @@ def invite(client: TestClient, email: str = "ivan@test-store.example", **extra: 
 
 def link_token(outbox: FakeEmailSender, to: str) -> str:
     email = next(e for e in reversed(outbox.sent) if e.to == to)
-    match = re.search(r"/accept-invitation\?token=([\w-]+)", email.body)
-    assert match, email.body
+    match = re.search(r"/accept-invitation\?token=([\w-]+)", email.text)
+    assert match, email.text
     return match.group(1)
 
 
@@ -60,8 +60,8 @@ def test_an_invited_person_is_listed_as_not_joined_yet(
     email = outbox.sent[-1]
     assert email.to == "ivan@test-store.example"
     assert "Test Owner invited you to Test store" in email.subject
-    assert "as a manager" in email.body
-    assert "valid for 7 days" in email.body
+    assert "as a manager" in email.text
+    assert "valid for 7 days" in email.text
 
 
 def test_the_list_shows_owners_first_then_by_name(client: TestClient) -> None:

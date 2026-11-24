@@ -120,7 +120,6 @@ export const en = {
       `If ${email} can be used, we have sent a confirmation link to it. Open it to activate your account.`,
 
     checkEmail: 'Check your email',
-    devEmails: 'Development: emails are not really sent. The link is printed in the backend terminal.',
 
     forgotTitle: 'Forgot your password?',
     forgotSubtitle: 'Enter your email and we will send you a link to choose a new one.',
@@ -903,6 +902,7 @@ export const en = {
     supplier_archived: 'This supplier is archived.',
     unit_locked: "The unit can't change once the product has batches.",
     invalid_period: "This period doesn't make sense.",
+    email_not_sent: 'The email could not be sent. Try again in a few minutes.',
     unknown: 'Something went wrong',
   },
 }

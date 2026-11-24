@@ -25,8 +25,8 @@ def reset(client: TestClient, token: str, new_password: str = NEW_PASSWORD):
 
 
 def reset_token(outbox: FakeEmailSender) -> str:
-    mail = next(m for m in reversed(outbox.sent) if "reset-password?token=" in m.body)
-    return re.search(r"reset-password\?token=([\w-]+)", mail.body).group(1)
+    mail = next(m for m in reversed(outbox.sent) if "reset-password?token=" in m.text)
+    return re.search(r"reset-password\?token=([\w-]+)", mail.text).group(1)
 
 
 def login(client: TestClient, password: str):
@@ -93,7 +93,7 @@ def test_a_verification_token_cannot_reset_a_password(
         json={"full_name": "A", "email": "a@shop.example", "password": "long-password",
               "store_name": "A Shop"},
     )
-    verification_token = re.search(r"token=([\w-]+)", outbox.sent[-1].body).group(1)
+    verification_token = re.search(r"token=([\w-]+)", outbox.sent[-1].text).group(1)
     assert reset(anon_client, verification_token).status_code == 400
 
 

@@ -51,6 +51,7 @@ const BULGARIAN: [RegExp, (...parts: string[]) => string][] = [
   [/^You are not logged in$/, () => 'Не си влязъл в профила си'],
   [/^Your session has expired\. Please log in again$/, () => 'Сесията ти изтече. Влез отново'],
   [/^Your role doesn't allow this\. Ask the store's owner$/, () => 'Ролята ти не позволява това. Попитай собственика на магазина'],
+  [/^The email could not be sent\. Try again in a few minutes$/, () => 'Имейлът не можа да бъде изпратен. Опитай пак след няколко минути'],
   // Periods
   [/^The period ends before it starts$/, () => 'Периодът свършва, преди да е започнал'],
   [/^The period can't be longer than (\d+) days$/, (days) => `Периодът не може да е по-дълъг от ${days} дни`],

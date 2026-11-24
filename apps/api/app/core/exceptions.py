@@ -103,3 +103,9 @@ class InvalidReceiptError(DomainError):
 class InvalidPeriodError(DomainError):
     status_code = 422
     code = "invalid_period"
+
+
+class EmailNotSentError(DomainError):
+    # 503: the server itself is fine, but a service it relies on didn't answer.
+    status_code = 503
+    code = "email_not_sent"

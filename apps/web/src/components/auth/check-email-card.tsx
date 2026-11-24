@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { AuthCard } from '@/components/auth/auth-card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useT } from '@/i18n/language-context'
@@ -21,11 +20,6 @@ export function CheckEmailCard({ children }: { children: ReactNode }) {
         <CardDescription className="text-base">{children}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {import.meta.env.DEV && (
-          <Alert data-animate>
-            <AlertDescription>{t.auth.devEmails}</AlertDescription>
-          </Alert>
-        )}
         <Button data-animate asChild variant="outline">
           <Link to="/login">{t.auth.backToLogIn}</Link>
         </Button>

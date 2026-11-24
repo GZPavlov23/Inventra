@@ -1,4 +1,4 @@
-import { currentMessages } from '@/i18n/language'
+import { currentLanguage, currentMessages } from '@/i18n/language'
 import { serverText } from '@/i18n/server-text'
 
 
@@ -51,7 +51,11 @@ export async function api<T>(path: string, { method = 'GET', body }: RequestOpti
   try {
     response = await fetch(`${API_BASE}${path}`, {
       method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers: {
+        // The site's language, not the computer's: the emails a request causes are written in it.
+        'Accept-Language': currentLanguage(),
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: 'same-origin',
     })

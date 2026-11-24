@@ -31,8 +31,8 @@ def login(client: TestClient, email: str, password: str):
 
 
 def link_token(outbox: FakeEmailSender) -> str:
-    match = re.search(r"verify-email\?token=([\w-]+)", outbox.sent[-1].body)
-    assert match, outbox.sent[-1].body
+    match = re.search(r"verify-email\?token=([\w-]+)", outbox.sent[-1].text)
+    assert match, outbox.sent[-1].text
     return match.group(1)
 
 
@@ -56,7 +56,7 @@ def test_register_creates_store_and_unverified_owner(
     assert user.store.name == "Corner Shop"
     assert user.password_hash != NEW_OWNER["password"]
     assert outbox.sent[-1].to == NEW_OWNER["email"]
-    assert "verify-email?token=" in outbox.sent[-1].body
+    assert "verify-email?token=" in outbox.sent[-1].text
 
 
 def test_cannot_log_in_before_verifying_email(anon_client: TestClient) -> None:

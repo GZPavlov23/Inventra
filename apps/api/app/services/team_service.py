@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.email import EmailSender
 from app.core.exceptions import ConflictError, LastOwnerError, NotFoundError
+from app.core.language import Language
 from app.core.security import generate_token, hash_password
 from app.models.auth_token import AuthTokenPurpose
 from app.models.store import Store
@@ -15,17 +16,19 @@ from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import StoreUpdate
 from app.schemas.team import InvitationCreate, MemberUpdate
+from app.services import email_texts
 from app.services.auth_service import AuthService
-
-ROLE_NAMES = {UserRole.OWNER: "an owner", UserRole.MANAGER: "a manager", UserRole.STAFF: "staff"}
 
 
 class TeamService:
-    def __init__(self, session: Session, email_sender: EmailSender) -> None:
+    def __init__(
+        self, session: Session, email_sender: EmailSender, language: Language = "bg"
+    ) -> None:
         self.session = session
         self.users = UserRepository(session)
-        self.auth = AuthService(session, email_sender)
-        self.email_sender = email_sender
+        self.auth = AuthService(session, email_sender, language)
+        # The invitation is written in the language of the person who sends it.
+        self.language: Language = language
         self.settings = get_settings()
 
     def rename_store(self, store: Store, data: StoreUpdate) -> Store:
@@ -110,11 +113,14 @@ class TeamService:
         days = self.settings.invitation_lifetime_days
         token = self.auth.issue_token(member, AuthTokenPurpose.INVITATION, timedelta(days=days))
         link = f"{self.settings.web_app_url}/accept-invitation?token={token}"
-        self.email_sender.send(
+        email = email_texts.invitation(
             member.email,
-            f"{inviter.full_name} invited you to {inviter.store.name} on Inventra",
-            f"Hello {member.full_name},\n\n{inviter.full_name} invited you to join "
-            f"{inviter.store.name} on Inventra as {ROLE_NAMES[member.role]}.\n\n"
-            f"Open this link to choose your password:\n{link}\n\n"
-            f"The link is valid for {days} days and works once.",
+            self.language,
+            member.full_name,
+            inviter.full_name,
+            inviter.store.name,
+            member.role,
+            link,
+            days,
         )
+        self.auth.send_or_undo(email)

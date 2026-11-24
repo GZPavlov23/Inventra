@@ -18,7 +18,7 @@ from sqlalchemy import Connection, create_engine
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.email import get_email_sender
+from app.core.email import Email, get_email_sender
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.main import app
@@ -33,20 +33,13 @@ OWNER_PASSWORD_HASH = hash_password(OWNER_PASSWORD)
 
 
 @dataclass
-class SentEmail:
-    to: str
-    subject: str
-    body: str
-
-
-@dataclass
 class FakeEmailSender:
     """Collects emails instead of sending them, so tests can read the links inside."""
 
-    sent: list[SentEmail] = field(default_factory=list)
+    sent: list[Email] = field(default_factory=list)
 
-    def send(self, to: str, subject: str, body: str) -> None:
-        self.sent.append(SentEmail(to, subject, body))
+    def send(self, email: Email) -> None:
+        self.sent.append(email)
 
 
 @pytest.fixture(scope="session")
@@ -124,7 +117,8 @@ def anon_client(db: Session, outbox: FakeEmailSender) -> Iterator[TestClient]:
 
     app.dependency_overrides[get_db] = session_for_request
     app.dependency_overrides[get_email_sender] = lambda: outbox
-    with TestClient(app) as test_client:
+    # The tests read the English emails; tests of the Bulgarian ones ask for them by header.
+    with TestClient(app, headers={"Accept-Language": "en"}) as test_client:
         yield test_client
     app.dependency_overrides.clear()
 

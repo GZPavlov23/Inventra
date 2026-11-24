@@ -11,20 +11,23 @@ Security decisions (each one answers a question the jury may ask):
   is logged out everywhere.
 """
 
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from functools import cache
 
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.email import EmailSender
+from app.core.email import Email, EmailSender
 from app.core.exceptions import (
     AccountLockedError,
+    EmailNotSentError,
     EmailNotVerifiedError,
     InvalidCredentialsError,
     InvalidTokenError,
     WrongPasswordError,
 )
+from app.core.language import Language
 from app.core.security import generate_token, hash_password, hash_token, verify_password
 from app.models.auth_token import AuthToken, AuthTokenPurpose
 from app.models.store import Store
@@ -38,6 +41,7 @@ from app.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
 )
+from app.services import email_texts
 
 INVALID_CREDENTIALS = "Invalid email or password"
 
@@ -54,11 +58,33 @@ def _now() -> datetime:
 
 
 class AuthService:
-    def __init__(self, session: Session, email_sender: EmailSender) -> None:
+    def __init__(
+        self, session: Session, email_sender: EmailSender, language: Language = "bg"
+    ) -> None:
         self.session = session
         self.users = UserRepository(session)
         self.email_sender = email_sender
+        # Emails are written in the language the person reads the site in.
+        self.language: Language = language
         self.settings = get_settings()
+
+    def send_or_undo(self, email: Email) -> None:
+        """For an email with a link: if it can't be sent, nothing of the request is kept.
+
+        The person sees why and can simply try again, instead of waiting for a link that never
+        comes while a half-finished account blocks the address.
+        """
+        try:
+            self.email_sender.send(email)
+        except EmailNotSentError:
+            self.session.rollback()
+            raise
+
+    def notify(self, email: Email) -> None:
+        """For an email that only tells something: the action stands even if it isn't sent."""
+        # The sender has already written the failure to the log.
+        with suppress(EmailNotSentError):
+            self.email_sender.send(email)
 
     # Registration and email verification
 
@@ -68,11 +94,8 @@ class AuthService:
         existing = self.users.get_by_email(data.email)
         if existing is not None:
             # Tell the real owner of the address instead of telling the person registering.
-            self.email_sender.send(
-                existing.email,
-                "Someone tried to register with your email",
-                "Someone tried to create an Inventra account with this email address, which "
-                "already has an account. If it was you, just log in. If not, you can ignore this.",
+            self.notify(
+                email_texts.someone_tried(existing.email, self.language, existing.full_name)
             )
             return
 
@@ -114,11 +137,8 @@ class AuthService:
         hours = self.settings.email_verification_lifetime_hours
         token = self.issue_token(user, AuthTokenPurpose.EMAIL_VERIFICATION, timedelta(hours=hours))
         link = f"{self.settings.web_app_url}/verify-email?token={token}"
-        self.email_sender.send(
-            user.email,
-            "Confirm your Inventra account",
-            f"Hello {user.full_name},\n\nOpen this link to confirm your email address:\n{link}\n\n"
-            f"The link is valid for {hours} hours.",
+        self.send_or_undo(
+            email_texts.verification(user.email, self.language, user.full_name, link, hours)
         )
 
     # Forgotten password
@@ -131,12 +151,8 @@ class AuthService:
         minutes = self.settings.password_reset_lifetime_minutes
         token = self.issue_token(user, AuthTokenPurpose.PASSWORD_RESET, timedelta(minutes=minutes))
         link = f"{self.settings.web_app_url}/reset-password?token={token}"
-        self.email_sender.send(
-            user.email,
-            "Reset your Inventra password",
-            f"Hello {user.full_name},\n\nOpen this link to choose a new password:\n{link}\n\n"
-            f"The link is valid for {minutes} minutes and works once. If you didn't ask for this, "
-            "ignore this email: your password stays the same.",
+        self.send_or_undo(
+            email_texts.password_reset(user.email, self.language, user.full_name, link, minutes)
         )
         self.session.commit()
 
@@ -158,13 +174,10 @@ class AuthService:
         auth_token.used_at = now
         self.users.invalidate_tokens(user.id, AuthTokenPurpose.PASSWORD_RESET, now)
         self.users.delete_all_sessions(user.id)
-        self.email_sender.send(
-            user.email,
-            "Your Inventra password was changed",
-            f"Hello {user.full_name},\n\nThe password of your account was just changed and you "
-            "were logged out on all devices. If this wasn't you, reset your password right away.",
-        )
         self.session.commit()
+        self.notify(
+            email_texts.password_changed(user.email, self.language, user.full_name, everywhere=True)
+        )
 
     def issue_token(self, user: User, purpose: AuthTokenPurpose, lifetime: timedelta) -> str:
         """Creates a one-time token (only the newest of each kind works) and returns it."""
@@ -189,14 +202,12 @@ class AuthService:
         # Anyone who learned the old password is thrown out, but not the person changing it.
         self.users.delete_other_sessions(user.id, hash_token(session_token))
         self.users.invalidate_tokens(user.id, AuthTokenPurpose.PASSWORD_RESET, _now())
-        self.email_sender.send(
-            user.email,
-            "Your Inventra password was changed",
-            f"Hello {user.full_name},\n\nThe password of your account was just changed and you "
-            "were logged out on your other devices. If this wasn't you, reset your password "
-            "right away.",
-        )
         self.session.commit()
+        self.notify(
+            email_texts.password_changed(
+                user.email, self.language, user.full_name, everywhere=False
+            )
+        )
 
     # Invitations
 

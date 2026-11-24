@@ -18,6 +18,7 @@ from alembic import command
 from alembic.config import Config
 
 from app.core.config import get_settings
+from app.core.email import Email
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,9 +27,10 @@ class FileEmailSender:
     def __init__(self, path: Path) -> None:
         self.path = path
 
-    def send(self, to: str, subject: str, body: str) -> None:
+    def send(self, email: Email) -> None:
+        line = {"to": email.to, "subject": email.subject, "body": email.text}
         with self.path.open("a", encoding="utf-8") as outbox:
-            outbox.write(json.dumps({"to": to, "subject": subject, "body": body}) + "\n")
+            outbox.write(json.dumps(line) + "\n")
 
 
 def main() -> None:

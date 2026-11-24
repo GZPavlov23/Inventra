@@ -2,12 +2,13 @@
 
 from typing import Annotated, Any
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.email import EmailSender, get_email_sender
 from app.core.exceptions import ForbiddenError, NotAuthenticatedError
+from app.core.language import Language, language_from_header
 from app.core.permissions import Permission, can
 from app.db.session import get_db
 from app.models.store import Store
@@ -29,10 +30,19 @@ from app.services.team_service import TeamService
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+def get_language(accept_language: Annotated[str | None, Header()] = None) -> Language:
+    """The language of the site the request comes from, for the emails it causes."""
+    return language_from_header(accept_language)
+
+
+EmailSenderDep = Annotated[EmailSender, Depends(get_email_sender)]
+LanguageDep = Annotated[Language, Depends(get_language)]
+
+
 def get_auth_service(
-    db: DbSession, email_sender: Annotated[EmailSender, Depends(get_email_sender)]
+    db: DbSession, email_sender: EmailSenderDep, language: LanguageDep
 ) -> AuthService:
-    return AuthService(db, email_sender)
+    return AuthService(db, email_sender, language)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
@@ -79,9 +89,9 @@ CurrentStore = Annotated[Store, Depends(get_current_store)]
 
 
 def get_team_service(
-    db: DbSession, email_sender: Annotated[EmailSender, Depends(get_email_sender)]
+    db: DbSession, email_sender: EmailSenderDep, language: LanguageDep
 ) -> TeamService:
-    return TeamService(db, email_sender)
+    return TeamService(db, email_sender, language)
 
 
 TeamServiceDep = Annotated[TeamService, Depends(get_team_service)]

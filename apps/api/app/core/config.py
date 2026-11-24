@@ -6,7 +6,7 @@ Every configurable value lives here, so no other module reads os.environ directl
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     # Base address of the web app, used to build links in emails (e.g. email verification).
     web_app_url: str = "http://localhost:5173"
+
+    # Sending emails. Without SMTP_HOST they are printed in the terminal instead of sent.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    # SecretStr: never printed in logs or error messages by accident.
+    smtp_password: SecretStr = SecretStr("")
+    email_from: str = "Inventra <noreply@inventra.day>"
 
     # Authentication
     session_cookie_name: str = "inventra_session"

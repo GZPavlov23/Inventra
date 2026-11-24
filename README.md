@@ -228,6 +228,31 @@ Check code style:
 ruff check .
 ```
 
+## Live site
+
+The web app is on **https://inventra.day**, built and served by Cloudflare Workers from `apps/web` (`wrangler.jsonc`, `worker/index.ts`) on every push to `main`. The worker passes `/api/...` on to `api.inventra.day`, so for the browser the API stays on the site's own address and the session cookie works without cross-site setup.
+
+The API and the database run on a laptop, and a Cloudflare Tunnel connects `api.inventra.day` to it. One command starts it, once the tunnel exists (see below):
+
+```bash
+cd apps/api
+.venv/bin/python -m scripts.serve            # inventra.day works while this runs
+.venv/bin/python -m scripts.serve --offline  # no internet: only this computer, with npm run dev
+```
+
+It checks PostgreSQL, applies migrations, starts the tunnel and runs the API in production mode (cookies only over HTTPS, email links to inventra.day), with one readable line per request. Ctrl+C stops everything.
+
+Setting up the tunnel, once per laptop:
+
+```bash
+brew install cloudflared                                  # Windows: winget install Cloudflare.cloudflared
+cloudflared tunnel login                                  # pick inventra.day in the browser
+cloudflared tunnel create inventra
+cloudflared tunnel route dns inventra api.inventra.day
+```
+
+The files in `~/.cloudflared/` are the tunnel's keys: never commit or share them.
+
 ## Test accounts
 
 After running the seed script you can log in as each role of the demo store:

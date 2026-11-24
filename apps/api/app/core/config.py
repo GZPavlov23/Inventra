@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     max_failed_logins: int = 5
     lockout_minutes: int = 15
 
+    # One short, readable line per request in the terminal: for showing the server at work.
+    # scripts/serve.py turns it on; in development uvicorn's own log is enough.
+    request_log: bool = False
+
     @property
     def cookie_secure(self) -> bool:
         # Secure cookies are only sent over HTTPS. Local development runs on plain HTTP.

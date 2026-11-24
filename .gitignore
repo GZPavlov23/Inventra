@@ -31,3 +31,6 @@ ml/models/*.joblib
 .DS_Store
 .idea/
 *.log
+
+# The tunnel's log, written by apps/api/scripts/serve.py
+cloudflared.log

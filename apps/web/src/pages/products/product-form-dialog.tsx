@@ -40,6 +40,16 @@ const NO_SUPPLIER = 'none'
 
 const UNITS: ProductUnit[] = ['pcs', 'kg', 'l']
 
+// The sale price for a markup on top of the purchase price, in whole cents so 1.005 can't round
+// the wrong way. Empty while either number is missing or isn't a number.
+function priceWithMarkup(purchasePrice: string, markup: string): string {
+  if (purchasePrice === '' || markup === '') return ''
+  const cents = Math.round(Number(purchasePrice) * 100)
+  const percent = Number(markup)
+  if (!Number.isFinite(cents) || !Number.isFinite(percent)) return ''
+  return (Math.round(cents * (1 + percent / 100)) / 100).toFixed(2)
+}
+
 function toFormValues(product: Product): ProductInput {
   return {
     name: product.name,
@@ -96,6 +106,9 @@ function ProductForm({ product, onSaved, onClose }: {
   const queryClient = useQueryClient()
   const initialValues = product ? toFormValues(product) : EMPTY_PRODUCT
   const [form, setForm] = useState<ProductInput>(initialValues)
+  // What the person typed into the markup field. Empty means the field only shows the markup of
+  // the two prices; once typed, the sale price follows it, also when the purchase price changes.
+  const [typedMarkup, setTypedMarkup] = useState<string | null>(null)
 
   const suppliers = useQuery({ queryKey: ['suppliers', 'choices'], queryFn: suppliersApi.choices })
   const supplierChoices = suppliers.data?.items ?? []
@@ -141,6 +154,25 @@ function ProductForm({ product, onSaved, onClose }: {
   const bothPrices = Boolean(form.purchase_price && form.sale_price)
   const markup = bothPrices ? markupPercent(form.purchase_price, form.sale_price) : null
   const margin = bothPrices ? marginPercent(form.purchase_price, form.sale_price) : null
+  const shownMarkup = typedMarkup ?? (markup === null ? '' : String(Math.round(markup * 10) / 10))
+
+  const changePurchasePrice = (value: string) => {
+    update('purchase_price', value)
+    if (typedMarkup !== null) {
+      const price = priceWithMarkup(value, typedMarkup)
+      if (price) update('sale_price', price)
+    }
+  }
+  const changeMarkup = (value: string) => {
+    setTypedMarkup(value)
+    const price = priceWithMarkup(form.purchase_price, value)
+    if (price) update('sale_price', price)
+  }
+  const changeSalePrice = (value: string) => {
+    // A price typed by hand wins: the markup goes back to showing what it comes to.
+    setTypedMarkup(null)
+    update('sale_price', value)
+  }
   const hasChanges = JSON.stringify(form) !== JSON.stringify(initialValues)
 
   return (
@@ -210,18 +242,24 @@ function ProductForm({ product, onSaved, onClose }: {
         </Select>
       </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid items-start gap-4 sm:grid-cols-[1fr_7rem_1fr]">
         <FormField id="purchase_price" label={t.products.purchasePriceIn(store.currency)} required
           error={fieldErrors.purchase_price}>
           <Input id="purchase_price" type="number" inputMode="decimal" required min="0" step="0.01"
             aria-invalid={Boolean(fieldErrors.purchase_price)}
-            value={form.purchase_price} onChange={(event) => update('purchase_price', event.target.value)} />
+            value={form.purchase_price} onChange={(event) => changePurchasePrice(event.target.value)} />
+        </FormField>
+        {/* Only a help for typing: the server keeps the two prices, the markup follows from them.
+            step="any", so 33.33 doesn't stop the form from being sent. */}
+        <FormField id="markup" label={t.products.markupField} hint={t.products.markupHint}>
+          <Input id="markup" type="number" inputMode="decimal" step="any" min="-100"
+            value={shownMarkup} onChange={(event) => changeMarkup(event.target.value)} />
         </FormField>
         <FormField id="sale_price" label={t.products.salePriceIn(store.currency)} required
           error={fieldErrors.sale_price}>
           <Input id="sale_price" type="number" inputMode="decimal" required min="0" step="0.01"
             aria-invalid={Boolean(fieldErrors.sale_price)}
-            value={form.sale_price} onChange={(event) => update('sale_price', event.target.value)} />
+            value={form.sale_price} onChange={(event) => changeSalePrice(event.target.value)} />
         </FormField>
       </div>
 
@@ -233,9 +271,6 @@ function ProductForm({ product, onSaved, onClose }: {
       {margin !== null && (
         <p className={`text-sm ${margin < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
           {margin < 0 ? t.products.belowPurchase : ''}
-          {markup !== null && (
-            <>{t.products.markupLabel} <span className="font-medium figures">{formatPercent(markup)}</span> · </>
-          )}
           {t.products.marginLabel} <span className="font-medium figures">{formatPercent(margin)}</span>
         </p>
       )}

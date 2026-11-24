@@ -22,8 +22,9 @@ export function AppLayout() {
       <div className="min-h-svh bg-background">
         <AppHeader />
         {/* min-w-0: a wide table scrolls inside its frame instead of widening the whole page.
-            The extra room at the bottom keeps the last row clear of the floating button. */}
-        <main className="mx-auto max-w-6xl min-w-0 px-4 pt-6 pb-24 md:px-6 md:pt-8">
+            The extra room at the bottom keeps the last row clear of the floating button.
+            As wide as the top bar, so the products table fits with all its columns. */}
+        <main className="mx-auto max-w-7xl min-w-0 px-4 pt-6 pb-24 md:px-6 md:pt-8">
           <PageTransition>
             <Outlet />
           </PageTransition>

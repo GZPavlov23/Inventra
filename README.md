@@ -13,20 +13,22 @@ The project is under active development. This section lists only what actually w
 | Products REST API (create, read, search, update, barcode lookup) | ✅ working |
 | Barcode validation (EAN-8, UPC-A, EAN-13, GTIN-14) | ✅ working |
 | PostgreSQL database with migrations (Alembic) | ✅ working |
-| Automated backend tests (pytest) | ✅ 551 tests |
-| Automated browser tests (Playwright) | ✅ 111 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders, roles, settings and invitations |
-| Web platform shell (sidebar navigation, layout, page transitions) | ✅ working. Modules that aren't built yet show a "Planned" placeholder |
-| Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Locally, verification emails are printed in the backend terminal |
+| Automated backend tests (pytest) | ✅ 598 tests |
+| Automated browser tests (Playwright) | ✅ 128 scenarios: login, registration, password reset, dashboard, products, inventory, deliveries, suppliers, sales, CSV import, forecast, orders, roles, settings and invitations |
+| Web platform shell (top navigation bar, layout, page transitions, quick search with Ctrl K, dark theme) | ✅ working |
+| The whole site in Bulgarian (the default) and English, switched with one button; server errors and emails follow the chosen language | ✅ working |
+| Accounts API: registration, email verification, login/logout, sessions, forgotten password | ✅ working. Emails are sent through Brevo over SMTP; without SMTP settings they are printed in the backend terminal |
 | Login, Register, Forgot/Reset password and email confirmation pages; every platform page requires login | ✅ working |
 | Roles (owner, manager, staff) and what each may do, checked by the API on every request | ✅ working |
 | Team API: inviting employees by email, changing roles, stopping access; a store always keeps an active owner | ✅ working |
 | Settings page: your account and what your role can do, changing your password, the store's name, and the people of the store with invitations | ✅ working |
 | The web platform shows each role only what it can use: staff see the till and the shelves, not the dashboard, orders or profit | ✅ working |
-| Products page: table with search, Active/Archived/All filter, sorting, pagination | ✅ working (real data from the API) |
-| Adding products in the web platform, with a category picker | ✅ working |
+| Products page: table with search, Active/Archived/All filter, sorting, pagination, markup and margin | ✅ working (real data from the API) |
+| A product's story: everything that happened to it, day by day, and what needs doing now | ✅ working |
+| Adding products in the web platform, with a category picker and a markup field that fills in the sale price | ✅ working |
 | Editing, archiving and restoring products in the web platform | ✅ working |
 | Batches REST API: receiving goods, waste, corrections, expiry filters, stock history, stock per product | ✅ working |
-| Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history; stock column on Products | ✅ working |
+| Inventory page: batches in shelf order, expiry filters, receiving goods, writing off waste, count corrections, batch history, and a calendar of what expires when; stock column on Products | ✅ working |
 | Suppliers: REST API and page with contacts, search, archiving; every product can have a supplier | ✅ working |
 | Deliveries: ordering from a supplier, receiving what really arrived into batches in one transaction, cancelling; a delivery can't be received twice | ✅ working |
 | Sales REST API: recording sales from the batch that expires first, revenue, cost and profit, period summary | ✅ working |
@@ -38,6 +40,7 @@ The project is under active development. This section lists only what actually w
 | Forecast page and API: expected sales per product, shortages, models measured on the store's own past | ✅ working |
 | Orders page: what to order and why, counting only stock that will sell before it expires and goods already on the way, with a safety buffer, CSV download and one delivery per supplier | ✅ working. Pack sizes are planned |
 | Machine learning demand model, used only where it beats the simple models on the store's own sales | ✅ working, see `ml/README.md`. Trained on public data, not on real Bulgarian stores |
+| Live at https://inventra.day: the site on Cloudflare, the API on a laptop through a Cloudflare Tunnel | ✅ working, see "Live site" below |
 | Mobile app (Expo) | ⏳ planned |
 
 ## Architecture
@@ -83,10 +86,11 @@ inventra/
 │   │   └── tests/              # pytest tests
 │   └── web/                    # Web platform: React + TypeScript + Vite
 │       └── src/
-│           ├── config/         # App name and the navigation list (drives sidebar + routes)
+│           ├── config/         # App name and the navigation list (drives the menu + routes)
 │           ├── components/
-│           │   ├── layout/     # Sidebar, top bar, page transition
+│           │   ├── layout/     # Top bar, language switch, page transition
 │           │   └── ui/         # shadcn/ui components (generated by the shadcn CLI)
+│           ├── i18n/           # Every text of the site in English and Bulgarian
 │           ├── pages/          # One component per page
 │           └── router.tsx      # Which URL opens which page
 ├── ml/                         # Trains the demand model (see ml/README.md)
@@ -241,6 +245,8 @@ cd apps/api
 ```
 
 It checks PostgreSQL, applies migrations, starts the tunnel and runs the API in production mode (cookies only over HTTPS, email links to inventra.day), with one readable line per request. Ctrl+C stops everything.
+
+Emails go out through Brevo when `apps/api/.env` has the SMTP settings (see `.env.example`); the domain is authenticated in Brevo, so they come from `noreply@inventra.day`.
 
 Setting up the tunnel, once per laptop:
 
